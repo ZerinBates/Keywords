@@ -1,0 +1,235 @@
+"""Game application - the orchestrator.
+
+Owns:
+- The pygame window and scaling system
+- Fonts and the sprite manager
+- The GameState (model)
+- The Renderer (view)
+- The InputHandler (controller)
+- The button list (rebuilt each frame from state)
+
+Run with `await game.run()`.
+"""
+
+import asyncio
+from typing import Dict, List, Tuple
+
+import pygame
+
+from ..config import COLORS, FPS, SCREEN_WIDTH, SCREEN_HEIGHT
+from ..models import GamePhase
+from ..views.renderer import Renderer
+from ..views.sprite_manager import SpriteManager
+from ..views.widgets import Button
+from .game_state import GameState
+from .input_handler import InputHandler
+from .tutorial import Tutorial
+
+
+class Game:
+    """Main game orchestrator. Owns all subsystems and drives the run loop."""
+
+    def __init__(self):
+        pygame.init()
+
+        # --- Display / fullscreen / scaling ---
+        self.logical_width = SCREEN_WIDTH
+        self.logical_height = SCREEN_HEIGHT
+        self.is_fullscreen = False
+
+        display_info = pygame.display.Info()
+        self.native_width = display_info.current_w
+        self.native_height = display_info.current_h
+
+        self.screen = pygame.display.set_mode(
+            (self.logical_width, self.logical_height), pygame.RESIZABLE,
+        )
+        pygame.display.set_caption("Keyword Tactics")
+
+        # All game rendering happens here at base resolution, then scaled
+        self.logical_surface = pygame.Surface((self.logical_width, self.logical_height))
+
+        self.render_scale: float = 1.0
+        self.render_offset_x: int = 0
+        self.render_offset_y: int = 0
+        self._update_scale()
+
+        self.clock = pygame.time.Clock()
+        self.running = True
+
+        # --- Fonts (bundled into a dict and shared everywhere) ---
+        self.fonts: Dict[str, pygame.font.Font] = {
+            'tiny':   pygame.font.Font(None, 20),
+            'small':  pygame.font.Font(None, 24),
+            'medium': pygame.font.Font(None, 32),
+            'large':  pygame.font.Font(None, 48),
+            'title':  pygame.font.Font(None, 64),
+        }
+
+        # --- Subsystems ---
+        self.sprite_manager = SpriteManager()
+        self.state = GameState()
+        self.input_handler = InputHandler(self)
+        self.renderer = Renderer(self)
+
+        # Tutorial fairy. Active by default; toggled from the main menu.
+        self.tutorial = Tutorial()
+        #self.tutorial.start()
+
+        # Buttons are rebuilt every frame from state in `update`
+        self.buttons: List[Button] = []
+
+    # ------------------------------------------------------------------
+    # Display / coordinate handling
+    # ------------------------------------------------------------------
+
+    def _update_scale(self):
+        """Recalculate scale + offset after a resize or fullscreen toggle."""
+        real_w, real_h = self.screen.get_size()
+        scale_x = real_w / self.logical_width
+        scale_y = real_h / self.logical_height
+        self.render_scale = min(scale_x, scale_y)
+        self.render_offset_x = int(
+            (real_w - self.logical_width * self.render_scale) / 2,
+        )
+        self.render_offset_y = int(
+            (real_h - self.logical_height * self.render_scale) / 2,
+        )
+
+    def toggle_fullscreen(self):
+        """Toggle between fullscreen and windowed mode."""
+        self.is_fullscreen = not self.is_fullscreen
+        if self.is_fullscreen:
+            self.screen = pygame.display.set_mode(
+                (self.native_width, self.native_height),
+                pygame.FULLSCREEN | pygame.HWSURFACE | pygame.DOUBLEBUF,
+            )
+        else:
+            self.screen = pygame.display.set_mode(
+                (self.logical_width, self.logical_height),
+                pygame.RESIZABLE,
+            )
+        self._update_scale()
+
+    def screen_to_logical(self, screen_pos: Tuple[int, int]) -> Tuple[int, int]:
+        """Convert screen/window coordinates to logical (pre-scale) coordinates."""
+        sx, sy = screen_pos
+        if self.render_scale == 0:
+            return (0, 0)
+        lx = int((sx - self.render_offset_x) / self.render_scale)
+        ly = int((sy - self.render_offset_y) / self.render_scale)
+        return (lx, ly)
+
+    # ------------------------------------------------------------------
+    # Main loop
+    # ------------------------------------------------------------------
+
+    async def run(self):
+        while self.running:
+            self.input_handler.handle_events()
+            self.update()
+            self.renderer.draw()
+            self.clock.tick(FPS)
+            await asyncio.sleep(0)
+
+        pygame.quit()
+
+    def update(self):
+        """Per-frame logic update: tick message timer, rebuild buttons."""
+        self.state.update_message()
+        self.tutorial.tick(self.state.phase)
+        self._rebuild_buttons()
+
+    # ------------------------------------------------------------------
+    # Button building (per-phase)
+    # ------------------------------------------------------------------
+
+    def _rebuild_buttons(self):
+        """Rebuild the button list based on current phase and state."""
+        self.buttons.clear()
+
+        # Reference-panel toggle (everywhere except menus)
+        if self.state.phase not in (GamePhase.MAIN_MENU, GamePhase.GAME_OVER):
+            toggle_text = "v Keywords" if self.state.ref_panel_open else "> Keywords"
+            self.buttons.append(Button(
+                SCREEN_WIDTH - 130, SCREEN_HEIGHT - 45, 120, 35, toggle_text,
+            ))
+
+        phase = self.state.phase
+
+        if phase == GamePhase.MAIN_MENU:
+            self.buttons.append(Button(SCREEN_WIDTH // 2 - 100, 340, 200, 50, "New Game"))
+            tut_text = "Tutorial: ON" if self.tutorial.active else "Tutorial: OFF"
+            self.buttons.append(Button(SCREEN_WIDTH // 2 - 100, 400, 200, 40, tut_text))
+            fs_text = "Windowed" if self.is_fullscreen else "Fullscreen"
+            self.buttons.append(Button(SCREEN_WIDTH // 2 - 100, 450, 200, 40, fs_text))
+            self.buttons.append(Button(SCREEN_WIDTH // 2 - 100, 500, 200, 40, "Quit"))
+
+        elif phase == GamePhase.PREPARATION:
+            btn = Button(SCREEN_WIDTH - 180, 20, 160, 40, "Select Deck")
+            btn.enabled = len(self.state.party) == 4
+            self.buttons.append(btn)
+
+        elif phase == GamePhase.DECK_SELECT:
+            y = 140
+            for deck_id in self.state.deck_registry.all_ids():
+                active_deck = self.state.active_decks.get(deck_id)
+                is_completed = active_deck and (
+                    active_deck.is_completed or active_deck.is_empty()
+                )
+
+                if is_completed:
+                    btn = Button(SCREEN_WIDTH // 2 + 180, y + 25, 120, 35, "Cleared")
+                    btn.enabled = False
+                    btn.color = (40, 50, 40)
+                else:
+                    btn = Button(SCREEN_WIDTH // 2 + 180, y + 25, 120, 35, "Enter")
+                    btn.deck_id = deck_id  # type: ignore[attr-defined]
+
+                self.buttons.append(btn)
+                y += 105
+            self.buttons.append(Button(SCREEN_WIDTH // 2 - 75, y + 20, 150, 40, "Back"))
+
+        elif phase == GamePhase.DELVE_SETUP:
+            btn_y = 530
+            fight_btn = Button(
+                SCREEN_WIDTH // 2 - 80, btn_y, 160, 45, "FIGHT!",
+                color=COLORS['danger'], hover_color=(255, 150, 100),
+            )
+            fight_btn.enabled = self.state.all_alive_placed()
+            self.buttons.append(fight_btn)
+            self.buttons.append(Button(SCREEN_WIDTH // 2 + 100, btn_y, 140, 45, "Items"))
+            if self.state.party_needs_recruits():
+                self.buttons.append(Button(
+                    SCREEN_WIDTH // 2 + 260, btn_y, 140, 45, "Recruit",
+                    color=COLORS['success'], hover_color=(130, 255, 150),
+                ))
+            self.buttons.append(Button(SCREEN_WIDTH // 2 - 240, btn_y, 140, 45, "Retreat"))
+
+        elif phase == GamePhase.DELVE_RESULTS:
+            btn_y = 700
+            self.buttons.append(Button(SCREEN_WIDTH // 2 - 80, btn_y, 160, 45, "Continue"))
+            self.buttons.append(Button(SCREEN_WIDTH // 2 + 100, btn_y, 140, 45, "Items"))
+            if self.state.party_needs_recruits():
+                self.buttons.append(Button(
+                    SCREEN_WIDTH // 2 + 260, btn_y, 140, 45, "Recruit",
+                    color=COLORS['success'], hover_color=(130, 255, 150),
+                ))
+
+        elif phase == GamePhase.BOSS_CHOICE:
+            boss_btn = Button(
+                SCREEN_WIDTH // 2 - 200, 720, 180, 50, "Challenge Boss!",
+                color=COLORS['danger'], hover_color=(255, 150, 100),
+            )
+            boss_btn.enabled = self.state.boss_adventurer_index >= 0
+            self.buttons.append(boss_btn)
+            self.buttons.append(Button(SCREEN_WIDTH // 2 + 20, 720, 180, 50, "Skip Boss"))
+
+        elif phase == GamePhase.BOSS_RESULT:
+            self.buttons.append(Button(SCREEN_WIDTH // 2 - 75, 720, 150, 50, "Continue"))
+
+        elif phase == GamePhase.ROUND_END:
+            self.buttons.append(Button(SCREEN_WIDTH // 2 - 100, 720, 200, 50, "End Shopping"))
+
+        elif phase == GamePhase.GAME_OVER:
+            self.buttons.append(Button(SCREEN_WIDTH // 2 - 100, 400, 200, 50, "Main Menu"))

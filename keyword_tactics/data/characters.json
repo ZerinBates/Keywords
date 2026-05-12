@@ -1,0 +1,237 @@
+
+{
+  "_comment": "ADD NEW ADVENTURERS HERE - Abilities modify the combat formula!",
+
+  "warrior": {
+    "name": "Warrior",
+    "slots": 4,
+    "ability_name": "Sword Master",
+    "ability_desc": "Sword and Warrior keywords count double for multiplier",
+    "ability_effect": {
+      "double_keywords": ["sword", "warrior"]
+    }
+  },
+  "commoner": {
+    "name": "Commoner",
+    "slots": 2,
+    "ability_name": "",
+    "ability_desc": "",
+    "ability_effect": {
+    }
+  },
+  "mage": {
+    "name": "Mage",
+    "slots": 3,
+    "ability_name": "Elemental Fusion",
+    "ability_desc": "Fire, Water, Steam, and Ice keywords count as matching. Mage keywords count double.",
+    "ability_effect": {
+      "fuse_keywords": ["fire", "water", "steam", "ice"],
+      "double_keywords": ["mage"]
+    }
+  },
+
+  "ranger": {
+    "name": "Ranger",
+    "slots": 4,
+    "ability_name": "Beast Friend",
+    "ability_desc": "Immune to Beast weakness. Ranger keywords count double.",
+    "ability_effect": {
+      "immune_weakness": ["nature", "beast", "plant", "earth", "primal"],
+      "double_keywords": ["ranger"]
+    }
+  },
+
+  "monk": {
+    "name": "Monk",
+    "slots": 5,
+    "ability_name": "Iron Body",
+    "ability_desc": "Fist and Monk keywords count double for multiplier",
+    "ability_effect": {
+      "double_keywords": ["fist", "monk"]
+    }
+  },
+
+  "rogue": {
+    "name": "Rogue",
+    "slots": 3,
+    "ability_name": "Shadow Strike",
+    "ability_desc": "Darkness, Assassin, Dagger, Poison, and Illusion keywords count as matching. Assassin keywords count double.",
+    "ability_effect": {
+      "fuse_keywords": ["darkness", "assassin", "dagger", "poison", "illusion"],
+      "double_keywords": ["assassin"]
+    }
+  },
+
+  "paladin": {
+    "name": "Paladin",
+    "slots": 4,
+    "ability_name": "Holy Shield",
+    "ability_desc": "Immune to Darkness weakness. Paladin keywords count double.",
+    "ability_effect": {
+      "immune_weakness": ["darkness", "assassin", "dagger", "poison", "illusion"],
+      "double_keywords": ["paladin"]
+    }
+  },
+
+  "druid": {
+    "name": "Druid",
+    "slots": 4,
+    "ability_name": "Nature Bond",
+    "ability_desc": "Nature, Beast, Plant, Earth, and Primal keywords count as matching. Healer keywords count double.",
+    "ability_effect": {
+      "fuse_keywords": ["nature", "beast", "plant", "earth", "primal"],
+      "double_keywords": ["healer"]
+    }
+  },
+
+  "elementalist": {
+    "name": "Elementalist",
+    "slots": 3,
+    "ability_name": "Primal Power",
+    "ability_desc": "All element keywords get +1 multiplier bonus. Elemental keywords count double.",
+    "ability_effect": {
+      "element_bonus": 1,
+      "double_keywords": ["elemental"]
+    }
+  },
+
+  "berserker": {
+    "name": "Berserker",
+    "slots": 6,
+    "ability_name": "Rage",
+    "ability_desc": "Fist, Beast, Blood, Berserker, and Warrior keywords count as matching. Berserker keywords count double.",
+    "ability_effect": {
+      "fuse_keywords": ["fist", "beast", "blood", "berserker", "warrior"],
+      "double_keywords": ["berserker"]
+    }
+  },
+
+  "necromancer": {
+    "name": "Necromancer",
+    "slots": 3,
+    "ability_name": "Death Magic",
+    "ability_desc": "Undead, Darkness, Necromancy, Spirit, and Demon keywords count as matching. Warlock keywords count double.",
+    "ability_effect": {
+      "fuse_keywords": ["undead", "darkness", "necromancy", "spirit", "demon"],
+      "double_keywords": ["warlock"]
+    }
+  },
+
+  "knight": {
+    "name": "Knight",
+    "slots": 4,
+    "ability_name": "Steel Armor",
+    "ability_desc": "Immune to Sword weakness. Knight keywords count double.",
+    "ability_effect": {
+      "immune_weakness": ["fist", "beast", "blood", "berserker", "warrior", "sword"],
+      "double_keywords": ["knight"]
+    }
+  },
+
+  "archer": {
+    "name": "Archer",
+    "slots": 4,
+    "ability_name": "Marksman",
+    "ability_desc": "Bow and Ranger keywords count double for multiplier",
+    "ability_effect": {
+      "double_keywords": ["bow", "ranger"]
+    }
+  },
+
+  "engineer": {
+    "name": "Engineer",
+    "slots": 4,
+    "ability_name": "Mechanical Logic",
+    "ability_desc": "Construct, Metal, and Alchemy keywords count as matching. Engineer keywords count double.",
+    "ability_effect": {
+      "fuse_keywords": ["construct", "metal", "alchemy"],
+      "double_keywords": ["engineer"]
+    }
+  },
+
+  "warlock": {
+    "name": "Warlock",
+    "slots": 3,
+    "ability_name": "Forbidden Pact",
+    "ability_desc": "Occult and Warlock keywords count double for multiplier",
+    "ability_effect": {
+      "double_keywords": ["occult", "warlock"]
+    }
+  },
+
+  "bard": {
+    "name": "Bard",
+    "slots": 5,
+    "ability_name": "Resonance",
+    "ability_desc": "Sonic, Instrument, Light, Enchantment, and Illusion keywords count as matching. Bard keywords count double.",
+    "ability_effect": {
+      "fuse_keywords": ["sonic", "instrument", "light", "enchantment", "illusion"],
+      "double_keywords": ["bard"]
+    }
+  },
+
+  "assassin": {
+    "name": "Assassin",
+    "slots": 3,
+    "ability_name": "Critical Focus",
+    "ability_desc": "Assassin keywords count double for multiplier",
+    "ability_effect": {
+      "double_keywords": ["assassin"]
+    }
+  },
+
+  "time_mage": {
+    "name": "Time Mage",
+    "slots": 3,
+    "ability_name": "Chrono Sync",
+    "ability_desc": "Time, Arcane, Space, and Void keywords count as matching. Mage keywords count double.",
+    "ability_effect": {
+      "fuse_keywords": ["time", "arcane", "space", "void"],
+      "double_keywords": ["mage"]
+    }
+  },
+
+  "dragon_rider": {
+    "name": "Dragon Rider",
+    "slots": 4,
+    "ability_name": "Draconic Bond",
+    "ability_desc": "Dragon, Fire, Ice, Thunder, Poison, and Wind keywords count as matching. Dragon keywords count double.",
+    "ability_effect": {
+      "fuse_keywords": ["dragon", "fire", "ice", "thunder", "poison", "wind"],
+      "double_keywords": ["dragon", "warrior"]
+    }
+  },
+
+  "mech_pilot": {
+    "name": "Mech Pilot",
+    "slots": 4,
+    "ability_name": "Heavy Metal",
+    "ability_desc": "Construct, Metal, Steam, and Thunder keywords count as matching. Engineer keywords count double.",
+    "ability_effect": {
+      "fuse_keywords": ["construct", "metal", "steam", "thunder"],
+      "double_keywords": ["engineer"]
+    }
+  },
+
+  "fey_knight": {
+    "name": "Fey Knight",
+    "slots": 4,
+    "ability_name": "Sylvan Ward",
+    "ability_desc": "Fey, Nature, Illusion, and Light keywords count as matching. Knight keywords count double.",
+    "ability_effect": {
+      "fuse_keywords": ["fey", "nature", "illusion", "light"],
+      "double_keywords": ["knight"]
+    }
+  },
+
+  "sea_warden": {
+    "name": "Sea Warden",
+    "slots": 4,
+    "ability_name": "Tide Caller",
+    "ability_desc": "Aquatic, Water, Ice, and Wind keywords count as matching. Pirate keywords count double.",
+    "ability_effect": {
+      "fuse_keywords": ["aquatic", "water", "ice", "wind"],
+      "double_keywords": ["pirate"]
+    }
+  }
+}

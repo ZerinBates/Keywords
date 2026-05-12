@@ -1,0 +1,2678 @@
+{
+  "_format": {
+    "item_id": {
+      "name": "Display Name",
+      "keywords": [
+        "keyword1",
+        "keyword2"
+      ],
+      "points": 20,
+      "rarity": "common|uncommon|rare",
+      "slot": "float|head|weapon|belt|cape|boots|hand|chest"
+    }
+  },
+  "flame_sword": {
+    "name": "Ember Blade",
+    "keywords": [
+      "fire",
+      "sword"
+    ],
+    "points": 55,
+    "rarity": "common",
+    "slot": "weapon"
+  },
+  "ice_spear": {
+    "name": "Icicle Pike",
+    "keywords": [
+      "ice",
+      "spear"
+    ],
+    "points": 48,
+    "rarity": "common",
+    "slot": "weapon"
+  },
+  "wind_dagger": {
+    "name": "Zephyr Knife",
+    "keywords": [
+      "wind",
+      "dagger"
+    ],
+    "points": 42,
+    "rarity": "common",
+    "slot": "weapon"
+  },
+  "earth_shield": {
+    "name": "Granite Buckler",
+    "keywords": [
+      "earth",
+      "shield"
+    ],
+    "points": 58,
+    "rarity": "common",
+    "slot": "hand"
+  },
+  "water_bow": {
+    "name": "Coral Bow",
+    "keywords": [
+      "water",
+      "bow"
+    ],
+    "points": 50,
+    "rarity": "common",
+    "slot": "weapon"
+  },
+  "nature_staff": {
+    "name": "Oak Branch",
+    "keywords": [
+      "nature",
+      "staff"
+    ],
+    "points": 45,
+    "rarity": "common",
+    "slot": "weapon"
+  },
+  "poison_fang": {
+    "name": "Viper Tooth",
+    "keywords": [
+      "poison",
+      "beast"
+    ],
+    "points": 35,
+    "rarity": "common",
+    "slot": "head"
+  },
+  "dust_instrument": {
+    "name": "Sand Lute",
+    "keywords": [
+      "dust",
+      "instrument"
+    ],
+    "points": 28,
+    "rarity": "common",
+    "slot": "hand"
+  },
+  "primal_claw": {
+    "name": "Bear Claw",
+    "keywords": [
+      "primal",
+      "claw"
+    ],
+    "points": 52,
+    "rarity": "common",
+    "slot": "hand"
+  },
+  "sonic_instrument": {
+    "name": "Echo Flute",
+    "keywords": [
+      "sonic",
+      "instrument"
+    ],
+    "points": 44,
+    "rarity": "common",
+    "slot": "hand"
+  },
+  "illusion_wand": {
+    "name": "Mirage Stick",
+    "keywords": [
+      "illusion",
+      "wand"
+    ],
+    "points": 40,
+    "rarity": "common",
+    "slot": "weapon"
+  },
+  "enchantment_wand": {
+    "name": "Charm Wand",
+    "keywords": [
+      "enchantment",
+      "wand"
+    ],
+    "points": 47,
+    "rarity": "common",
+    "slot": "weapon"
+  },
+  "chi_fist_wraps": {
+    "name": "Monk Wraps",
+    "keywords": [
+      "monk",
+      "fist"
+    ],
+    "points": 38,
+    "rarity": "common",
+    "slot": "hand"
+  },
+  "fey_whip": {
+    "name": "Pixie Lash",
+    "keywords": [
+      "fey",
+      "whip"
+    ],
+    "points": 49,
+    "rarity": "common",
+    "slot": "weapon"
+  },
+  "slime_shield": {
+    "name": "Goo Buckler",
+    "keywords": [
+      "slime",
+      "shield"
+    ],
+    "points": 25,
+    "rarity": "common",
+    "slot": "hand"
+  },
+  "insect_bow": {
+    "name": "Chitin Bow",
+    "keywords": [
+      "insect",
+      "bow"
+    ],
+    "points": 46,
+    "rarity": "common",
+    "slot": "weapon"
+  },
+  "plant_staff": {
+    "name": "Vine Staff",
+    "keywords": [
+      "plant",
+      "staff"
+    ],
+    "points": 33,
+    "rarity": "common",
+    "slot": "weapon"
+  },
+  "aquatic_spear": {
+    "name": "Trident",
+    "keywords": [
+      "aquatic",
+      "spear"
+    ],
+    "points": 55,
+    "rarity": "common",
+    "slot": "weapon"
+  },
+  "avian_dagger": {
+    "name": "Talon Knife",
+    "keywords": [
+      "avian",
+      "dagger"
+    ],
+    "points": 41,
+    "rarity": "common",
+    "slot": "weapon"
+  },
+  "reptile_axe": {
+    "name": "Scale Chopper",
+    "keywords": [
+      "reptile",
+      "axe"
+    ],
+    "points": 53,
+    "rarity": "common",
+    "slot": "weapon"
+  },
+  "mimic_dagger": {
+    "name": "False Dagger",
+    "keywords": [
+      "illusion",
+      "dagger"
+    ],
+    "points": 39,
+    "rarity": "common",
+    "slot": "weapon"
+  },
+  "monk_fists": {
+    "name": "Hardened Knuckles",
+    "keywords": [
+      "monk",
+      "fist"
+    ],
+    "points": 50,
+    "rarity": "common",
+    "slot": "hand"
+  },
+  "bard_instrument": {
+    "name": "Traveler's Lute",
+    "keywords": [
+      "bard",
+      "instrument"
+    ],
+    "points": 42,
+    "rarity": "common",
+    "slot": "hand"
+  },
+  "thief_dagger": {
+    "name": "Rust Blade",
+    "keywords": [
+      "water",
+      "dagger"
+    ],
+    "points": 30,
+    "rarity": "common",
+    "slot": "weapon"
+  },
+  "knight_sword": {
+    "name": "Iron Longsword",
+    "keywords": [
+      "knight",
+      "sword"
+    ],
+    "points": 59,
+    "rarity": "common",
+    "slot": "weapon"
+  },
+  "pirate_cutlass": {
+    "name": "Rusty Cutlass",
+    "keywords": [
+      "pirate",
+      "sword"
+    ],
+    "points": 45,
+    "rarity": "common",
+    "slot": "weapon"
+  },
+  "merchant_ledger": {
+    "name": "Balanced Ledger",
+    "keywords": [
+      "merchant",
+      "book"
+    ],
+    "points": 15,
+    "rarity": "common",
+    "slot": "hand"
+  },
+  "gambler_coin": {
+    "name": "Lucky Coin",
+    "keywords": [
+      "gambler"
+    ],
+    "points": 10,
+    "rarity": "common",
+    "slot": "belt"
+  },
+  "river_pebble": {
+    "name": "Smooth Pebble",
+    "keywords": [
+      "earth"
+    ],
+    "points": 5,
+    "rarity": "common",
+    "slot": "belt"
+  },
+  "gnarled_stick": {
+    "name": "Gnarled Stick",
+    "keywords": [
+      "nature"
+    ],
+    "points": 8,
+    "rarity": "common",
+    "slot": "weapon"
+  },
+  "moth_wing": {
+    "name": "Moth Wing",
+    "keywords": [
+      "insect",
+      "wind"
+    ],
+    "points": 22,
+    "rarity": "common",
+    "slot": "cape"
+  },
+  "training_dummy": {
+    "name": "Straw Dummy",
+    "keywords": [
+      "construct"
+    ],
+    "points": 12,
+    "rarity": "common",
+    "slot": "float"
+  },
+  "bone_whistle": {
+    "name": "Bone Whistle",
+    "keywords": [
+      "sonic",
+      "undead"
+    ],
+    "points": 35,
+    "rarity": "common",
+    "slot": "belt"
+  },
+  "lit_torch": {
+    "name": "Lit Torch",
+    "keywords": [
+      "fire"
+    ],
+    "points": 18,
+    "rarity": "common",
+    "slot": "hand"
+  },
+  "water_bucket": {
+    "name": "Water Bucket",
+    "keywords": [
+      "water"
+    ],
+    "points": 15,
+    "rarity": "common",
+    "slot": "hand"
+  },
+  "paper_fan": {
+    "name": "Paper Fan",
+    "keywords": [
+      "wind",
+      "book"
+    ],
+    "points": 25,
+    "rarity": "common",
+    "slot": "hand"
+  },
+  "farm_hoe": {
+    "name": "Farm Hoe",
+    "keywords": [
+      "nature",
+      "axe"
+    ],
+    "points": 38,
+    "rarity": "common",
+    "slot": "weapon"
+  },
+  "dirty_bandage": {
+    "name": "Dirty Bandage",
+    "keywords": [
+      "healer"
+    ],
+    "points": 12,
+    "rarity": "common",
+    "slot": "chest"
+  },
+  "fish_bones": {
+    "name": "Fish Bones",
+    "keywords": [
+      "aquatic",
+      "undead"
+    ],
+    "points": 28,
+    "rarity": "common",
+    "slot": "hand"
+  },
+  "lizard_tail": {
+    "name": "Lizard Tail",
+    "keywords": [
+      "reptile"
+    ],
+    "points": 20,
+    "rarity": "common",
+    "slot": "belt"
+  },
+  "coin_purse": {
+    "name": "Coin Purse",
+    "keywords": [
+      "merchant"
+    ],
+    "points": 40,
+    "rarity": "common",
+    "slot": "belt"
+  },
+  "bone_dice": {
+    "name": "Bone Dice",
+    "keywords": [
+      "gambler",
+      "undead"
+    ],
+    "points": 45,
+    "rarity": "common",
+    "slot": "belt"
+  },
+  "spore_pod": {
+    "name": "Spore Pod",
+    "keywords": [
+      "plant",
+      "poison"
+    ],
+    "points": 33,
+    "rarity": "common",
+    "slot": "float"
+  },
+  "eagle_feather": {
+    "name": "Eagle Feather",
+    "keywords": [
+      "avian",
+      "wind"
+    ],
+    "points": 20,
+    "rarity": "common",
+    "slot": "head"
+  },
+  "iron_pot": {
+    "name": "Iron Pot",
+    "keywords": [
+      "metal"
+    ],
+    "points": 30,
+    "rarity": "common",
+    "slot": "head"
+  },
+  "burnt_wood": {
+    "name": "Burnt Wood",
+    "keywords": [
+      "fire",
+      "nature"
+    ],
+    "points": 28,
+    "rarity": "common",
+    "slot": "hand"
+  },
+  "slime_ball": {
+    "name": "Slime Ball",
+    "keywords": [
+      "slime"
+    ],
+    "points": 10,
+    "rarity": "common",
+    "slot": "float"
+  },
+  "bag_of_sand": {
+    "name": "Bag of Sand",
+    "keywords": [
+      "dust",
+      "earth"
+    ],
+    "points": 18,
+    "rarity": "common",
+    "slot": "belt"
+  },
+  "thunder_hammer": {
+    "name": "Mjollnir Replica",
+    "keywords": [
+      "thunder",
+      "hammer"
+    ],
+    "points": 110,
+    "rarity": "uncommon",
+    "slot": "weapon"
+  },
+  "light_staff": {
+    "name": "Staff of Dawn",
+    "keywords": [
+      "light",
+      "staff"
+    ],
+    "points": 95,
+    "rarity": "uncommon",
+    "slot": "weapon"
+  },
+  "darkness_book": {
+    "name": "Tome of Shadows",
+    "keywords": [
+      "darkness",
+      "book",
+      "arcane"
+    ],
+    "points": 105,
+    "rarity": "uncommon",
+    "slot": "hand"
+  },
+  "acid_whip": {
+    "name": "Corrosive Lash",
+    "keywords": [
+      "poison",
+      "whip",
+      "water"
+    ],
+    "points": 88,
+    "rarity": "uncommon",
+    "slot": "weapon"
+  },
+  "arcane_book": {
+    "name": "Wizard's Grimoire",
+    "keywords": [
+      "arcane",
+      "book",
+      "mage"
+    ],
+    "points": 100,
+    "rarity": "uncommon",
+    "slot": "hand"
+  },
+  "divine_shield": {
+    "name": "Aegis",
+    "keywords": [
+      "divine",
+      "shield",
+      "guardian"
+    ],
+    "points": 115,
+    "rarity": "uncommon",
+    "slot": "hand"
+  },
+  "psionic_wand": {
+    "name": "Mindbender Wand",
+    "keywords": [
+      "psionic",
+      "wand",
+      "illusion"
+    ],
+    "points": 92,
+    "rarity": "uncommon",
+    "slot": "weapon"
+  },
+  "occult_dagger": {
+    "name": "Sacrificial Dagger",
+    "keywords": [
+      "occult",
+      "dagger",
+      "blood"
+    ],
+    "points": 85,
+    "rarity": "uncommon",
+    "slot": "weapon"
+  },
+  "alchemy_bomb": {
+    "name": "Alchemist Flask",
+    "keywords": [
+      "alchemy",
+      "bomb",
+      "poison"
+    ],
+    "points": 98,
+    "rarity": "uncommon",
+    "slot": "belt"
+  },
+  "summon_book": {
+    "name": "Beastmaster Codex",
+    "keywords": [
+      "beast",
+      "book",
+      "nature"
+    ],
+    "points": 80,
+    "rarity": "uncommon",
+    "slot": "hand"
+  },
+  "rune_shield": {
+    "name": "Etched Shield",
+    "keywords": [
+      "metal",
+      "shield",
+      "arcane"
+    ],
+    "points": 102,
+    "rarity": "uncommon",
+    "slot": "hand"
+  },
+  "dragon_spear": {
+    "name": "Wyrm Pike",
+    "keywords": [
+      "dragon",
+      "spear",
+      "fire"
+    ],
+    "points": 118,
+    "rarity": "uncommon",
+    "slot": "weapon"
+  },
+  "undead_scythe": {
+    "name": "Reaper's Tool",
+    "keywords": [
+      "undead",
+      "scythe",
+      "darkness"
+    ],
+    "points": 112,
+    "rarity": "uncommon",
+    "slot": "weapon"
+  },
+  "construct_hammer": {
+    "name": "Piston Hammer",
+    "keywords": [
+      "construct",
+      "hammer",
+      "metal"
+    ],
+    "points": 95,
+    "rarity": "uncommon",
+    "slot": "weapon"
+  },
+  "demon_fang": {
+    "name": "Hellhound Tooth",
+    "keywords": [
+      "demon",
+      "beast",
+      "fire"
+    ],
+    "points": 88,
+    "rarity": "uncommon",
+    "slot": "head"
+  },
+  "angel_sword": {
+    "name": "Seraph Blade",
+    "keywords": [
+      "angel",
+      "sword",
+      "light"
+    ],
+    "points": 120,
+    "rarity": "uncommon",
+    "slot": "weapon"
+  },
+  "giant_hammer": {
+    "name": "Titan Maul",
+    "keywords": [
+      "hammer",
+      "earth"
+    ],
+    "points": 110,
+    "rarity": "uncommon",
+    "slot": "weapon"
+  },
+  "elemental_sword": {
+    "name": "Prismatic Blade",
+    "keywords": [
+      "elemental",
+      "sword"
+    ],
+    "points": 105,
+    "rarity": "uncommon",
+    "slot": "weapon"
+  },
+  "assassin_blade": {
+    "name": "Hidden Blade",
+    "keywords": [
+      "assassin",
+      "dagger",
+      "darkness"
+    ],
+    "points": 90,
+    "rarity": "uncommon",
+    "slot": "weapon"
+  },
+  "paladin_shield": {
+    "name": "Crusader Shield",
+    "keywords": [
+      "paladin",
+      "shield",
+      "light"
+    ],
+    "points": 115,
+    "rarity": "uncommon",
+    "slot": "hand"
+  },
+  "warlock_staff": {
+    "name": "Eldritch Staff",
+    "keywords": [
+      "warlock",
+      "staff",
+      "occult"
+    ],
+    "points": 108,
+    "rarity": "uncommon",
+    "slot": "weapon"
+  },
+  "engineer_toolkit": {
+    "name": "Repair Kit",
+    "keywords": [
+      "engineer",
+      "construct",
+      "metal"
+    ],
+    "points": 85,
+    "rarity": "uncommon",
+    "slot": "belt"
+  },
+  "vampire_signet": {
+    "name": "Vampire Signet",
+    "keywords": [
+      "blood",
+      "undead",
+      "humanoid"
+    ],
+    "points": 90,
+    "rarity": "uncommon",
+    "slot": "hand"
+  },
+  "storm_totem": {
+    "name": "Thunder Totem",
+    "keywords": [
+      "thunder",
+      "nature",
+      "sonic"
+    ],
+    "points": 95,
+    "rarity": "uncommon",
+    "slot": "float"
+  },
+  "kings_decree": {
+    "name": "Royal Decree",
+    "keywords": [
+      "king",
+      "book",
+      "light"
+    ],
+    "points": 110,
+    "rarity": "uncommon",
+    "slot": "hand"
+  },
+  "shadow_cloak": {
+    "name": "Shadow Cloak",
+    "keywords": [
+      "darkness",
+      "assassin",
+      "illusion"
+    ],
+    "points": 105,
+    "rarity": "uncommon",
+    "slot": "cape"
+  },
+  "bear_trap": {
+    "name": "Bear Trap",
+    "keywords": [
+      "metal",
+      "beast",
+      "ranger"
+    ],
+    "points": 95,
+    "rarity": "uncommon",
+    "slot": "belt"
+  },
+  "steam_bomb": {
+    "name": "Pressure Bomb",
+    "keywords": [
+      "steam",
+      "bomb",
+      "fire",
+      "water"
+    ],
+    "points": 140,
+    "rarity": "rare",
+    "slot": "belt"
+  },
+  "blood_scythe": {
+    "name": "Hemomancer's Reaping",
+    "keywords": [
+      "blood",
+      "scythe",
+      "necromancy",
+      "undead"
+    ],
+    "points": 165,
+    "rarity": "rare",
+    "slot": "weapon"
+  },
+  "time_staff": {
+    "name": "Chronos Staff",
+    "keywords": [
+      "time",
+      "staff",
+      "arcane",
+      "space"
+    ],
+    "points": 175,
+    "rarity": "rare",
+    "slot": "weapon"
+  },
+  "space_hammer": {
+    "name": "Gravity Maul",
+    "keywords": [
+      "space",
+      "hammer",
+      "void",
+      "metal"
+    ],
+    "points": 170,
+    "rarity": "rare",
+    "slot": "weapon"
+  },
+  "necromancy_staff": {
+    "name": "Lich's Spine",
+    "keywords": [
+      "necromancy",
+      "staff",
+      "undead",
+      "darkness"
+    ],
+    "points": 160,
+    "rarity": "rare",
+    "slot": "weapon"
+  },
+  "void_dagger": {
+    "name": "Entropy Shiv",
+    "keywords": [
+      "void",
+      "dagger",
+      "assassin",
+      "space"
+    ],
+    "points": 155,
+    "rarity": "rare",
+    "slot": "weapon"
+  },
+  "aberration_staff": {
+    "name": "Tentacle Rod",
+    "keywords": [
+      "aberration",
+      "staff",
+      "slime",
+      "void"
+    ],
+    "points": 145,
+    "rarity": "rare",
+    "slot": "weapon"
+  },
+  "king_crown": {
+    "name": "Crown of Command",
+    "keywords": [
+      "king",
+      "light",
+      "humanoid",
+      "divine"
+    ],
+    "points": 180,
+    "rarity": "rare",
+    "slot": "head"
+  },
+  "phoenix_crest": {
+    "name": "Crest of the Phoenix",
+    "keywords": [
+      "fire",
+      "avian",
+      "divine",
+      "healer"
+    ],
+    "points": 175,
+    "rarity": "rare",
+    "slot": "head"
+  },
+  "void_blade": {
+    "name": "Edge of Nothing",
+    "keywords": [
+      "void",
+      "sword",
+      "time",
+      "space"
+    ],
+    "points": 160,
+    "rarity": "rare",
+    "slot": "weapon"
+  },
+  "demon_contract": {
+    "name": "Infernal Contract",
+    "keywords": [
+      "demon",
+      "warlock",
+      "book",
+      "fire"
+    ],
+    "points": 150,
+    "rarity": "rare",
+    "slot": "hand"
+  },
+  "angel_wing": {
+    "name": "Seraphim Feather",
+    "keywords": [
+      "angel",
+      "light",
+      "avian",
+      "wind"
+    ],
+    "points": 165,
+    "rarity": "rare",
+    "slot": "cape"
+  },
+  "golem_heart": {
+    "name": "Core of the Mountain",
+    "keywords": [
+      "construct",
+      "earth",
+      "arcane",
+      "guardian"
+    ],
+    "points": 155,
+    "rarity": "rare",
+    "slot": "chest"
+  },
+  "_comment_beast": "BEAST DROPS",
+  "wolf_pelt": {
+    "name": "Wolf Pelt",
+    "keywords": ["nature", "ice"],
+    "points": 30,
+    "rarity": "common",
+    "slot": "cape"
+  },
+  "bear_claw": {
+    "name": "Bear Claw",
+    "keywords": ["claw", "earth"],
+    "points": 45,
+    "rarity": "common",
+    "slot": "hand"
+  },
+  "boar_tusk": {
+    "name": "Boar Tusk",
+    "keywords": ["spear", "primal"],
+    "points": 40,
+    "rarity": "common",
+    "slot": "head"
+  },
+  "lion_heart": {
+    "name": "Lion Heart",
+    "keywords": ["beast", "primal", "warrior", "king"],
+    "points": 95,
+    "rarity": "uncommon",
+    "slot": "chest"
+  },
+  "snake_venom": {
+    "name": "Snake Venom",
+    "keywords": ["poison", "alchemy"],
+    "points": 35,
+    "rarity": "common",
+    "slot": "belt"
+  },
+  "hunter_trap": {
+    "name": "Hunter Trap",
+    "keywords": ["ranger", "metal", "earth"],
+    "points": 80,
+    "rarity": "uncommon",
+    "slot": "belt"
+  },
+  "hide_armor": {
+    "name": "Hide Armor",
+    "keywords": ["shield", "nature"],
+    "points": 50,
+    "rarity": "common",
+    "slot": "chest"
+  },
+  "feral_instinct": {
+    "name": "Feral Instinct",
+    "keywords": ["beast", "berserker", "blood", "enchantment"],
+    "points": 140,
+    "rarity": "rare",
+    "slot": "float"
+  },
+  "beast_whistle": {
+    "name": "Beast Whistle",
+    "keywords": ["sonic", "wind"],
+    "points": 25,
+    "rarity": "common",
+    "slot": "belt"
+  },
+  "ravager_axe": {
+    "name": "Ravager Axe",
+    "keywords": ["beast", "axe", "primal", "blood"],
+    "points": 100,
+    "rarity": "uncommon",
+    "slot": "weapon"
+  },
+  "_comment_humanoid": "HUMANOID DROPS",
+  "iron_sword": {
+    "name": "Iron Sword",
+    "keywords": ["sword", "metal"],
+    "points": 55,
+    "rarity": "common",
+    "slot": "weapon"
+  },
+  "leather_tunic": {
+    "name": "Leather Tunic",
+    "keywords": ["nature", "guardian"],
+    "points": 30,
+    "rarity": "common",
+    "slot": "chest"
+  },
+  "bandit_hood": {
+    "name": "Bandit Hood",
+    "keywords": ["darkness", "assassin"],
+    "points": 40,
+    "rarity": "common",
+    "slot": "head"
+  },
+  "soldier_spear": {
+    "name": "Soldier Spear",
+    "keywords": ["spear", "warrior"],
+    "points": 50,
+    "rarity": "common",
+    "slot": "weapon"
+  },
+  "merchant_bag": {
+    "name": "Merchant Bag",
+    "keywords": ["merchant", "book"],
+    "points": 25,
+    "rarity": "common",
+    "slot": "belt"
+  },
+  "king_ring": {
+    "name": "Signet Ring",
+    "keywords": ["humanoid", "king", "light", "merchant"],
+    "points": 150,
+    "rarity": "rare",
+    "slot": "hand"
+  },
+  "knight_helm": {
+    "name": "Steel Helm",
+    "keywords": ["humanoid", "knight", "metal", "guardian"],
+    "points": 90,
+    "rarity": "uncommon",
+    "slot": "head"
+  },
+  "wizard_hat": {
+    "name": "Pointy Hat",
+    "keywords": ["mage", "arcane", "book"],
+    "points": 85,
+    "rarity": "uncommon",
+    "slot": "head"
+  },
+  "lockpicks": {
+    "name": "Lockpicks",
+    "keywords": ["metal", "assassin"],
+    "points": 45,
+    "rarity": "common",
+    "slot": "belt"
+  },
+  "bard_lute": {
+    "name": "Simple Lute",
+    "keywords": ["instrument", "bard"],
+    "points": 35,
+    "rarity": "common",
+    "slot": "hand"
+  },
+  "_comment_undead": "UNDEAD DROPS",
+  "bone_club": {
+    "name": "Femur Club",
+    "keywords": ["hammer", "necromancy"],
+    "points": 35,
+    "rarity": "common",
+    "slot": "weapon"
+  },
+  "skull_helm": {
+    "name": "Skull Helm",
+    "keywords": ["shield", "necromancy"],
+    "points": 45,
+    "rarity": "common",
+    "slot": "head"
+  },
+  "rotting_flesh": {
+    "name": "Rotting Flesh",
+    "keywords": ["poison", "nature"],
+    "points": 30,
+    "rarity": "common",
+    "slot": "chest"
+  },
+  "ghost_essence": {
+    "name": "Ghost Essence",
+    "keywords": ["undead", "spirit", "illusion", "void"],
+    "points": 95,
+    "rarity": "uncommon",
+    "slot": "float"
+  },
+  "lich_crown": {
+    "name": "Lich Crown",
+    "keywords": ["undead", "necromancy", "king", "time"],
+    "points": 160,
+    "rarity": "rare",
+    "slot": "head"
+  },
+  "vampire_cape": {
+    "name": "Vampire Cape",
+    "keywords": ["blood", "darkness", "assassin"],
+    "points": 110,
+    "rarity": "uncommon",
+    "slot": "cape"
+  },
+  "grave_dirt": {
+    "name": "Grave Dirt",
+    "keywords": ["earth", "darkness"],
+    "points": 20,
+    "rarity": "common",
+    "slot": "belt"
+  },
+  "skeletal_bow": {
+    "name": "Ribcage Bow",
+    "keywords": ["bow", "necromancy"],
+    "points": 50,
+    "rarity": "common",
+    "slot": "weapon"
+  },
+  "cursed_ring": {
+    "name": "Cursed Ring",
+    "keywords": ["undead", "occult", "darkness", "enchantment"],
+    "points": 105,
+    "rarity": "uncommon",
+    "slot": "hand"
+  },
+  "zombie_hand": {
+    "name": "Severed Hand",
+    "keywords": ["fist", "poison"],
+    "points": 25,
+    "rarity": "common",
+    "slot": "hand"
+  },
+  "_comment_dragon": "DRAGON DROPS",
+  "dragon_scale": {
+    "name": "Dragon Scale",
+    "keywords": ["shield", "fire"],
+    "points": 55,
+    "rarity": "common",
+    "slot": "chest"
+  },
+  "fire_breath": {
+    "name": "Bottled Breath",
+    "keywords": ["fire", "wind"],
+    "points": 60,
+    "rarity": "common",
+    "slot": "float"
+  },
+  "wyrm_tooth": {
+    "name": "Wyrm Tooth",
+    "keywords": ["dagger", "poison"],
+    "points": 50,
+    "rarity": "common",
+    "slot": "head"
+  },
+  "dragon_wing": {
+    "name": "Dragon Wing",
+    "keywords": ["dragon", "wind", "avian", "flight"],
+    "points": 115,
+    "rarity": "uncommon",
+    "slot": "cape"
+  },
+  "hoard_coin": {
+    "name": "Ancient Coin",
+    "keywords": ["merchant", "metal"],
+    "points": 45,
+    "rarity": "common",
+    "slot": "belt"
+  },
+  "elder_eye": {
+    "name": "Elder Eye",
+    "keywords": ["dragon", "arcane", "time", "void"],
+    "points": 170,
+    "rarity": "rare",
+    "slot": "head"
+  },
+  "magma_blood": {
+    "name": "Magma Blood",
+    "keywords": ["fire", "blood", "earth"],
+    "points": 155,
+    "rarity": "rare",
+    "slot": "float"
+  },
+  "draconic_roar": {
+    "name": "Roar Rune",
+    "keywords": ["sonic", "primal", "fire"],
+    "points": 100,
+    "rarity": "uncommon",
+    "slot": "float"
+  },
+  "tail_whip": {
+    "name": "Tail Whip",
+    "keywords": ["whip", "reptile"],
+    "points": 58,
+    "rarity": "common",
+    "slot": "weapon"
+  },
+  "scale_mail": {
+    "name": "Scale Mail",
+    "keywords": ["dragon", "metal", "guardian", "fire"],
+    "points": 120,
+    "rarity": "uncommon",
+    "slot": "chest"
+  },
+  "_comment_construct": "CONSTRUCT DROPS",
+  "metal_gear": {
+    "name": "Rusty Gear",
+    "keywords": ["metal", "time"],
+    "points": 25,
+    "rarity": "common",
+    "slot": "belt"
+  },
+  "steam_vent": {
+    "name": "Steam Vent",
+    "keywords": ["steam", "wind"],
+    "points": 35,
+    "rarity": "common",
+    "slot": "float"
+  },
+  "piston_fist": {
+    "name": "Piston Fist",
+    "keywords": ["construct", "fist", "metal", "engineer"],
+    "points": 90,
+    "rarity": "uncommon",
+    "slot": "hand"
+  },
+  "clockwork_heart": {
+    "name": "Clockwork Heart",
+    "keywords": ["time", "engineer", "metal", "blood"],
+    "points": 150,
+    "rarity": "rare",
+    "slot": "chest"
+  },
+  "furnace_coal": {
+    "name": "Furnace Coal",
+    "keywords": ["fire", "earth"],
+    "points": 30,
+    "rarity": "common",
+    "slot": "belt"
+  },
+  "iron_plate": {
+    "name": "Iron Plate",
+    "keywords": ["shield", "metal"],
+    "points": 50,
+    "rarity": "common",
+    "slot": "chest"
+  },
+  "servo_arm": {
+    "name": "Servo Arm",
+    "keywords": ["engineer", "metal", "fist"],
+    "points": 85,
+    "rarity": "uncommon",
+    "slot": "cape"
+  },
+  "golem_head": {
+    "name": "Golem Head",
+    "keywords": ["construct", "earth", "guardian", "arcane"],
+    "points": 110,
+    "rarity": "uncommon",
+    "slot": "head"
+  },
+  "drill_bit": {
+    "name": "Mining Drill",
+    "keywords": ["spear", "earth", "metal"],
+    "points": 95,
+    "rarity": "uncommon",
+    "slot": "weapon"
+  },
+  "wrecking_ball": {
+    "name": "Wrecking Ball",
+    "keywords": ["construct", "hammer", "metal", "heavy"],
+    "points": 145,
+    "rarity": "rare",
+    "slot": "weapon"
+  },
+  "_comment_demon": "DEMON DROPS",
+  "imp_horn": {
+    "name": "Imp Horn",
+    "keywords": ["dagger", "fire"],
+    "points": 40,
+    "rarity": "common",
+    "slot": "head"
+  },
+  "hellfire_torch": {
+    "name": "Hellfire Torch",
+    "keywords": ["fire", "light"],
+    "points": 50,
+    "rarity": "common",
+    "slot": "hand"
+  },
+  "succubus_kiss": {
+    "name": "Siren Kiss",
+    "keywords": ["enchantment", "illusion", "poison"],
+    "points": 90,
+    "rarity": "uncommon",
+    "slot": "float"
+  },
+  "demon_blood": {
+    "name": "Demon Blood",
+    "keywords": ["demon", "blood", "occult", "alchemy"],
+    "points": 105,
+    "rarity": "uncommon",
+    "slot": "belt"
+  },
+  "infernal_whip": {
+    "name": "Infernal Whip",
+    "keywords": ["whip", "fire", "darkness"],
+    "points": 95,
+    "rarity": "uncommon",
+    "slot": "weapon"
+  },
+  "warlock_pact": {
+    "name": "Blood Pact",
+    "keywords": ["demon", "warlock", "book", "blood"],
+    "points": 160,
+    "rarity": "rare",
+    "slot": "hand"
+  },
+  "brimstone": {
+    "name": "Brimstone",
+    "keywords": ["earth", "fire"],
+    "points": 30,
+    "rarity": "common",
+    "slot": "belt"
+  },
+  "chaos_blade": {
+    "name": "Chaos Blade",
+    "keywords": ["demon", "sword", "void", "fire"],
+    "points": 155,
+    "rarity": "rare",
+    "slot": "weapon"
+  },
+  "pitchfork": {
+    "name": "Pitchfork",
+    "keywords": ["spear", "metal"],
+    "points": 45,
+    "rarity": "common",
+    "slot": "weapon"
+  },
+  "soul_cage": {
+    "name": "Spirit Cage",
+    "keywords": ["spirit", "metal", "warlock", "void"],
+    "points": 140,
+    "rarity": "rare",
+    "slot": "hand"
+  },
+  "_comment_angel": "ANGEL DROPS",
+  "white_feather": {
+    "name": "White Feather",
+    "keywords": ["wind", "avian"],
+    "points": 35,
+    "rarity": "common",
+    "slot": "head"
+  },
+  "halo_ring": {
+    "name": "Golden Halo",
+    "keywords": ["angel", "light", "guardian", "divine"],
+    "points": 100,
+    "rarity": "uncommon",
+    "slot": "float"
+  },
+  "divine_text": {
+    "name": "Scripture",
+    "keywords": ["book", "divine", "paladin"],
+    "points": 95,
+    "rarity": "uncommon",
+    "slot": "hand"
+  },
+  "seraph_wing": {
+    "name": "Seraph Wing",
+    "keywords": ["angel", "wind", "fire", "avian"],
+    "points": 165,
+    "rarity": "rare",
+    "slot": "cape"
+  },
+  "justicar_hammer": {
+    "name": "Justicar Hammer",
+    "keywords": ["hammer", "metal", "paladin"],
+    "points": 110,
+    "rarity": "uncommon",
+    "slot": "weapon"
+  },
+  "holy_water": {
+    "name": "Holy Water",
+    "keywords": ["water", "divine"],
+    "points": 40,
+    "rarity": "common",
+    "slot": "belt"
+  },
+  "guardian_shield": {
+    "name": "Tower Shield",
+    "keywords": ["angel", "guardian", "shield", "metal"],
+    "points": 115,
+    "rarity": "uncommon",
+    "slot": "hand"
+  },
+  "paladin_oath": {
+    "name": "Oath Scroll",
+    "keywords": ["paladin", "divine", "book", "spirit"],
+    "points": 150,
+    "rarity": "rare",
+    "slot": "hand"
+  },
+  "trumpet": {
+    "name": "Golden Trumpet",
+    "keywords": ["instrument", "sonic"],
+    "points": 50,
+    "rarity": "common",
+    "slot": "hand"
+  },
+  "sun_ray": {
+    "name": "Sun Mote",
+    "keywords": ["fire", "light", "arcane"],
+    "points": 80,
+    "rarity": "uncommon",
+    "slot": "float"
+  },
+  "_comment_fey": "FEY DROPS",
+  "pixie_dust": {
+    "name": "Pixie Dust",
+    "keywords": ["illusion", "dust"],
+    "points": 45,
+    "rarity": "common",
+    "slot": "float"
+  },
+  "flower_crown": {
+    "name": "Flower Crown",
+    "keywords": ["nature", "plant"],
+    "points": 30,
+    "rarity": "common",
+    "slot": "head"
+  },
+  "trickster_coin": {
+    "name": "Trickster Coin",
+    "keywords": ["gambler", "illusion"],
+    "points": 35,
+    "rarity": "common",
+    "slot": "belt"
+  },
+  "glamour_mirror": {
+    "name": "Glamour Mirror",
+    "keywords": ["fey", "illusion", "light", "ice"],
+    "points": 95,
+    "rarity": "uncommon",
+    "slot": "hand"
+  },
+  "moon_beam": {
+    "name": "Moon Beam",
+    "keywords": ["light", "arcane", "darkness"],
+    "points": 85,
+    "rarity": "uncommon",
+    "slot": "float"
+  },
+  "fairy_wing": {
+    "name": "Fairy Wing",
+    "keywords": ["wind", "insect"],
+    "points": 40,
+    "rarity": "common",
+    "slot": "cape"
+  },
+  "enchanted_bow": {
+    "name": "Sylvan Bow",
+    "keywords": ["bow", "enchantment", "nature"],
+    "points": 100,
+    "rarity": "uncommon",
+    "slot": "weapon"
+  },
+  "sylvan_cloak": {
+    "name": "Sylvan Cloak",
+    "keywords": ["fey", "ranger", "nature", "assassin"],
+    "points": 90,
+    "rarity": "uncommon",
+    "slot": "cape"
+  },
+  "magic_mushroom": {
+    "name": "Toadstool",
+    "keywords": ["poison", "plant"],
+    "points": 25,
+    "rarity": "common",
+    "slot": "belt"
+  },
+  "elf_blade": {
+    "name": "Elven Blade",
+    "keywords": ["fey", "sword", "arcane", "warrior"],
+    "points": 145,
+    "rarity": "rare",
+    "slot": "weapon"
+  },
+  "_comment_slime": "SLIME DROPS",
+  "green_goo": {
+    "name": "Green Goo",
+    "keywords": ["poison", "water"],
+    "points": 30,
+    "rarity": "common",
+    "slot": "float"
+  },
+  "sticky_shield": {
+    "name": "Sticky Shield",
+    "keywords": ["shield", "earth"],
+    "points": 45,
+    "rarity": "common",
+    "slot": "hand"
+  },
+  "water_splash": {
+    "name": "Water Splash",
+    "keywords": ["water", "ice"],
+    "points": 35,
+    "rarity": "common",
+    "slot": "float"
+  },
+  "gelatinous_cube": {
+    "name": "Cube Essence",
+    "keywords": ["slime", "construct", "void"],
+    "points": 85,
+    "rarity": "uncommon",
+    "slot": "float"
+  },
+  "elastic_whip": {
+    "name": "Elastic Whip",
+    "keywords": ["whip", "nature"],
+    "points": 50,
+    "rarity": "common",
+    "slot": "weapon"
+  },
+  "ooze_armor": {
+    "name": "Ooze Armor",
+    "keywords": ["guardian", "poison", "water"],
+    "points": 100,
+    "rarity": "uncommon",
+    "slot": "chest"
+  },
+  "dissolving_touch": {
+    "name": "Dissolving Acid",
+    "keywords": ["void", "water", "alchemy", "poison"],
+    "points": 150,
+    "rarity": "rare",
+    "slot": "float"
+  },
+  "slippery_oil": {
+    "name": "Slippery Oil",
+    "keywords": ["water", "fire"],
+    "points": 25,
+    "rarity": "common",
+    "slot": "belt"
+  },
+  "mutant_blob": {
+    "name": "Mutant Blob",
+    "keywords": ["slime", "aberration", "poison"],
+    "points": 90,
+    "rarity": "uncommon",
+    "slot": "float"
+  },
+  "slime_crown": {
+    "name": "Slime Crown",
+    "keywords": ["slime", "king", "poison", "water"],
+    "points": 160,
+    "rarity": "rare",
+    "slot": "head"
+  },
+  "_comment_insect": "INSECT DROPS",
+  "chitin_plate": {
+    "name": "Chitin Plate",
+    "keywords": ["shield", "nature"],
+    "points": 45,
+    "rarity": "common",
+    "slot": "chest"
+  },
+  "stinger_dagger": {
+    "name": "Stinger",
+    "keywords": ["poison", "dagger"],
+    "points": 40,
+    "rarity": "common",
+    "slot": "weapon"
+  },
+  "bug_wing": {
+    "name": "Bug Wing",
+    "keywords": ["wind", "nature"],
+    "points": 30,
+    "rarity": "common",
+    "slot": "cape"
+  },
+  "swarm_caller": {
+    "name": "Swarm Caller",
+    "keywords": ["insect", "sonic", "nature", "wind"],
+    "points": 95,
+    "rarity": "uncommon",
+    "slot": "hand"
+  },
+  "hive_mind": {
+    "name": "Hive Mind",
+    "keywords": ["insect", "psionic", "king", "spirit"],
+    "points": 155,
+    "rarity": "rare",
+    "slot": "float"
+  },
+  "spider_silk": {
+    "name": "Spider Silk",
+    "keywords": ["whip", "assassin"],
+    "points": 50,
+    "rarity": "common",
+    "slot": "belt"
+  },
+  "venom_sac": {
+    "name": "Venom Sac",
+    "keywords": ["poison", "alchemy"],
+    "points": 35,
+    "rarity": "common",
+    "slot": "belt"
+  },
+  "mantis_claw": {
+    "name": "Mantis Claw",
+    "keywords": ["claw", "fist", "warrior"],
+    "points": 90,
+    "rarity": "uncommon",
+    "slot": "hand"
+  },
+  "beetle_horn": {
+    "name": "Beetle Horn",
+    "keywords": ["spear", "nature"],
+    "points": 40,
+    "rarity": "common",
+    "slot": "head"
+  },
+  "larva_husk": {
+    "name": "Larva Husk",
+    "keywords": ["nature", "earth"],
+    "points": 20,
+    "rarity": "common",
+    "slot": "chest"
+  },
+  "_comment_plant": "PLANT DROPS",
+  "wooden_staff": {
+    "name": "Wooden Staff",
+    "keywords": ["staff", "nature"],
+    "points": 35,
+    "rarity": "common",
+    "slot": "weapon"
+  },
+  "thorn_whip": {
+    "name": "Thorn Whip",
+    "keywords": ["whip", "nature"],
+    "points": 45,
+    "rarity": "common",
+    "slot": "weapon"
+  },
+  "leaf_shield": {
+    "name": "Leaf Shield",
+    "keywords": ["shield", "wind"],
+    "points": 40,
+    "rarity": "common",
+    "slot": "hand"
+  },
+  "healing_herb": {
+    "name": "Healing Herb",
+    "keywords": ["healer", "alchemy"],
+    "points": 30,
+    "rarity": "common",
+    "slot": "belt"
+  },
+  "poison_ivy": {
+    "name": "Poison Ivy",
+    "keywords": ["poison", "nature"],
+    "points": 35,
+    "rarity": "common",
+    "slot": "cape"
+  },
+  "root_armor": {
+    "name": "Root Armor",
+    "keywords": ["plant", "earth", "guardian", "nature"],
+    "points": 100,
+    "rarity": "uncommon",
+    "slot": "chest"
+  },
+  "spore_cloud": {
+    "name": "Spore Cloud",
+    "keywords": ["wind", "poison", "dust"],
+    "points": 90,
+    "rarity": "uncommon",
+    "slot": "float"
+  },
+  "flower_wand": {
+    "name": "Flower Wand",
+    "keywords": ["wand", "nature"],
+    "points": 50,
+    "rarity": "common",
+    "slot": "weapon"
+  },
+  "tree_bark": {
+    "name": "Tree Bark",
+    "keywords": ["guardian", "earth"],
+    "points": 25,
+    "rarity": "common",
+    "slot": "chest"
+  },
+  "life_seed": {
+    "name": "Life Seed",
+    "keywords": ["plant", "divine", "nature", "healer"],
+    "points": 145,
+    "rarity": "rare",
+    "slot": "float"
+  },
+  "_comment_aquatic": "AQUATIC DROPS",
+  "fish_scale": {
+    "name": "Fish Scale",
+    "keywords": ["shield", "water"],
+    "points": 35,
+    "rarity": "common",
+    "slot": "chest"
+  },
+  "trident_steel": {
+    "name": "Steel Trident",
+    "keywords": ["spear", "metal", "water"],
+    "points": 95,
+    "rarity": "uncommon",
+    "slot": "weapon"
+  },
+  "coral_wand": {
+    "name": "Coral Wand",
+    "keywords": ["wand", "nature"],
+    "points": 45,
+    "rarity": "common",
+    "slot": "weapon"
+  },
+  "pearl_gem": {
+    "name": "Black Pearl",
+    "keywords": ["aquatic", "merchant", "water", "darkness"],
+    "points": 85,
+    "rarity": "uncommon",
+    "slot": "belt"
+  },
+  "shark_tooth": {
+    "name": "Shark Tooth",
+    "keywords": ["dagger", "beast"],
+    "points": 40,
+    "rarity": "common",
+    "slot": "head"
+  },
+  "wet_kelp": {
+    "name": "Wet Kelp",
+    "keywords": ["whip", "plant"],
+    "points": 30,
+    "rarity": "common",
+    "slot": "cape"
+  },
+  "crab_claw": {
+    "name": "Crab Claw",
+    "keywords": ["claw", "shield"],
+    "points": 50,
+    "rarity": "common",
+    "slot": "hand"
+  },
+  "siren_song": {
+    "name": "Siren Song",
+    "keywords": ["sonic", "enchantment", "illusion"],
+    "points": 100,
+    "rarity": "uncommon",
+    "slot": "float"
+  },
+  "water_blast": {
+    "name": "Water Sphere",
+    "keywords": ["water", "arcane"],
+    "points": 55,
+    "rarity": "common",
+    "slot": "float"
+  },
+  "deep_crown": {
+    "name": "Deep Crown",
+    "keywords": ["aquatic", "king", "void", "water"],
+    "points": 160,
+    "rarity": "rare",
+    "slot": "head"
+  },
+  "_comment_avian": "AVIAN DROPS",
+  "eagle_eye": {
+    "name": "Eagle Eye",
+    "keywords": ["ranger", "light"],
+    "points": 45,
+    "rarity": "common",
+    "slot": "float"
+  },
+  "feather_cape": {
+    "name": "Feather Cape",
+    "keywords": ["wind", "light"],
+    "points": 40,
+    "rarity": "common",
+    "slot": "cape"
+  },
+  "talon_glove": {
+    "name": "Talon Glove",
+    "keywords": ["avian", "claw", "fist", "wind"],
+    "points": 90,
+    "rarity": "uncommon",
+    "slot": "hand"
+  },
+  "bird_beak": {
+    "name": "Bird Beak",
+    "keywords": ["dagger", "wind"],
+    "points": 30,
+    "rarity": "common",
+    "slot": "head"
+  },
+  "sky_bow": {
+    "name": "Sky Bow",
+    "keywords": ["bow", "wind", "thunder"],
+    "points": 100,
+    "rarity": "uncommon",
+    "slot": "weapon"
+  },
+  "wind_song": {
+    "name": "Wind Song",
+    "keywords": ["sonic", "wind"],
+    "points": 35,
+    "rarity": "common",
+    "slot": "float"
+  },
+  "griffon_heart": {
+    "name": "Griffon Heart",
+    "keywords": ["avian", "beast", "primal", "warrior"],
+    "points": 150,
+    "rarity": "rare",
+    "slot": "chest"
+  },
+  "phoenix_ash": {
+    "name": "Phoenix Ash",
+    "keywords": ["avian", "fire", "healer", "divine"],
+    "points": 160,
+    "rarity": "rare",
+    "slot": "float"
+  },
+  "crow_skull": {
+    "name": "Crow Skull",
+    "keywords": ["undead", "darkness"],
+    "points": 25,
+    "rarity": "common",
+    "slot": "head"
+  },
+  "flight_helm": {
+    "name": "Aviator Helm",
+    "keywords": ["metal", "engineer", "wind"],
+    "points": 95,
+    "rarity": "uncommon",
+    "slot": "head"
+  },
+  "_comment_reptile": "REPTILE DROPS",
+  "lizard_skin": {
+    "name": "Lizard Skin",
+    "keywords": ["shield", "nature"],
+    "points": 35,
+    "rarity": "common",
+    "slot": "chest"
+  },
+  "snake_fang": {
+    "name": "Snake Fang",
+    "keywords": ["poison", "dagger"],
+    "points": 40,
+    "rarity": "common",
+    "slot": "head"
+  },
+  "turtle_shell": {
+    "name": "Turtle Shell",
+    "keywords": ["reptile", "guardian", "shield", "water"],
+    "points": 85,
+    "rarity": "uncommon",
+    "slot": "chest"
+  },
+  "swamp_mud": {
+    "name": "Swamp Mud",
+    "keywords": ["earth", "water"],
+    "points": 55,
+    "rarity": "common",
+    "slot": "float"
+  },
+  "crocodile_jaw": {
+    "name": "Croc Jaw",
+    "keywords": ["beast", "water", "claw"],
+    "points": 90,
+    "rarity": "uncommon",
+    "slot": "head"
+  },
+  "basilisk_eye": {
+    "name": "Basilisk Eye",
+    "keywords": ["reptile", "earth", "illusion", "poison"],
+    "points": 155,
+    "rarity": "rare",
+    "slot": "float"
+  },
+  "serpent_staff": {
+    "name": "Serpent Staff",
+    "keywords": ["staff", "poison"],
+    "points": 45,
+    "rarity": "common",
+    "slot": "weapon"
+  },
+  "regeneration": {
+    "name": "Regen Scale",
+    "keywords": ["healer", "blood", "dragon", "nature"],
+    "points": 145,
+    "rarity": "rare",
+    "slot": "float"
+  },
+  "camouflage": {
+    "name": "Camo Cloak",
+    "keywords": ["ranger", "nature", "illusion"],
+    "points": 80,
+    "rarity": "uncommon",
+    "slot": "cape"
+  },
+  "cold_blood": {
+    "name": "Cold Blood",
+    "keywords": ["ice", "blood"],
+    "points": 30,
+    "rarity": "common",
+    "slot": "float"
+  },
+  "_comment_spirit": "SPIRIT DROPS",
+  "ectoplasm": {
+    "name": "Ectoplasm",
+    "keywords": ["slime", "arcane"],
+    "points": 35,
+    "rarity": "common",
+    "slot": "float"
+  },
+  "ghost_hood": {
+    "name": "Ghost Hood",
+    "keywords": ["illusion", "darkness", "wind"],
+    "points": 85,
+    "rarity": "uncommon",
+    "slot": "head"
+  },
+  "spectral_blade": {
+    "name": "Spectral Blade",
+    "keywords": ["spirit", "sword", "void", "darkness"],
+    "points": 160,
+    "rarity": "rare",
+    "slot": "weapon"
+  },
+  "poltergeist": {
+    "name": "Poltergeist",
+    "keywords": ["spirit", "sonic", "wind", "illusion"],
+    "points": 90,
+    "rarity": "uncommon",
+    "slot": "float"
+  },
+  "spirit_essence": {
+    "name": "Spirit Essence",
+    "keywords": ["arcane", "light"],
+    "points": 40,
+    "rarity": "common",
+    "slot": "float"
+  },
+  "haunted_doll": {
+    "name": "Haunted Doll",
+    "keywords": ["construct", "illusion"],
+    "points": 50,
+    "rarity": "common",
+    "slot": "float"
+  },
+  "phase_cloak": {
+    "name": "Phase Cloak",
+    "keywords": ["space", "wind", "illusion", "void"],
+    "points": 150,
+    "rarity": "rare",
+    "slot": "cape"
+  },
+  "wailing_soul": {
+    "name": "Wailing Soul",
+    "keywords": ["sonic", "darkness"],
+    "points": 30,
+    "rarity": "common",
+    "slot": "float"
+  },
+  "possession": {
+    "name": "Possession",
+    "keywords": ["spirit", "psionic", "occult", "demon"],
+    "points": 165,
+    "rarity": "rare",
+    "slot": "float"
+  },
+  "grave_mist": {
+    "name": "Grave Mist",
+    "keywords": ["water", "darkness"],
+    "points": 25,
+    "rarity": "common",
+    "slot": "float"
+  },
+  "_comment_aberration": "ABERRATION DROPS",
+  "alien_eye": {
+    "name": "Alien Eye",
+    "keywords": ["psionic", "space"],
+    "points": 45,
+    "rarity": "common",
+    "slot": "head"
+  },
+  "tentacle_whip": {
+    "name": "Tentacle Whip",
+    "keywords": ["whip", "water", "void"],
+    "points": 90,
+    "rarity": "uncommon",
+    "slot": "weapon"
+  },
+  "void_essence": {
+    "name": "Void Essence",
+    "keywords": ["void", "darkness"],
+    "points": 55,
+    "rarity": "common",
+    "slot": "float"
+  },
+  "mind_flay": {
+    "name": "Mind Flay",
+    "keywords": ["aberration", "psionic", "sonic", "void"],
+    "points": 150,
+    "rarity": "rare",
+    "slot": "float"
+  },
+  "chaos_stone": {
+    "name": "Chaos Stone",
+    "keywords": ["gambler", "void", "arcane"],
+    "points": 85,
+    "rarity": "uncommon",
+    "slot": "hand"
+  },
+  "flesh_warp": {
+    "name": "Flesh Warp",
+    "keywords": ["aberration", "blood", "alchemy", "nature"],
+    "points": 80,
+    "rarity": "uncommon",
+    "slot": "chest"
+  },
+  "eldritch_book": {
+    "name": "Eldritch Book",
+    "keywords": ["aberration", "occult", "book", "void"],
+    "points": 165,
+    "rarity": "rare",
+    "slot": "hand"
+  },
+  "strange_goo": {
+    "name": "Strange Goo",
+    "keywords": ["slime", "void"],
+    "points": 30,
+    "rarity": "common",
+    "slot": "float"
+  },
+  "reality_tear": {
+    "name": "Reality Tear",
+    "keywords": ["space", "time", "void", "arcane"],
+    "points": 175,
+    "rarity": "rare",
+    "slot": "float"
+  },
+  "maw_shield": {
+    "name": "Maw Shield",
+    "keywords": ["shield", "beast", "darkness"],
+    "points": 100,
+    "rarity": "uncommon",
+    "slot": "hand"
+  },
+  "_comment_elemental": "ELEMENTAL DROPS",
+  "living_ember": {
+    "name": "Living Ember",
+    "keywords": ["fire", "nature"],
+    "points": 40,
+    "rarity": "common",
+    "slot": "float"
+  },
+  "water_core": {
+    "name": "Water Core",
+    "keywords": ["water", "arcane"],
+    "points": 40,
+    "rarity": "common",
+    "slot": "float"
+  },
+  "rock_heart": {
+    "name": "Rock Heart",
+    "keywords": ["earth", "arcane"],
+    "points": 40,
+    "rarity": "common",
+    "slot": "float"
+  },
+  "gust_bottle": {
+    "name": "Gust Bottle",
+    "keywords": ["wind", "alchemy"],
+    "points": 40,
+    "rarity": "common",
+    "slot": "belt"
+  },
+  "prism_shard": {
+    "name": "Prism Shard",
+    "keywords": ["light", "arcane", "illusion"],
+    "points": 85,
+    "rarity": "uncommon",
+    "slot": "float"
+  },
+  "void_mote": {
+    "name": "Void Mote",
+    "keywords": ["void", "darkness", "arcane"],
+    "points": 90,
+    "rarity": "uncommon",
+    "slot": "float"
+  },
+  "elemental_ring": {
+    "name": "Elemental Ring",
+    "keywords": ["elemental", "arcane", "primal", "king"],
+    "points": 150,
+    "rarity": "rare",
+    "slot": "hand"
+  },
+  "storm_cloud": {
+    "name": "Storm Cloud",
+    "keywords": ["elemental", "thunder", "wind", "water"],
+    "points": 100,
+    "rarity": "uncommon",
+    "slot": "float"
+  },
+  "ice_crystal": {
+    "name": "Ice Crystal",
+    "keywords": ["ice", "water"],
+    "points": 40,
+    "rarity": "common",
+    "slot": "float"
+  },
+  "nature_root": {
+    "name": "Nature Root",
+    "keywords": ["nature", "earth"],
+    "points": 40,
+    "rarity": "common",
+    "slot": "belt"
+  },
+  "scrap_fire": {
+    "name": "Burnt Match",
+    "keywords": ["fire"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "hand"
+  },
+  "scrap_water": {
+    "name": "Wet Sponge",
+    "keywords": ["water"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "hand"
+  },
+  "scrap_ice": {
+    "name": "Slush Ball",
+    "keywords": ["ice"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "hand"
+  },
+  "scrap_thunder": {
+    "name": "Static Wool",
+    "keywords": ["thunder"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "float"
+  },
+  "scrap_earth": {
+    "name": "Dirt Clod",
+    "keywords": ["earth"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "hand"
+  },
+  "scrap_wind": {
+    "name": "Paper Fan",
+    "keywords": ["wind"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "hand"
+  },
+  "scrap_nature": {
+    "name": "Dead Leaf",
+    "keywords": ["nature"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "float"
+  },
+  "scrap_metal": {
+    "name": "Rusty Nail",
+    "keywords": ["metal"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "belt"
+  },
+  "scrap_light": {
+    "name": "Dim Candle",
+    "keywords": ["light"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "hand"
+  },
+  "scrap_darkness": {
+    "name": "Soot Stain",
+    "keywords": ["darkness"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "chest"
+  },
+  "scrap_poison": {
+    "name": "Moldy Bread",
+    "keywords": ["poison"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "hand"
+  },
+  "scrap_steam": {
+    "name": "Damp Rag",
+    "keywords": ["steam"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "hand"
+  },
+  "scrap_dust": {
+    "name": "Pocket Lint",
+    "keywords": ["dust"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "belt"
+  },
+  "scrap_sword": {
+    "name": "Rusty Sword",
+    "keywords": ["sword"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "weapon"
+  },
+  "scrap_axe": {
+    "name": "Chipped Hatchet",
+    "keywords": ["axe"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "weapon"
+  },
+  "scrap_spear": {
+    "name": "Broken Stick",
+    "keywords": ["spear"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "weapon"
+  },
+  "scrap_hammer": {
+    "name": "Rock on a Stick",
+    "keywords": ["hammer"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "weapon"
+  },
+  "scrap_dagger": {
+    "name": "Butter Knife",
+    "keywords": ["dagger"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "weapon"
+  },
+  "scrap_bow": {
+    "name": "Twine Bow",
+    "keywords": ["bow"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "weapon"
+  },
+  "scrap_staff": {
+    "name": "Crooked Branch",
+    "keywords": ["staff"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "weapon"
+  },
+  "scrap_wand": {
+    "name": "Splintered Twig",
+    "keywords": ["wand"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "weapon"
+  },
+  "scrap_shield": {
+    "name": "Pot Lid",
+    "keywords": ["shield"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "hand"
+  },
+  "scrap_fist": {
+    "name": "Taped Knuckles",
+    "keywords": ["fist"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "hand"
+  },
+  "scrap_claw": {
+    "name": "Trimmed Nail",
+    "keywords": ["claw"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "hand"
+  },
+  "scrap_whip": {
+    "name": "Frayed Rope",
+    "keywords": ["whip"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "weapon"
+  },
+  "scrap_scythe": {
+    "name": "Rusty Sickle",
+    "keywords": ["scythe"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "weapon"
+  },
+  "scrap_book": {
+    "name": "Torn Pages",
+    "keywords": ["book"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "hand"
+  },
+  "scrap_instrument": {
+    "name": "Tin Can Drum",
+    "keywords": ["instrument"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "hand"
+  },
+  "scrap_bomb": {
+    "name": "Dud Firecracker",
+    "keywords": ["bomb"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "belt"
+  },
+  "scrap_arcane": {
+    "name": "Card Trick",
+    "keywords": ["arcane"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "float"
+  },
+  "scrap_divine": {
+    "name": "Wooden Cross",
+    "keywords": ["divine"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "hand"
+  },
+  "scrap_primal": {
+    "name": "Animal Bone",
+    "keywords": ["primal"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "hand"
+  },
+  "scrap_psionic": {
+    "name": "Bent Spoon",
+    "keywords": ["psionic"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "float"
+  },
+  "scrap_occult": {
+    "name": "Salt Pinch",
+    "keywords": ["occult"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "belt"
+  },
+  "scrap_alchemy": {
+    "name": "Empty Vial",
+    "keywords": ["alchemy"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "belt"
+  },
+  "scrap_blood": {
+    "name": "Dried Scab",
+    "keywords": ["blood"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "belt"
+  },
+  "scrap_time": {
+    "name": "Broken Watch",
+    "keywords": ["time"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "belt"
+  },
+  "scrap_space": {
+    "name": "Empty Box",
+    "keywords": ["space"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "hand"
+  },
+  "scrap_sonic": {
+    "name": "Cracked Whistle",
+    "keywords": ["sonic"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "belt"
+  },
+  "scrap_illusion": {
+    "name": "Smudged Mirror",
+    "keywords": ["illusion"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "hand"
+  },
+  "scrap_enchantment": {
+    "name": "Glitter Glue",
+    "keywords": ["enchantment"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "belt"
+  },
+  "scrap_necromancy": {
+    "name": "Dead Rat",
+    "keywords": ["necromancy"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "belt"
+  },
+  "scrap_void": {
+    "name": "Empty Pocket",
+    "keywords": ["void"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "belt"
+  },
+  "scrap_beast": {
+    "name": "Tuft of Fur",
+    "keywords": ["beast"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "cape"
+  },
+  "scrap_humanoid": {
+    "name": "Old Shoe",
+    "keywords": ["humanoid"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "boots"
+  },
+  "scrap_undead": {
+    "name": "Rib Bone",
+    "keywords": ["undead"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "hand"
+  },
+  "scrap_dragon": {
+    "name": "Scorch Mark",
+    "keywords": ["dragon"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "chest"
+  },
+  "scrap_construct": {
+    "name": "Loose Screw",
+    "keywords": ["construct"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "belt"
+  },
+  "scrap_demon": {
+    "name": "Sulfur Rock",
+    "keywords": ["demon"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "hand"
+  },
+  "scrap_angel": {
+    "name": "Chicken Feather",
+    "keywords": ["angel"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "head"
+  },
+  "scrap_fey": {
+    "name": "Dandelion",
+    "keywords": ["fey"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "hand"
+  },
+  "scrap_slime": {
+    "name": "Snail Slime",
+    "keywords": ["slime"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "float"
+  },
+  "scrap_insect": {
+    "name": "Dead Fly",
+    "keywords": ["insect"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "hand"
+  },
+  "scrap_plant": {
+    "name": "Weed",
+    "keywords": ["plant"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "hand"
+  },
+  "scrap_aquatic": {
+    "name": "Seashell",
+    "keywords": ["aquatic"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "hand"
+  },
+  "scrap_avian": {
+    "name": "Pigeon Feather",
+    "keywords": ["avian"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "head"
+  },
+  "scrap_reptile": {
+    "name": "Shed Skin",
+    "keywords": ["reptile"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "cape"
+  },
+  "scrap_spirit": {
+    "name": "Cold Spot",
+    "keywords": ["spirit"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "float"
+  },
+  "scrap_aberration": {
+    "name": "Weird Gunk",
+    "keywords": ["aberration"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "hand"
+  },
+  "scrap_elemental": {
+    "name": "Ash Pile",
+    "keywords": ["elemental"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "float"
+  },
+  "scrap_warrior": {
+    "name": "Whetstone",
+    "keywords": ["warrior"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "belt"
+  },
+  "scrap_berserker": {
+    "name": "Ripped Shirt",
+    "keywords": ["berserker"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "chest"
+  },
+  "scrap_guardian": {
+    "name": "Kettle Helm",
+    "keywords": ["guardian"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "head"
+  },
+  "scrap_assassin": {
+    "name": "Letter Opener",
+    "keywords": ["assassin"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "weapon"
+  },
+  "scrap_ranger": {
+    "name": "Pinecone",
+    "keywords": ["ranger"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "hand"
+  },
+  "scrap_mage": {
+    "name": "Paper Hat",
+    "keywords": ["mage"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "head"
+  },
+  "scrap_healer": {
+    "name": "Used Bandage",
+    "keywords": ["healer"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "belt"
+  },
+  "scrap_paladin": {
+    "name": "Tin Badge",
+    "keywords": ["paladin"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "chest"
+  },
+  "scrap_warlock": {
+    "name": "Candle Stub",
+    "keywords": ["warlock"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "hand"
+  },
+  "scrap_monk": {
+    "name": "Rope Belt",
+    "keywords": ["monk"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "belt"
+  },
+  "scrap_bard": {
+    "name": "Kazoo",
+    "keywords": ["bard"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "hand"
+  },
+  "scrap_knight": {
+    "name": "Rusty Spur",
+    "keywords": ["knight"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "boots"
+  },
+  "scrap_pirate": {
+    "name": "Eye Patch",
+    "keywords": ["pirate"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "head"
+  },
+  "scrap_engineer": {
+    "name": "Bent Wrench",
+    "keywords": ["engineer"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "hand"
+  },
+  "scrap_merchant": {
+    "name": "Fake Coin",
+    "keywords": ["merchant"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "belt"
+  },
+  "scrap_gambler": {
+    "name": "Single Die",
+    "keywords": ["gambler"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "hand"
+  },
+  "scrap_king": {
+    "name": "Foil Crown",
+    "keywords": ["king"],
+    "points": 0,
+    "rarity": "scrap",
+    "slot": "head"
+  }
+}
