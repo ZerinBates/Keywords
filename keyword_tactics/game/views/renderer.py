@@ -116,6 +116,23 @@ class Renderer:
         ):
             tooltips.draw_combat_tooltip(screen, self.fonts, self.state, ih.hover_mouse_pos)
 
+        # ---- Preparation hover tooltips (class abilities, item details) ----
+        if (
+            self.state.phase == GamePhase.PREPARATION
+            and not self.state.ref_panel_open
+        ):
+            tooltips.draw_preparation_tooltip(
+                screen, self.fonts, self.state, ih.hover_mouse_pos)
+
+        # ---- Delve-inv overlay tooltips (item details + ability info) ----
+        if (
+            self.state.delve_inv_open
+            and not ih.dragging
+            and not self.state.ref_panel_open
+        ):
+            tooltips.draw_delve_inv_tooltip(
+                screen, self.fonts, self.state, ih.hover_mouse_pos)
+
         # ---- Drag ghost on top ----
         if ih.dragging and ih.drag_adv_index >= 0:
             drag_ghost.draw_drag_ghost(

@@ -4,6 +4,7 @@ import pygame
 
 from ...config import COLORS, SCREEN_WIDTH, SCREEN_HEIGHT
 from .. import paper_doll
+from .. import widgets
 
 
 # ---------------------------------------------------------------------------
@@ -238,10 +239,34 @@ def draw_setup(screen, fonts, state, dragging: bool, drag_adv_index: int):
     row_text = f"Row {state.rows_completed + 1}"
     screen.blit(fonts['medium'].render(row_text, True, COLORS['warning']), (450, 18))
 
-    # King/Dunce legend
-    legend = "KING ×2 (ignores biggest weakness)   |   DUNCE ÷2"
-    legend_surf = fonts['small'].render(legend, True, COLORS['text_dim'])
-    screen.blit(legend_surf, (550, 42))
+    # King/Dunce banner — explicit display of who's who this row
+    parts = []
+    if state.hero_king:
+        parts.append(("HERO KING: " + state.hero_king.name, COLORS['gold']))
+    if state.hero_dunce:
+        parts.append(("HERO DUNCE: " + state.hero_dunce.name, COLORS['text_dim']))
+    if not parts:
+        parts.append(("First match — no hero king/dunce yet", COLORS['text_dim']))
+
+    # Find the monster king/dunce names too
+    king_mon = next((sq['monster'].name for sq in state.front_row if sq.get('is_king')), None)
+    dunce_mon = next((sq['monster'].name for sq in state.front_row if sq.get('is_dunce')), None)
+    if king_mon:
+        parts.append((f"MONSTER KING: {king_mon}", COLORS['gold']))
+    if dunce_mon:
+        parts.append((f"MONSTER DUNCE: {dunce_mon}", COLORS['text_dim']))
+
+    bx = 450
+    for txt, c in parts:
+        s = fonts['small'].render(txt, True, c)
+        screen.blit(s, (bx, 42))
+        bx += s.get_width() + 18
+
+    # Rules legend (smaller, second line)
+    rules = fonts['tiny'].render(
+        "KING: ×2 power, ignores biggest weakness    DUNCE: power ÷2",
+        True, COLORS['text_dim'])
+    screen.blit(rules, (450, 62))
 
     alive = state.count_alive_party()
     placed = state.count_front_placed()
@@ -601,7 +626,7 @@ def draw_inventory_panel(screen, fonts, state):
             screen.blit(fonts['small'].render(kw_str, True, COLORS['text_dim']),
                         (left_x + 10, cy + 52))
 
-    # ----- CENTER COLUMN: Selected Adventurer paper-doll & Detailed List -----
+    # ----- CENTER COLUMN: Selected Adventurer paper-doll card (#1) -----
     center_x = left_x + left_w + 15
     center_w = 370
 
@@ -621,89 +646,18 @@ def draw_inventory_panel(screen, fonts, state):
             kdb = fonts['small'].render("HERO DUNCE ÷2", True, COLORS['text_dim'])
             screen.blit(kdb, (center_x + center_w - kdb.get_width() - 10, col_top + 4))
 
-        # 1. Paper-doll card (from new version)
+        # Paper-doll card — sized to fit available width.  Card is 280×380;
+        # centre it inside the column.
         card_x = center_x + (center_w - paper_doll.CARD_W) // 2
         card_y = col_top + 30
         paper_doll.draw_character_card(
             screen, fonts, state, card_x, card_y, adv, selected=True)
 
-        # 2. Detailed Item Menu (from old version, positioned below the card)
-        equip_y_start = card_y + paper_doll.CARD_H + 12
-        item_h = 48
-        item_gap = 5
-
-        screen.blit(
-            fonts['small'].render("Equipped (click to unequip):", True, COLORS['warning']),
-            (center_x + 8, equip_y_start - 2),
-        )
-        equip_y_start += 22
-
-        rarity_bg = {
-            'scrap':    (50, 45, 45),
-            'common':   (45, 48, 55),
-            'uncommon': (35, 55, 40),
-            'rare':     (40, 45, 65),
-        }
-        rarity_border = {
-            'scrap':    (100, 90, 90),
-            'common':   COLORS['text_dim'],
-            'uncommon': COLORS['success'],
-            'rare':     COLORS['accent'],
-        }
-
-        for j in range(adv.slots):
-            iy = equip_y_start + j * (item_h + item_gap)
-            item_rect = pygame.Rect(center_x, iy, center_w, item_h)
-
-            if j < len(adv.equipped_items):
-                item = adv.equipped_items[j]
-                bg = rarity_bg.get(item.rarity, (45, 48, 55))
-                border_c = rarity_border.get(item.rarity, COLORS['text_dim'])
-                pygame.draw.rect(screen, bg, item_rect, border_radius=6)
-                pygame.draw.rect(screen, border_c, item_rect, 1, border_radius=6)
-
-                # Item thumbnail
-                paper_doll.draw_item_thumbnail(screen, item, center_x + 5, iy + 6, 36)
-
-                # Item name + points
-                iname = item.name
-                if len(iname) > 24:
-                    iname = iname[:23] + ".."
-                screen.blit(fonts['small'].render(iname, True, COLORS['text']),
-                            (center_x + 46, iy + 4))
-
-                pts_surf = fonts['small'].render(f"+{item.points}", True, COLORS['gold'])
-                screen.blit(pts_surf,
-                            (center_x + center_w - pts_surf.get_width() - 10, iy + 4))
-
-                # Keyword tags
-                kw_tx = center_x + 46
-                for kw_id in item.keywords[:4]:
-                    kw = state.keyword_registry.get(kw_id)
-                    if kw:
-                        label = kw.name[:8]
-                        tw = fonts['tiny'].render(label, True, COLORS['bg']).get_width() + 8
-                        if kw_tx + tw > center_x + center_w - 50:
-                            break
-                        pygame.draw.rect(screen, kw.color, (kw_tx, iy + 25, tw, 18),
-                                         border_radius=3)
-                        screen.blit(fonts['tiny'].render(label, True, COLORS['bg']),
-                                    (kw_tx + 4, iy + 26))
-                        kw_tx += tw + 4
-
-                # Unequip hint
-                screen.blit(fonts['tiny'].render("x", True, COLORS['danger']),
-                            (center_x + center_w - 16, iy + 28))
-            else:
-                pygame.draw.rect(screen, (38, 38, 50), item_rect, border_radius=6)
-                pygame.draw.rect(screen, (65, 65, 80), item_rect, 1, border_radius=6)
-                empty_surf = fonts['small'].render(
-                    f"[ Empty Slot {j + 1} ]", True, COLORS['text_dim'],
-                )
-                screen.blit(
-                    empty_surf,
-                    (center_x + center_w // 2 - empty_surf.get_width() // 2, iy + 14),
-                )
+        # Unequip hint
+        hint = fonts['tiny'].render("Click any item on the doll to unequip",
+                                    True, COLORS['text_dim'])
+        screen.blit(hint, (center_x + 8,
+                           card_y + paper_doll.CARD_H + 4))
     else:
         prompt = fonts['medium'].render("Select an adventurer", True, COLORS['text_dim'])
         screen.blit(prompt,
@@ -712,173 +666,24 @@ def draw_inventory_panel(screen, fonts, state):
         screen.blit(arrow,
                     (center_x + center_w // 2 - arrow.get_width() // 2, col_top + 120))
 
-    # ----- RIGHT COLUMN: Available Items — MERGED loot + inventory (with Search) -----
+    # ----- RIGHT COLUMN: Available Items — shared widget (#2 + #4) -----
     right_x = center_x + center_w + 15
     right_w = PX + PW - right_x - 10
+    right_h = PY + PH - col_top - 50
+    right_rect = pygame.Rect(right_x, col_top, right_w, right_h)
 
-    header_h = 26
-    pygame.draw.rect(screen, (38, 38, 55),
-                     (right_x, col_top, right_w, header_h), border_radius=6)
-    pygame.draw.rect(screen, COLORS['accent'],
-                     (right_x, col_top, right_w, header_h), 1, border_radius=6)
-    merged_label = (f"Available: {len(state.delve_loot)} new  +  "
-                    f"{len(state.inventory)} inventory")
-    ml_surf = fonts['small'].render(merged_label, True, COLORS['accent'])
-    screen.blit(ml_surf, (
-        right_x + right_w // 2 - ml_surf.get_width() // 2,
-        col_top + header_h // 2 - ml_surf.get_height() // 2,
-    ))
-
-    # ---- Search bar ----
-    search_h = 26
-    search_y = col_top + header_h + 4
-    search_rect = pygame.Rect(right_x, search_y, right_w, search_h)
-    search_active = state.delve_item_search_active
-    sb_border = COLORS['accent'] if search_active else (70, 72, 88)
-    pygame.draw.rect(screen, (28, 28, 40), search_rect, border_radius=5)
-    pygame.draw.rect(screen, sb_border, search_rect, 1, border_radius=5)
-    lbl = fonts['tiny'].render("Search:", True, COLORS['text_dim'])
-    screen.blit(lbl, (search_rect.x + 6,
-                      search_rect.y + search_h // 2 - lbl.get_height() // 2))
-    placeholder = "type to filter keywords/names" if not state.delve_item_search else ""
-    text_to_show = state.delve_item_search or placeholder
-    tc = COLORS['text'] if state.delve_item_search else COLORS['text_dim']
-    tsurf = fonts['small'].render(text_to_show, True, tc)
-    screen.blit(tsurf, (search_rect.x + 52,
-                        search_rect.y + search_h // 2 - tsurf.get_height() // 2))
-    if search_active and pygame.time.get_ticks() % 1000 < 500:
-        cx = search_rect.x + 52 + tsurf.get_width() + 2
-        pygame.draw.line(screen, COLORS['text'],
-                         (cx, search_rect.y + 4),
-                         (cx, search_rect.bottom - 4), 1)
-    esc_hint = fonts['tiny'].render("[Esc] clear", True, COLORS['text_dim'])
-    screen.blit(esc_hint, (search_rect.right - esc_hint.get_width() - 6,
-                            search_rect.y + search_h // 2 - esc_hint.get_height() // 2))
-
-    # Apply search to merged list
-    search_lower = state.delve_item_search.lower()
-    full_merged = list(state.delve_loot) + list(state.inventory)
-    if search_lower:
-        def _match(it):
-            if search_lower in it.name.lower():
-                return True
-            for kw_id in it.keywords:
-                kw = state.keyword_registry.get(kw_id)
-                if kw and search_lower in kw.name.lower():
-                    return True
-            return False
-        source_items = [it for it in full_merged if _match(it)]
-    else:
-        source_items = full_merged
-    loot_count = len(state.delve_loot)
-
-    list_top = col_top + header_h + 4 + search_h + 6
-    list_h = PY + PH - list_top - 50
-
-    list_rect = pygame.Rect(right_x, list_top, right_w, list_h)
-    pygame.draw.rect(screen, (28, 28, 40), list_rect, border_radius=6)
-    pygame.draw.rect(screen, (55, 55, 70), list_rect, 1, border_radius=6)
-
-    if not source_items:
-        empty_surf = fonts['small'].render("No items available", True, COLORS['text_dim'])
-        screen.blit(
-            empty_surf,
-            (right_x + right_w // 2 - empty_surf.get_width() // 2, list_top + 30),
-        )
-    else:
-        item_row_h = 38
-        visible_count = list_h // item_row_h
-        scroll = state.delve_inv_scroll
-        max_scroll = max(0, len(source_items) - visible_count)
-        if scroll > max_scroll:
-            state.delve_inv_scroll = max_scroll
-            scroll = max_scroll
-
-        if len(source_items) > visible_count:
-            scroll_text = (
-                f"Scroll: {scroll + 1}-"
-                f"{min(scroll + visible_count, len(source_items))} "
-                f"of {len(source_items)}"
-            )
-            screen.blit(fonts['tiny'].render(scroll_text, True, COLORS['text_dim']),
-                        (right_x + right_w - 155, list_top - 14))
-
-        rarity_colors_bg = {
-            'scrap':    (42, 38, 38),
-            'common':   (40, 42, 50),
-            'uncommon': (32, 50, 36),
-            'rare':     (36, 40, 58),
-        }
-        rarity_colors_border = {
-            'scrap':    (90, 80, 80),
-            'common':   (100, 100, 110),
-            'uncommon': COLORS['success'],
-            'rare':     COLORS['accent'],
-        }
-        rarity_dots = {
-            'scrap':    (100, 90, 90),
-            'common':   COLORS['text_dim'],
-            'uncommon': COLORS['success'],
-            'rare':     COLORS['accent'],
-        }
-
-        for idx in range(visible_count):
-            actual_idx = scroll + idx
-            if actual_idx >= len(source_items):
-                break
-            item = source_items[actual_idx]
-            is_new = (item in state.delve_loot)
-            iy = list_top + 4 + idx * item_row_h
-
-            row_bg = rarity_colors_bg.get(item.rarity, (40, 42, 50))
-            row_border = rarity_colors_border.get(item.rarity, (100, 100, 110))
-            if is_new:
-                row_bg = tuple(min(255, c + 12) for c in row_bg)  # slightly brighter for new
-
-            row_rect = pygame.Rect(right_x + 4, iy, right_w - 8, item_row_h - 4)
-            pygame.draw.rect(screen, row_bg, row_rect, border_radius=5)
-            pygame.draw.rect(screen, row_border, row_rect, 1, border_radius=5)
-
-            rarity_dot = rarity_dots.get(item.rarity, COLORS['text_dim'])
-            pygame.draw.circle(screen, rarity_dot,
-                               (right_x + 14, iy + item_row_h // 2 - 2), 4)
-
-            # NEW badge for delve loot items
-            if is_new:
-                new_surf = fonts['tiny'].render("NEW", True, COLORS['gold'])
-                screen.blit(new_surf, (right_x + 6, iy + 2))
-
-            # Item thumbnail
-            paper_doll.draw_item_thumbnail(screen, item, right_x + 24, iy + 5, 26)
-
-            # Item name
-            iname = item.name
-            if len(iname) > 20:
-                iname = iname[:19] + ".."
-            screen.blit(fonts['small'].render(iname, True, COLORS['text']),
-                        (right_x + 54, iy + 2))
-
-            # Points
-            pts_surf = fonts['small'].render(f"+{item.points}", True, COLORS['gold'])
-            screen.blit(pts_surf,
-                        (right_x + right_w - pts_surf.get_width() - 14, iy + 2))
-
-            # Keywords
-            kw_names = []
-            for kw_id in item.keywords[:3]:
-                kw = state.keyword_registry.get(kw_id)
-                if kw:
-                    kw_names.append(kw.name)
-            kw_str = ", ".join(kw_names)
-            if len(kw_str) > 35:
-                kw_str = kw_str[:34] + ".."
-            screen.blit(fonts['tiny'].render(kw_str, True, COLORS['text_dim']),
-                        (right_x + 24, iy + 20))
-
-            # Rarity label
-            rarity_surf = fonts['tiny'].render(f"[{item.rarity}]", True, rarity_dot)
-            screen.blit(rarity_surf,
-                        (right_x + right_w - rarity_surf.get_width() - 14, iy + 20))
+    filtered = state.get_filtered_delve_items()
+    widgets.draw_item_list_panel(
+        screen, fonts, state, right_rect,
+        items=filtered,
+        scroll=state.delve_inv_scroll,
+        search_text=state.delve_item_search,
+        search_active=state.delve_item_search_active,
+        header_text=(f"Available: {len(state.delve_loot)} new  +  "
+                     f"{len(state.inventory)} inventory"),
+        is_new_func=lambda it: it in state.delve_loot,
+        paper_doll_module=paper_doll,
+    )
 
     # Instructions
     inst_y = PY + PH - 32
@@ -891,6 +696,8 @@ def draw_inventory_panel(screen, fonts, state):
                     "or select a different adventurer")
     screen.blit(fonts['small'].render(hint, True, COLORS['text_dim']),
                 (PX + 20, inst_y))
+
+
 # ---------------------------------------------------------------------------
 # Recruit overlay panel
 # ---------------------------------------------------------------------------
@@ -904,7 +711,7 @@ def draw_recruit_panel(screen, fonts, state):
     panel_rect = pygame.Rect(640, 80, 620, 620)
     pygame.draw.rect(screen, COLORS['panel'], panel_rect, border_radius=10)
     pygame.draw.rect(screen, COLORS['success'], panel_rect, 3, border_radius=10)
-sdfdsa
+
     alive_in_party = sum(1 for a in state.party if not a.is_dead)
     title = fonts['large'].render(
         f"Recruit  ({alive_in_party}/4 alive)", True, COLORS['success'],

@@ -115,13 +115,15 @@ def calculate_square_combat(square: dict, keyword_registry: KeywordRegistry,
 
     monster_keywords = monster.keywords + monster_bonus_keywords
 
-    adv_weakness = 0
-    for k in adv_keywords:
-        kw_obj = keyword_registry.get(k)
-        if kw_obj:
-            for ek in monster_keywords:
-                if ek not in adv_resists and kw_obj.is_weak_against(ek):
-                    adv_weakness += 1
+    # Compute per-keyword weakness contributions so a hero king can drop the
+    # single highest-contributing one (symmetric with monster king)
+    adv_contribs = _weakness_contributions(
+        adv_keywords, monster_keywords, adv_resists, keyword_registry)
+    adv_weakness = sum(adv_contribs.values())
+    adv_dropped_kw: Optional[str] = None
+    if adv_is_king and adv_contribs:
+        adv_dropped_kw = max(adv_contribs, key=adv_contribs.get)
+        adv_weakness -= adv_contribs[adv_dropped_kw]
 
     adv_power = int((adv_raw_base * adv_mult) / (1 + adv_weakness))
 
@@ -168,6 +170,7 @@ def calculate_square_combat(square: dict, keyword_registry: KeywordRegistry,
         'adv_base': adv_raw_base,  # legacy
         'adv_mult': adv_mult,
         'adv_weakness': adv_weakness,
+        'adv_dropped_keyword': adv_dropped_kw,
         'adv_is_king': adv_is_king,
         'adv_is_dunce': adv_is_dunce,
         'monster_power': monster_power,

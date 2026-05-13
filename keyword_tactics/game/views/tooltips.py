@@ -401,3 +401,294 @@ def draw_combat_tooltip(screen, fonts, state, hover_pos: Tuple[int, int]):
                     ))
             draw_tooltip_panel(screen, font_tiny, lines, SCREEN_WIDTH // 2 + 210, 80)
             return
+
+
+
+# ---------------------------------------------------------------------------
+# Item hover tooltips (used by preparation + delve inventory panel)
+# ---------------------------------------------------------------------------
+
+def build_item_tooltip_lines(state, item) -> List[Tuple[str, tuple]]:
+    """Lines for an Item tooltip — name, rarity, points, keywords, sell price."""
+    rarity_color = {
+        'scrap':    (130, 110, 100),
+        'common':   COLORS['text_dim'],
+        'uncommon': COLORS['success'],
+        'rare':     COLORS['accent'],
+    }.get(item.rarity, COLORS['text'])
+
+    lines: List[Tuple[str, tuple]] = []
+    lines.append((f"--- {item.name} ---", COLORS['accent']))
+    lines.append((f"Rarity: {item.rarity}", rarity_color))
+    lines.append((f"Points: +{item.points}", COLORS['gold']))
+
+    if item.keywords:
+        kw_names = []
+        kr = state.keyword_registry
+        for kw_id in item.keywords:
+            kw = kr.get(kw_id)
+            kw_names.append(kw.name if kw else kw_id)
+        # Chunk into lines of up to 4 keywords
+        lines.append(("Keywords:", COLORS['warning']))
+        for j in range(0, len(kw_names), 4):
+            chunk = ", ".join(kw_names[j:j + 4])
+            lines.append((f"  {chunk}", COLORS['text']))
+
+        # What this item is weak to / strong against
+        kr = state.keyword_registry
+        weak_to = set()
+        strong_vs = set()
+        for kw_id in item.keywords:
+            kw = kr.get(kw_id)
+            if kw:
+                for wk in kw.weak_against:
+                    weak_to.add(wk)
+        for other_id in kr.all_ids():
+            other = kr.get(other_id)
+            if other:
+                for kw_id in item.keywords:
+                    if kw_id in other.weak_against:
+                        strong_vs.add(other_id)
+                        break
+        if weak_to:
+            wt_names = [kr.get(w).name if kr.get(w) else w for w in sorted(weak_to)]
+            lines.append((f"Weak to: {', '.join(wt_names[:6])}", COLORS['danger']))
+        if strong_vs:
+            sv_names = [kr.get(s).name if kr.get(s) else s for s in sorted(strong_vs)]
+            lines.append((f"Strong vs: {', '.join(sv_names[:6])}", COLORS['success']))
+
+    # Sell price hint
+    try:
+        sp = state.get_item_sell_price(item)
+        lines.append((f"Sell price: {sp} coin(s)", COLORS['text_dim']))
+    except AttributeError:
+        pass
+    return lines
+
+
+def build_adventurer_tooltip_lines(state, adv) -> List[Tuple[str, tuple]]:
+    """Lines for a class/ability tooltip — name, ability, slots, role, keywords."""
+    lines: List[Tuple[str, tuple]] = []
+    lines.append((f"--- {adv.name} ---", COLORS['accent']))
+
+    # Role badge in the tooltip too
+    if hasattr(state, 'hero_king') and adv is state.hero_king:
+        lines.append(("HERO KING — +2x power, ignores biggest weakness",
+                      COLORS['gold']))
+    elif hasattr(state, 'hero_dunce') and adv is state.hero_dunce:
+        lines.append(("HERO DUNCE — final power /2",
+                      COLORS['text_dim']))
+
+    if adv.ability_name:
+        lines.append((f"{adv.ability_name}", COLORS['warning']))
+        # Wrap ability description into ~60-char lines
+        desc = adv.ability_desc or ""
+        words = desc.split()
+        cur = ""
+        for w in words:
+            if len(cur) + len(w) + 1 > 60:
+                lines.append((f"  {cur}", COLORS['text']))
+                cur = w
+            else:
+                cur = (cur + " " + w) if cur else w
+        if cur:
+            lines.append((f"  {cur}", COLORS['text']))
+
+    lines.append((f"Slots: {len(adv.equipped_items)}/{adv.slots}", COLORS['text_dim']))
+
+    if adv.is_dead:
+        lines.append(("DEAD", COLORS['danger']))
+        return lines
+
+    kws = adv.get_all_keywords()
+    if kws:
+        # Count keyword occurrences for the player
+        counts = {}
+        for k in kws:
+            counts[k] = counts.get(k, 0) + 1
+        parts = []
+        for k, c in sorted(counts.items()):
+            kw = state.keyword_registry.get(k)
+            name = kw.name if kw else k
+            parts.append(f"{name} x{c}" if c > 1 else name)
+        # Chunk
+        lines.append(("Keywords (from items):", COLORS['warning']))
+        for j in range(0, len(parts), 3):
+            chunk = ", ".join(parts[j:j + 3])
+            lines.append((f"  {chunk}", COLORS['text']))
+    else:
+        lines.append(("No items equipped", COLORS['text_dim']))
+
+    try:
+        base = adv.get_base_points()
+        mult = adv.get_multiplier()
+        lines.append((f"Power: {base} x {mult} = {base * mult}", COLORS['success']))
+    except Exception:
+        pass
+
+    return lines
+
+
+def draw_item_tooltip(screen, fonts, state, item, hover_pos: Tuple[int, int]):
+    """Draw a tooltip for an item at the cursor position."""
+    lines = build_item_tooltip_lines(state, item)
+    mx, my = hover_pos
+    draw_tooltip_panel(screen, fonts['tiny'], lines, mx + 16, my + 8)
+
+
+def draw_adventurer_tooltip(screen, fonts, state, adv, hover_pos: Tuple[int, int]):
+    """Draw a tooltip for an adventurer/class at the cursor position."""
+    lines = build_adventurer_tooltip_lines(state, adv)
+    mx, my = hover_pos
+    draw_tooltip_panel(screen, fonts['tiny'], lines, mx + 16, my + 8)
+
+
+# ---------------------------------------------------------------------------
+# Preparation-phase hover tooltips
+# ---------------------------------------------------------------------------
+
+def draw_preparation_tooltip(screen, fonts, state, hover_pos: Tuple[int, int]):
+    """Hover tooltips during the PREPARATION phase.
+
+    Covers: roster rows, party rows, inventory rows, shop items, shop adventurers,
+    and the paper-doll card's item chips.
+    """
+    from .screens.preparation import (
+        ROSTER_RECT, PARTY_RECT, INV_PANEL_RECT, SHOP_RECT, CARD_RECT,
+        SHOP_ITEM_ROW_H,
+    )
+    from . import paper_doll
+
+    mx, my = hover_pos
+
+    # --- Roster rows ---
+    if ROSTER_RECT.collidepoint(hover_pos):
+        y_off = my - (ROSTER_RECT.y + 30)
+        if y_off >= 0:
+            idx = (y_off // 52) + state.roster_scroll
+            if 0 <= idx < len(state.roster):
+                draw_adventurer_tooltip(screen, fonts, state, state.roster[idx], hover_pos)
+                return
+
+    # --- Party rows ---
+    if PARTY_RECT.collidepoint(hover_pos):
+        y_off = my - (PARTY_RECT.y + 30)
+        if y_off >= 0:
+            idx = y_off // 52
+            if 0 <= idx < len(state.party):
+                draw_adventurer_tooltip(screen, fonts, state, state.party[idx], hover_pos)
+                return
+
+    # --- Paper-doll item chips (selected party member) ---
+    if (CARD_RECT.collidepoint(hover_pos)
+            and 0 <= state.selected_party_index < len(state.party)):
+        adv = state.party[state.selected_party_index]
+        chip_idx = paper_doll.hit_test_chip(CARD_RECT.x, CARD_RECT.y, hover_pos, adv)
+        if chip_idx is not None and 0 <= chip_idx < len(adv.equipped_items):
+            draw_item_tooltip(screen, fonts, state, adv.equipped_items[chip_idx], hover_pos)
+            return
+
+    # --- Inventory rows (shared widget layout) ---
+    if INV_PANEL_RECT.collidepoint(hover_pos):
+        from .widgets import hit_test_item_list
+        filtered = state.get_filtered_inventory()
+        idx, item = hit_test_item_list(
+            INV_PANEL_RECT, filtered, state.inventory_scroll, hover_pos)
+        if item is not None:
+            draw_item_tooltip(screen, fonts, state, item, hover_pos)
+            return
+
+    # --- Shop items (merged with dead_adv_loot) ---
+    if SHOP_RECT.collidepoint(hover_pos):
+        merged = list(state.shop_items) + list(state.dead_adv_loot)
+        items_y_start = SHOP_RECT.y + 34 + 20
+        for i, item in enumerate(merged):
+            iy = items_y_start + i * SHOP_ITEM_ROW_H
+            if iy + SHOP_ITEM_ROW_H > SHOP_RECT.bottom - 6:
+                break
+            row_rect = pygame.Rect(SHOP_RECT.x + 4, iy,
+                                   SHOP_RECT.w - 8, SHOP_ITEM_ROW_H - 4)
+            if row_rect.collidepoint(hover_pos):
+                draw_item_tooltip(screen, fonts, state, item, hover_pos)
+                return
+
+        adv_y_start = items_y_start + len(merged) * SHOP_ITEM_ROW_H + 20 \
+            if merged else SHOP_RECT.y + 34 + 20
+        for i, adv in enumerate(state.shop_adventurers):
+            iy = adv_y_start + i * SHOP_ITEM_ROW_H
+            if iy + SHOP_ITEM_ROW_H > SHOP_RECT.bottom - 6:
+                break
+            row_rect = pygame.Rect(SHOP_RECT.x + 4, iy,
+                                   SHOP_RECT.w - 8, SHOP_ITEM_ROW_H - 4)
+            if row_rect.collidepoint(hover_pos):
+                draw_adventurer_tooltip(screen, fonts, state, adv, hover_pos)
+                return
+
+
+# ---------------------------------------------------------------------------
+# Delve-phase hover tooltips for the in-fight inventory overlay
+# ---------------------------------------------------------------------------
+
+def draw_delve_inv_tooltip(screen, fonts, state, hover_pos: Tuple[int, int]):
+    """Hover tooltips when state.delve_inv_open is True.
+
+    Covers: adventurer rows in the left column, item chips on the centre
+    paper-doll card, and item rows in the right-column merged list.
+    """
+    from . import paper_doll
+
+    PX, PY, PW, PH = 60, 40, 1160, 710
+    col_top = PY + 55
+    left_x = PX + 10
+    left_w = 250
+    center_x = left_x + left_w + 15
+    center_w = 370
+    right_x = center_x + center_w + 15
+    right_w = PX + PW - right_x - 10
+
+    # --- Left column: party member rows ---
+    party_row_h = 70
+    for i, adv in enumerate(state.party):
+        ay = col_top + 30 + i * party_row_h
+        if ay + party_row_h > PY + PH - 8:
+            break
+        adv_rect = pygame.Rect(left_x, ay, left_w, party_row_h)
+        if adv_rect.collidepoint(hover_pos):
+            draw_adventurer_tooltip(screen, fonts, state, adv, hover_pos)
+            return
+
+    # --- Centre column: paper-doll card chips ---
+    if 0 <= state.delve_selected_adv_idx < len(state.party):
+        adv = state.party[state.delve_selected_adv_idx]
+        card_x = center_x + (center_w - paper_doll.CARD_W) // 2
+        card_y = col_top + 30
+        card_rect = pygame.Rect(card_x, card_y,
+                                paper_doll.CARD_W, paper_doll.CARD_H)
+        if card_rect.collidepoint(hover_pos):
+            chip_idx = paper_doll.hit_test_chip(card_x, card_y, hover_pos, adv)
+            if chip_idx is not None and 0 <= chip_idx < len(adv.equipped_items):
+                draw_item_tooltip(screen, fonts, state,
+                                  adv.equipped_items[chip_idx], hover_pos)
+                return
+
+    # --- Right column: merged item rows ---
+    from .widgets import (
+        ITEM_LIST_HEADER_H, ITEM_LIST_SEARCH_H, ITEM_LIST_ROW_H,
+    )
+    list_top = col_top + ITEM_LIST_HEADER_H + 4 + ITEM_LIST_SEARCH_H + 6
+    list_h   = PY + PH - list_top - 50
+    list_rect = pygame.Rect(right_x, list_top, right_w, list_h)
+    if list_rect.collidepoint(hover_pos):
+        filtered = state.get_filtered_delve_items()
+        scroll = state.delve_inv_scroll
+        visible_count = list_h // ITEM_LIST_ROW_H
+        for k in range(visible_count):
+            idx = scroll + k
+            if idx >= len(filtered):
+                break
+            iy = list_top + 4 + k * ITEM_LIST_ROW_H
+            row_rect = pygame.Rect(right_x + 4, iy,
+                                   right_w - 8, ITEM_LIST_ROW_H - 4)
+            if row_rect.collidepoint(hover_pos):
+                draw_item_tooltip(screen, fonts, state, filtered[idx], hover_pos)
+                return

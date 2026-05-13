@@ -198,6 +198,7 @@ class InputHandler:
 
         # Delve inventory panel scroll (right-column item list)
         if self.state.delve_inv_open:
+            from ..views import widgets as _w
             PX, PY, PW, PH = 60, 40, 1160, 710
             col_top = PY + 55
             left_x = PX + 10
@@ -206,11 +207,12 @@ class InputHandler:
             center_w = 370
             right_x = center_x + center_w + 15
             right_w = PX + PW - right_x - 10
-            header_h = 26
-            search_h = 26
-            list_top = col_top + header_h + 4 + search_h + 6
-            list_h = PY + PH - list_top - 50
-            item_row_h = 38
+            right_h = PY + PH - col_top - 50
+            right_rect = pygame.Rect(right_x, col_top, right_w, right_h)
+            _, _, list_rect = _w.get_item_list_geometry(right_rect)
+            list_top = list_rect.y
+            list_h = list_rect.h
+            item_row_h = _w.ITEM_LIST_ROW_H
             visible_count = list_h // item_row_h
 
             list_rect = pygame.Rect(right_x, list_top, right_w, list_h)
@@ -224,9 +226,11 @@ class InputHandler:
 
         if self.state.phase == GamePhase.PREPARATION:
             from ..views.screens.preparation import INV_PANEL_RECT, ROSTER_RECT
+            from ..views import widgets as _w
             if INV_PANEL_RECT.collidepoint(mouse_pos):
+                _, _, list_rect = _w.get_item_list_geometry(INV_PANEL_RECT)
                 filtered = self.state.get_filtered_inventory()
-                max_vis = (INV_PANEL_RECT.h - 32) // 28
+                max_vis = list_rect.h // _w.ITEM_LIST_ROW_H
                 self.state.inventory_scroll -= event.y
                 max_scroll = max(0, len(filtered) - max_vis)
                 self.state.inventory_scroll = max(0, min(self.state.inventory_scroll, max_scroll))
@@ -505,17 +509,13 @@ class InputHandler:
     def _handle_preparation_click(self, mouse_pos):
         s = self.state
         from ..views.screens.preparation import (
-            ROSTER_RECT, PARTY_RECT, INV_SEARCH_RECT, INV_PANEL_RECT,
+            ROSTER_RECT, PARTY_RECT, INV_PANEL_RECT,
             STATS_RECT, CARD_RECT, SHOP_RECT, SHOP_ITEM_ROW_H,
         )
 
-        # ---- Inventory search bar (click to activate) ----
-        if INV_SEARCH_RECT.collidepoint(mouse_pos):
-            s.prep_inv_search_active = True
-            return
-
-        # Deactivate search when clicking elsewhere
-        s.prep_inv_search_active = False
+        # Deactivate search when clicking outside the inventory area
+        if not INV_PANEL_RECT.collidepoint(mouse_pos):
+            s.prep_inv_search_active = False
 
         # ---- Roster ----
         if ROSTER_RECT.collidepoint(mouse_pos):
@@ -538,22 +538,23 @@ class InputHandler:
                     else:
                         s.selected_party_index = index
 
-        # ---- Inventory ----
+        # ---- Inventory (uses shared widgets.draw_item_list_panel layout) ----
         elif INV_PANEL_RECT.collidepoint(mouse_pos):
-            y_offset = mouse_pos[1] - (INV_PANEL_RECT.y + 32)
-            if y_offset >= 0:
-                filtered = s.get_filtered_inventory()
-                idx_in_filtered = (y_offset // 28) + s.inventory_scroll
-                if 0 <= idx_in_filtered < len(filtered):
-                    item = filtered[idx_in_filtered]
-                    if pygame.key.get_mods() & pygame.KMOD_CTRL:
-                        # Ctrl+click → sell
-                        s.sell_item_obj(item)
-                    else:
-                        # Normal click → equip to selected party member
-                        if 0 <= s.selected_party_index < len(s.party):
-                            adv = s.party[s.selected_party_index]
-                            s.equip_item_obj(item, adv)
+            from ..views import widgets as _w
+            header_rect, search_rect, list_rect = _w.get_item_list_geometry(INV_PANEL_RECT)
+            if search_rect.collidepoint(mouse_pos):
+                s.prep_inv_search_active = True
+                return
+            filtered = s.get_filtered_inventory()
+            idx, item = _w.hit_test_item_list(
+                INV_PANEL_RECT, filtered, s.inventory_scroll, mouse_pos)
+            if item is not None:
+                if pygame.key.get_mods() & pygame.KMOD_CTRL:
+                    s.sell_item_obj(item)
+                else:
+                    if 0 <= s.selected_party_index < len(s.party):
+                        adv = s.party[s.selected_party_index]
+                        s.equip_item_obj(item, adv)
 
         # ---- Stats panel item list — click to unequip (left panel) ----
         elif STATS_RECT.collidepoint(mouse_pos) and 0 <= s.selected_party_index < len(s.party):
@@ -666,50 +667,23 @@ class InputHandler:
                         s.delve_unequip_item(j)
                         return
 
-            # Search bar above the available-items list
-            header_h = 26
-            search_h = 26
-            search_y = col_top + header_h + 4
-            search_rect = pygame.Rect(right_x, search_y, right_w, search_h)
+            # Available items right-column panel: shared widget layout
+            from ..views import widgets as _w
+            right_h = PY + PH - col_top - 50
+            right_rect = pygame.Rect(right_x, col_top, right_w, right_h)
+            header_rect, search_rect, list_rect = _w.get_item_list_geometry(right_rect)
             if search_rect.collidepoint(mouse_pos):
                 s.delve_item_search_active = True
                 return
-            # Click anywhere else outside the search bar deactivates it
+            # Click outside search → deactivate
             s.delve_item_search_active = False
 
-            # Available items (right column — merged loot+inventory, feature #4)
-            list_top = col_top + header_h + 4 + search_h + 6
-            list_h = PY + PH - list_top - 50
-            item_row_h = 38
-            visible_count = list_h // item_row_h
-            scroll = s.delve_inv_scroll
-
-            # Build the filtered merged list (same logic as renderer)
-            search_lower = s.delve_item_search.lower()
-            full_merged = list(s.delve_loot) + list(s.inventory)
-            if search_lower:
-                def _match(it):
-                    if search_lower in it.name.lower():
-                        return True
-                    for kw_id in it.keywords:
-                        kw = s.keyword_registry.get(kw_id)
-                        if kw and search_lower in kw.name.lower():
-                            return True
-                    return False
-                filtered = [it for it in full_merged if _match(it)]
-            else:
-                filtered = full_merged
-
-            for idx in range(visible_count):
-                actual_idx = scroll + idx
-                if actual_idx >= len(filtered):
-                    break
-                iy = list_top + 4 + idx * item_row_h
-                row_rect = pygame.Rect(right_x + 4, iy, right_w - 8, item_row_h - 4)
-                if row_rect.collidepoint(mouse_pos):
-                    item = filtered[actual_idx]
-                    s.delve_equip_item_obj(item)
-                    return
+            filtered = s.get_filtered_delve_items()
+            idx, item = _w.hit_test_item_list(
+                right_rect, filtered, s.delve_inv_scroll, mouse_pos)
+            if item is not None:
+                s.delve_equip_item_obj(item)
+                return
 
             return  # Consumed click inside panel
 

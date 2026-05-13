@@ -328,6 +328,39 @@ def draw_adventurer_thumbnail(screen, adv, x: int, y: int, size: int) -> bool:
                            cx, cy, (iw, ih), slot_items[i], slot,
                            slot[0].upper() if slot else '?', p['flip_h'])
 
+    # ---- King / Dunce role overlay (visible everywhere this thumbnail is used) ----
+    # Caller-set attribute lets callers tag a role without modifying the
+    # adventurer model: setattr(adv, '_role_badge', 'king'|'dunce'|None)
+    # We also detect via global state hooks if available.
+    role = getattr(adv, '_role_badge', None)
+    if role == 'king':
+        crown = max(10, size // 5)
+        cx = x + size // 2
+        cy = y - 2
+        # Simple gold crown polygon
+        pts = [
+            (cx - crown, cy),
+            (cx - crown // 2, cy - crown + 2),
+            (cx, cy - crown // 4),
+            (cx + crown // 2, cy - crown + 2),
+            (cx + crown, cy),
+        ]
+        pygame.draw.polygon(screen, (250, 200, 50), pts)
+        pygame.draw.polygon(screen, (120, 80, 0), pts, 1)
+        pygame.draw.rect(screen, (250, 200, 50),
+                         (x, y, size, 3))
+    elif role == 'dunce':
+        cap_w = max(8, size // 4)
+        cx = x + size // 2
+        cy = y - 1
+        pts = [(cx - cap_w // 2, cy),
+               (cx + cap_w // 2, cy),
+               (cx, cy - cap_w - 2)]
+        pygame.draw.polygon(screen, (160, 160, 170), pts)
+        pygame.draw.polygon(screen, (90, 90, 100), pts, 1)
+        pygame.draw.rect(screen, (130, 130, 140),
+                         (x, y, size, 3))
+
     return portrait_found
 
 

@@ -3,6 +3,7 @@
 import pygame
 
 from ..widgets import Panel
+from .. import widgets
 from ...config import COLORS, SCREEN_WIDTH, SCREEN_HEIGHT
 from .. import paper_doll
 
@@ -12,9 +13,9 @@ from .. import paper_doll
 ROSTER_RECT  = pygame.Rect(20,  100, 380, 340)
 PARTY_RECT   = pygame.Rect(420, 100, 380, 340)
 
-# Inventory: search bar sits above the panel
-INV_SEARCH_RECT = pygame.Rect(820, 100, 440, 26)
-INV_PANEL_RECT  = pygame.Rect(820, 128, 440, 312)
+# Inventory: one unified rect — widgets.draw_item_list_panel subdivides it
+# into header / search / list sections internally.
+INV_PANEL_RECT  = pygame.Rect(820, 100, 440, 340)
 
 # Stats / paper-doll (lower area)
 STATS_RECT   = pygame.Rect(420, 460, 230, 320)
@@ -31,6 +32,20 @@ SHOP_ITEM_ROW_H = 36    # px per item row inside the shop panel
 
 def draw(screen, fonts, state):
     """Render the preparation screen."""
+    # Tag adventurers with their roles so paper_doll thumbnails render the
+    # KING/DUNCE crown.  Roles only meaningful inside a delve, but tagging
+    # in prep lets the player see who'd be king if last_king_slayer is set.
+    for adv in state.roster:
+        if adv is state.hero_king:
+            setattr(adv, '_role_badge', 'king')
+        elif adv is state.hero_dunce:
+            setattr(adv, '_role_badge', 'dunce')
+        elif adv is state.last_king_slayer:
+            # Show pre-emptive king status while in prep
+            setattr(adv, '_role_badge', 'king')
+        else:
+            setattr(adv, '_role_badge', None)
+
     # Header
     header = fonts['large'].render("PREPARE YOUR PARTY", True, COLORS['accent'])
     screen.blit(header, (20, 20))
@@ -103,83 +118,18 @@ def draw(screen, fonts, state):
                         (PARTY_RECT.x + 52, y + 24))
         y += 52
 
-    # ---- Inventory search bar (#5) ----
-    sr = INV_SEARCH_RECT
-    search_active = state.prep_inv_search_active
-    bar_color = COLORS['accent'] if search_active else (70, 72, 88)
-    pygame.draw.rect(screen, (28, 28, 40), sr, border_radius=5)
-    pygame.draw.rect(screen, bar_color, sr, 1, border_radius=5)
-
-    label_surf = fonts['tiny'].render("Search:", True, COLORS['text_dim'])
-    screen.blit(label_surf, (sr.x + 6, sr.y + sr.h // 2 - label_surf.get_height() // 2))
-
-    search_text = state.prep_inv_search or ("" if search_active else "type to filter keywords/names")
-    stc = COLORS['text'] if state.prep_inv_search else COLORS['text_dim']
-    st_surf = fonts['small'].render(search_text, True, stc)
-    screen.blit(st_surf, (sr.x + 52, sr.y + sr.h // 2 - st_surf.get_height() // 2))
-
-    if search_active:
-        caret_x = sr.x + 52 + st_surf.get_width() + 2
-        if pygame.time.get_ticks() % 1000 < 500:
-            pygame.draw.line(screen, COLORS['text'],
-                             (caret_x, sr.y + 4), (caret_x, sr.bottom - 4), 1)
-
-    clear_hint = fonts['tiny'].render("[Esc] clear", True, COLORS['text_dim'])
-    screen.blit(clear_hint, (sr.right - clear_hint.get_width() - 6,
-                              sr.y + sr.h // 2 - clear_hint.get_height() // 2))
-
-    # ---- Inventory panel ----
+    # ---- Inventory: search + scrollable list (shared widget; #2) ----
     filtered_inv = state.get_filtered_inventory()
-    pr = INV_PANEL_RECT
-    panel3 = Panel(pr.x, pr.y, pr.w, pr.h,
-                   f"Inventory ({len(state.inventory)}) — click: equip | Ctrl+click: sell")
-    panel3.draw(screen, fonts['small'], fonts['medium'])
-
-    if state.inventory_scroll > 0:
-        screen.blit(fonts['small'].render("^ scroll up", True, COLORS['text_dim']),
-                    (pr.right - 90, pr.y + 5))
-
-    item_row_h = 28
-    max_visible = (pr.h - 32) // item_row_h
-    y = pr.y + 32
-    visible_items = filtered_inv[state.inventory_scroll: state.inventory_scroll + max_visible]
-    rarity_color_map = {
-        'scrap':    (120, 120, 120),
-        'common':   COLORS['text_dim'],
-        'uncommon': COLORS['success'],
-        'rare':     COLORS['accent'],
-    }
-    for item in visible_items:
-        # Item thumbnail
-        paper_doll.draw_item_thumbnail(screen, item, pr.x + 10, y + 2, 20)
-        text = f"{item.name} (+{item.points})"
-        screen.blit(fonts['small'].render(text, True, COLORS['text']), (pr.x + 34, y + 2))
-
-        # Sell price hint
-        sell_p = state.get_item_sell_price(item)
-        sell_surf = fonts['tiny'].render(f"sell:{sell_p}¢", True, COLORS['text_dim'])
-        screen.blit(sell_surf, (pr.right - sell_surf.get_width() - 6, y + 7))
-
-        # Keyword tags inline
-        kw_x = pr.x + 34
-        for kw_id in item.keywords[:3]:
-            kw = state.keyword_registry.get(kw_id)
-            if kw:
-                label = kw.name[:7]
-                tw = fonts['tiny'].render(label, True, COLORS['bg']).get_width() + 6
-                if kw_x + tw > pr.right - 55:
-                    break
-                pygame.draw.rect(screen, kw.color, (kw_x, y + 17, tw, 9), border_radius=2)
-                screen.blit(fonts['tiny'].render(label, True, COLORS['bg']), (kw_x + 3, y + 17))
-                kw_x += tw + 3
-        y += item_row_h
-
-    if state.inventory_scroll + max_visible < len(filtered_inv):
-        more = fonts['small'].render(
-            f"v {len(filtered_inv) - state.inventory_scroll - max_visible} more below",
-            True, COLORS['text_dim'],
-        )
-        screen.blit(more, (pr.x + 10, pr.bottom - 22))
+    widgets.draw_item_list_panel(
+        screen, fonts, state, INV_PANEL_RECT,
+        items=filtered_inv,
+        scroll=state.inventory_scroll,
+        search_text=state.prep_inv_search,
+        search_active=state.prep_inv_search_active,
+        header_text=f"Inventory ({len(state.inventory)}) — click: equip | Ctrl+click: sell",
+        sell_price_func=lambda it: state.get_item_sell_price(it),
+        paper_doll_module=paper_doll,
+    )
 
     # ---- Left stats/items menu panel (selected adventurer) ----
     STATS_X, STATS_Y = STATS_RECT.x, STATS_RECT.y
@@ -268,7 +218,8 @@ def draw(screen, fonts, state):
 
     # Instructions
     inst = fonts['small'].render(
-        "Click roster → party | Click inventory → equip | Ctrl+click inventory → sell | "
+        "Hover any card/item for details  |  Click roster → party  |  "
+        "Click inventory → equip  |  Ctrl+click inventory → sell  |  "
         "Shift+click party → remove",
         True, COLORS['text_dim'],
     )
