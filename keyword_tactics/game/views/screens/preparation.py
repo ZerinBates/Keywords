@@ -131,76 +131,14 @@ def draw(screen, fonts, state):
         paper_doll_module=paper_doll,
     )
 
-    # ---- Left stats/items menu panel (selected adventurer) ----
-    STATS_X, STATS_Y = STATS_RECT.x, STATS_RECT.y
-    STATS_W, STATS_H = STATS_RECT.w, STATS_RECT.h
-
+    # ---- Left stats/items panel — shared widget (#2) ----
+    state._prep_equipped_rows = []  # transient: stores [(item, rect)] for clicks
     if 0 <= state.selected_party_index < len(state.party):
         adv = state.party[state.selected_party_index]
-
-        pygame.draw.rect(screen, (30, 32, 44), STATS_RECT, border_radius=8)
-        pygame.draw.rect(screen, COLORS['accent'], STATS_RECT, 2, border_radius=8)
-
-        # Portrait + name row
-        PORT = 44
-        paper_doll.draw_adventurer_thumbnail(
-            screen, adv, STATS_X + 10, STATS_Y + 12, PORT)
-        name_surf = fonts['medium'].render(adv.name, True, COLORS['text'])
-        screen.blit(name_surf, (STATS_X + PORT + 18, STATS_Y + 20))
-
-        # Power
-        try:
-            base = adv.get_base_points()
-            mult = adv.get_multiplier()
-            power = base * mult
-            pwr_text = f"Power: {base} × {mult} = {power}"
-        except AttributeError:
-            pwr_text = f"Items: {len(adv.equipped_items)}/{adv.slots}"
-        screen.blit(fonts['small'].render(pwr_text, True, COLORS['success']),
-                    (STATS_X + 10, STATS_Y + 70))
-
-        # Slots
-        su, sm = len(adv.equipped_items), adv.slots
-        sc = COLORS['warning'] if su >= sm else COLORS['text_dim']
-        screen.blit(fonts['small'].render(f"Slots: {su}/{sm}", True, sc),
-                    (STATS_X + 10, STATS_Y + 92))
-
-        # Ability
-        if getattr(adv, 'ability_name', None):
-            ab = adv.ability_name[:28] if len(adv.ability_name) > 28 else adv.ability_name
-            screen.blit(fonts['small'].render(ab, True, COLORS['accent']),
-                        (STATS_X + 10, STATS_Y + 114))
-
-        # Divider + items header
-        pygame.draw.line(screen, (60, 65, 80),
-                         (STATS_X + 10, STATS_Y + 138),
-                         (STATS_X + STATS_W - 10, STATS_Y + 138), 1)
-        screen.blit(fonts['small'].render("Equipped (click to unequip):",
-                                          True, COLORS['warning']),
-                    (STATS_X + 10, STATS_Y + 144))
-
-        # Item rows
-        ITEM_ROW_H = 28
-        ITEM_START_Y = STATS_Y + 168
-        for j, item in enumerate(adv.equipped_items):
-            iy = ITEM_START_Y + j * ITEM_ROW_H
-            if iy + ITEM_ROW_H > STATS_Y + STATS_H - 16:
-                break
-            row_rect = pygame.Rect(STATS_X + 6, iy, STATS_W - 12, ITEM_ROW_H - 2)
-            pygame.draw.rect(screen, (38, 40, 52), row_rect, border_radius=3)
-            paper_doll.draw_item_thumbnail(screen, item, STATS_X + 9, iy + 3, 22)
-            iname = item.name[:17] + ".." if len(item.name) > 18 else item.name
-            screen.blit(fonts['tiny'].render(iname, True, COLORS['text']),
-                        (STATS_X + 35, iy + 6))
-            pts = fonts['tiny'].render(f"+{item.points}", True, COLORS['gold'])
-            screen.blit(pts, (STATS_X + STATS_W - pts.get_width() - 10, iy + 6))
-
-        if not adv.equipped_items:
-            screen.blit(fonts['small'].render("No items equipped", True, COLORS['text_dim']),
-                        (STATS_X + 10, ITEM_START_Y + 8))
-
-        screen.blit(fonts['tiny'].render("× click item to unequip", True, COLORS['text_dim']),
-                    (STATS_X + 10, STATS_Y + STATS_H - 14))
+        state._prep_equipped_rows = widgets.draw_equipped_items_panel(
+            screen, fonts, state, STATS_RECT, adv,
+            paper_doll_module=paper_doll,
+        )
 
     # ---- Selected adventurer paper-doll card ----
     if 0 <= state.selected_party_index < len(state.party):

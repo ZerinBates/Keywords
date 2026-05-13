@@ -1,7 +1,7 @@
 """Dungeon deck model - a persistent ordered collection of monsters."""
 
 import random
-from typing import Dict, List, Optional
+from typing import Dict, Iterable, List, Optional
 
 from .item import Item, ItemRegistry
 from .monster import Monster
@@ -101,13 +101,22 @@ class Deck:
 
     # ----- Loot generation -----
 
-    def get_drop_item(self, item_registry: ItemRegistry) -> Optional[Item]:
+    def get_drop_item(
+        self,
+        item_registry: ItemRegistry,
+        allowed_ids: Optional[Iterable[str]] = None,
+    ) -> Optional[Item]:
         """Generate a drop item from this deck's specific drop table.
 
         Drop rates improve as you defeat more monsters in this deck:
         - Base: 50% scrap, 35% common, 12% uncommon, 3% rare
         - Each kill adds ~2% to better rarities
-        - At 7 kills (full clear): ~15% scrap, 35% common, 35% uncommon, 15% rare
+
+        If ``allowed_ids`` is provided, the deck-specific drop table is
+        restricted to items in that set, and the generic-fallback random pull
+        is similarly restricted. The deck's OWN drop_items are *always*
+        eligible (defeating any monster in a deck implicitly trusts that
+        deck's loot table, even if the deck-clear unlock hasn't happened yet).
         """
         kills = self.monsters_defeated
 
@@ -122,7 +131,9 @@ class Deck:
             weights=[scrap_weight, common_weight, uncommon_weight, rare_weight],
         )[0]
 
-        # For uncommon+ try deck-specific drops first
+        # For uncommon+ try deck-specific drops first.  Deck drops always
+        # bypass the unlock filter: clearing this deck IS what unlocks them
+        # globally, and we still want them as in-delve loot beforehand.
         if rarity in ['uncommon', 'rare'] and self.drop_items:
             item_id = random.choice(self.drop_items)
             item = item_registry.create_copy(item_id)
@@ -137,8 +148,13 @@ class Deck:
                         item = item_registry.create_copy(random.choice(rare_items))
                 return item
 
-        # Fallback: random item of the rolled rarity
-        return item_registry.random_item(rarity)
+        # Fallback: random item of the rolled rarity, respecting the global
+        # unlock filter (with deck-local drops always unioned in).
+        if allowed_ids is not None:
+            allowed = set(allowed_ids) | set(self.drop_items)
+        else:
+            allowed = None
+        return item_registry.random_item(rarity, allowed_ids=allowed)
 
 
 class DeckRegistry:

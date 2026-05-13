@@ -158,12 +158,42 @@ class Game:
         phase = self.state.phase
 
         if phase == GamePhase.MAIN_MENU:
-            self.buttons.append(Button(SCREEN_WIDTH // 2 - 100, 340, 200, 50, "New Game"))
+            # Continue: only shown when an in-progress save exists.
+            x = SCREEN_WIDTH // 2 - 100
+            y = 255
+            if self.state.has_resumable_run():
+                self.buttons.append(Button(
+                    x, y, 200, 44, "Continue",
+                    color=COLORS['success'], hover_color=(130, 255, 150),
+                ))
+                y += 50
+
+            self.buttons.append(Button(x, y, 200, 44, "New Game"))
+            y += 50
+
             tut_text = "Tutorial: ON" if self.tutorial.active else "Tutorial: OFF"
-            self.buttons.append(Button(SCREEN_WIDTH // 2 - 100, 400, 200, 40, tut_text))
+            self.buttons.append(Button(x, y, 200, 36, tut_text))
+            y += 40
+
             fs_text = "Windowed" if self.is_fullscreen else "Fullscreen"
-            self.buttons.append(Button(SCREEN_WIDTH // 2 - 100, 450, 200, 40, fs_text))
-            self.buttons.append(Button(SCREEN_WIDTH // 2 - 100, 500, 200, 40, "Quit"))
+            self.buttons.append(Button(x, y, 200, 36, fs_text))
+            y += 40
+
+            debug_text = "Debug: ON" if self.state.debug_unlock_all else "Debug: OFF"
+            debug_color = COLORS['warning'] if self.state.debug_unlock_all else COLORS['panel']
+            self.buttons.append(Button(
+                x, y, 200, 36, debug_text,
+                color=debug_color, hover_color=(220, 200, 100),
+            ))
+            y += 40
+
+            self.buttons.append(Button(
+                x, y, 200, 36, "Wipe Save",
+                color=COLORS['panel'], hover_color=(120, 60, 60),
+            ))
+            y += 40
+
+            self.buttons.append(Button(x, y, 200, 36, "Quit"))
 
         elif phase == GamePhase.PREPARATION:
             btn = Button(SCREEN_WIDTH - 180, 20, 160, 40, "Select Deck")
@@ -191,26 +221,38 @@ class Game:
             self.buttons.append(Button(SCREEN_WIDTH // 2 - 75, y + 20, 150, 40, "Back"))
 
         elif phase == GamePhase.DELVE_SETUP:
-            btn_y = 530
+            inv_open = self.state.delve_inv_open
+            btn_y = SCREEN_HEIGHT - 55 if inv_open else 530
+            items_label = "Back" if inv_open else "Items"
+
             fight_btn = Button(
                 SCREEN_WIDTH // 2 - 80, btn_y, 160, 45, "FIGHT!",
                 color=COLORS['danger'], hover_color=(255, 150, 100),
             )
-            fight_btn.enabled = self.state.all_alive_placed()
+            fight_btn.enabled = (
+                self.state.all_alive_placed() and not inv_open
+            )
             self.buttons.append(fight_btn)
-            self.buttons.append(Button(SCREEN_WIDTH // 2 + 100, btn_y, 140, 45, "Items"))
-            if self.state.party_needs_recruits():
+            self.buttons.append(Button(SCREEN_WIDTH // 2 + 100, btn_y, 140, 45, items_label))
+            if self.state.party_needs_recruits() and not inv_open:
                 self.buttons.append(Button(
                     SCREEN_WIDTH // 2 + 260, btn_y, 140, 45, "Recruit",
                     color=COLORS['success'], hover_color=(130, 255, 150),
                 ))
-            self.buttons.append(Button(SCREEN_WIDTH // 2 - 240, btn_y, 140, 45, "Retreat"))
+            retreat_btn = Button(SCREEN_WIDTH // 2 - 240, btn_y, 140, 45, "Retreat")
+            retreat_btn.enabled = not inv_open
+            self.buttons.append(retreat_btn)
 
         elif phase == GamePhase.DELVE_RESULTS:
-            btn_y = 700
-            self.buttons.append(Button(SCREEN_WIDTH // 2 - 80, btn_y, 160, 45, "Continue"))
-            self.buttons.append(Button(SCREEN_WIDTH // 2 + 100, btn_y, 140, 45, "Items"))
-            if self.state.party_needs_recruits():
+            inv_open = self.state.delve_inv_open
+            btn_y = SCREEN_HEIGHT - 55 if inv_open else 700
+            items_label = "Back" if inv_open else "Items"
+
+            continue_btn = Button(SCREEN_WIDTH // 2 - 80, btn_y, 160, 45, "Continue")
+            continue_btn.enabled = not inv_open
+            self.buttons.append(continue_btn)
+            self.buttons.append(Button(SCREEN_WIDTH // 2 + 100, btn_y, 140, 45, items_label))
+            if self.state.party_needs_recruits() and not inv_open:
                 self.buttons.append(Button(
                     SCREEN_WIDTH // 2 + 260, btn_y, 140, 45, "Recruit",
                     color=COLORS['success'], hover_color=(130, 255, 150),

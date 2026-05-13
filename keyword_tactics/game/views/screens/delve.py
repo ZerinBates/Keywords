@@ -561,7 +561,7 @@ def draw_inventory_panel(screen, fonts, state):
 
     # ----- LEFT COLUMN: Adventurer Selection -----
     left_x = PX + 10
-    left_w = 250
+    left_w = 220     # shrunk to make room for equipped-items panel
     col_top = PY + 55
 
     screen.blit(fonts['medium'].render("Party", True, COLORS['text']),
@@ -626,9 +626,30 @@ def draw_inventory_panel(screen, fonts, state):
             screen.blit(fonts['small'].render(kw_str, True, COLORS['text_dim']),
                         (left_x + 10, cy + 52))
 
-    # ----- CENTER COLUMN: Selected Adventurer paper-doll card (#1) -----
-    center_x = left_x + left_w + 15
-    center_w = 370
+    # ----- MIDDLE-LEFT COLUMN: Equipped items side panel (shared widget; #2) -----
+    equip_x = left_x + left_w + 15
+    equip_w = 220
+    state._delve_equipped_rows = []  # transient: stored for click hit-testing
+    equip_rect = pygame.Rect(equip_x, col_top, equip_w, PY + PH - col_top - 10)
+
+    if 0 <= state.delve_selected_adv_idx < len(state.party):
+        adv = state.party[state.delve_selected_adv_idx]
+        state._delve_equipped_rows = widgets.draw_equipped_items_panel(
+            screen, fonts, state, equip_rect, adv,
+            paper_doll_module=paper_doll,
+        )
+    else:
+        # Stub panel when no adventurer is selected
+        pygame.draw.rect(screen, (30, 32, 44), equip_rect, border_radius=8)
+        pygame.draw.rect(screen, COLORS['text_dim'], equip_rect, 1, border_radius=8)
+        prompt = fonts['small'].render("Select adventurer", True, COLORS['text_dim'])
+        screen.blit(prompt,
+                    (equip_rect.centerx - prompt.get_width() // 2,
+                     equip_rect.y + 30))
+
+    # ----- MIDDLE-RIGHT COLUMN: Paper-doll card (bigger picture; #2) -----
+    center_x = equip_x + equip_w + 10
+    center_w = 290
 
     if 0 <= state.delve_selected_adv_idx < len(state.party):
         adv = state.party[state.delve_selected_adv_idx]
@@ -646,8 +667,7 @@ def draw_inventory_panel(screen, fonts, state):
             kdb = fonts['small'].render("HERO DUNCE ÷2", True, COLORS['text_dim'])
             screen.blit(kdb, (center_x + center_w - kdb.get_width() - 10, col_top + 4))
 
-        # Paper-doll card — sized to fit available width.  Card is 280×380;
-        # centre it inside the column.
+        # Paper-doll card (280×380), centred in this column
         card_x = center_x + (center_w - paper_doll.CARD_W) // 2
         card_y = col_top + 30
         paper_doll.draw_character_card(
@@ -668,8 +688,8 @@ def draw_inventory_panel(screen, fonts, state):
 
     # ----- RIGHT COLUMN: Available Items — shared widget (#2 + #4) -----
     right_x = center_x + center_w + 15
-    right_w = PX + PW - right_x - 10
-    right_h = PY + PH - col_top - 50
+    right_w = PX + PW - right_x - 10   # whatever remains
+    right_h = PY + PH - col_top - 10
     right_rect = pygame.Rect(right_x, col_top, right_w, right_h)
 
     filtered = state.get_filtered_delve_items()

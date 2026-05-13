@@ -6,6 +6,23 @@ and exposes methods to mutate that state in well-defined ways.
 
 It delegates pure combat math to controllers.combat and JSON loading to
 controllers.data_loader.
+
+Unlock & save system
+--------------------
+Two parallel ideas live here:
+
+* **Meta unlocks** (persistent across runs / deaths)
+    - ``unlocked_characters``: set of character ids the shop / starter pool
+      may spawn. Initially just the 4 starters.
+    - ``unlocked_items``: set of item ids the shop / generic loot pool may
+      spawn. Initially every non-deck-drop item, plus deck drops belonging
+      to decks the player has already cleared in a previous run.
+    - ``debug_unlock_all``: master override; when True, every character and
+      item is treated as unlocked.
+
+* **Run state** (one in-progress game, wiped on game-over / new game)
+    - Saved on every stable transition (after a delve, after the shop,
+      etc.). The Main Menu shows a Continue button when a run save exists.
 """
 
 import random
@@ -19,8 +36,40 @@ from ..models import (
     KeywordRegistry,
     Monster,
 )
-from . import combat
+from . import combat, save_manager
 from .data_loader import load_all_data
+
+
+# ---------------------------------------------------------------------------
+# Unlock configuration
+# ---------------------------------------------------------------------------
+
+# These four classes are always available — the player needs *some* roster
+# choice on a fresh save.
+STARTING_CHARACTERS: Set[str] = {"commoner", "warrior", "mage", "ranger"}
+
+# Defeating a deck's BOSS (the lifted final-row monster, via challenge_boss)
+# unlocks the classes mapped to that deck. One entry per deck; a deck may
+# unlock multiple classes if there are more classes than decks.
+DECK_BOSS_UNLOCKS_CHARACTERS: Dict[str, List[str]] = {
+    "beast_den":         ["berserker"],
+    "humanoid_fortress": ["knight"],
+    "undead_crypt":      ["necromancer"],
+    "dragon_peak":       ["dragon_rider"],
+    "construct_foundry": ["engineer", "mech_pilot"],
+    "demon_rift":        ["warlock"],
+    "angel_spire":       ["paladin"],
+    "fey_wilds":         ["fey_knight"],
+    "slime_sewer":       ["rogue"],
+    "insect_hive":       ["druid"],
+    "plant_grove":       ["bard"],
+    "aquatic_trench":    ["sea_warden"],
+    "avian_peaks":       ["archer"],
+    "reptile_swamp":     ["assassin"],
+    "spirit_haunt":      ["time_mage"],
+    "aberration_void":   ["elementalist"],
+    "elemental_plane":   ["monk"],
+}
 
 
 class GameState:
@@ -70,7 +119,7 @@ class GameState:
         self.boss_adventurer_index: int = -1
         self.delve_inv_open: bool = False
         self.delve_inv_scroll: int = 0
-        self.delve_inv_source: str = 'loot'              # kept for compat but unused in merged view
+        self.delve_inv_source: str = 'loot'
         self.delve_selected_adv_idx: int = -1
         self.earned_multipliers: Dict[Adventurer, int] = {}
         self.delve_recruit_open: bool = False
@@ -101,30 +150,38 @@ class GameState:
         self.ref_scroll: int = 0
 
         # ---- Preparation inventory search ----
-        self.prep_inv_search: str = ""        # keyword/name filter for inventory panel
+        self.prep_inv_search: str = ""
         self.prep_inv_search_active: bool = False
 
         # ---- Delve inventory search ----
         self.delve_item_search: str = ""
         self.delve_item_search_active: bool = False
 
-        # ---- Shop kill gating (feature #6 from prior turn) ----
-        # Shop only regenerates when monsters have been killed since last gen.
+        # ---- Shop kill gating ----
         self.shop_kills_snapshot: int = 0
 
-        # ---- Items recovered from dead adventurers (persist in shop) ----
+        # ---- Items recovered from dead adventurers ----
         self.dead_adv_loot: List[Item] = []
 
-        # ---- King / Dunce system (new feature #6) ----
-        # Per-row roles for monsters live on the square dicts themselves
-        # (sq['is_king'], sq['is_dunce']).  These two attrs track HERO roles
-        # which persist between rows.
+        # ---- King / Dunce system ----
         self.hero_king: Optional[Adventurer] = None
         self.hero_dunce: Optional[Adventurer] = None
-        # Whoever killed the king monster carries the title forward.
         self.last_king_slayer: Optional[Adventurer] = None
-        # First combat row of the entire game — heroes have no king/dunce.
         self.first_match_done: bool = False
+
+        # ---- Unlock system (meta-progression) ----
+        self.unlocked_characters: Set[str] = set()
+        self.unlocked_items: Set[str] = set()
+        self.debug_unlock_all: bool = False
+
+        # ---- Run-progress tracking ----
+        # True once new_game() runs; cleared on game-over. Used by the main
+        # menu Continue button + auto-save guard.
+        self.run_in_progress: bool = False
+
+        # Load any persisted meta-progression on construction. This is safe
+        # to call before new_game() since it only touches the unlock sets.
+        self.load_meta_from_disk()
 
     # ---------------------------------------------------------------------
     # Game lifecycle
@@ -136,12 +193,11 @@ class GameState:
         for deck_id in self.deck_registry.all_ids():
             deck = self.deck_registry.create(deck_id)
             if deck:
-                # Don't shuffle - monsters stay ordered weakest to strongest
                 self.active_decks[deck_id] = deck
         print(f"Initialized {len(self.active_decks)} persistent decks")
 
     def new_game(self):
-        """Start a new game from scratch."""
+        """Start a new game from scratch (keeps meta-unlocks)."""
         self.coins = 15
         self.inventory = []
         self.roster = []
@@ -168,9 +224,9 @@ class GameState:
 
         self._initialize_decks()
 
-        # Starting adventurers (random + commoners)
+        # Starting adventurers (random + commoners) — filtered by unlocks
         for _ in range(4):
-            adv = self.adventurer_registry.random_adventurer()
+            adv = self._spawn_random_adventurer()
             if adv:
                 self.roster.append(adv)
         for _ in range(4):
@@ -178,21 +234,23 @@ class GameState:
             if basic:
                 self.roster.append(basic)
 
-        # Starting items (mix of scrap and common)
+        # Starting items (mix of scrap and common) — filtered by unlocks
         for _ in range(4):
-            item = self.item_registry.random_item('scrap')
+            item = self._spawn_random_item('scrap')
             if item:
                 self.inventory.append(item)
         for _ in range(7):
-            item = self.item_registry.random_item('common')
+            item = self._spawn_random_item('common')
             if item:
                 self.inventory.append(item)
         item = self.item_registry.create_copy('insect_bow')
-        
         if item:
             self.inventory.append(item)
+
         self.phase = GamePhase.PREPARATION
+        self.run_in_progress = True
         self.set_message("Welcome! Equip your adventurers and choose a deck to explore.")
+        self.autosave()
 
     # ---------------------------------------------------------------------
     # Status messages
@@ -207,6 +265,347 @@ class GameState:
             self.message_timer -= 1
             if self.message_timer == 0:
                 self.message = ""
+
+    # =====================================================================
+    # Unlock system
+    # =====================================================================
+
+    def is_character_unlocked(self, char_id: str) -> bool:
+        if self.debug_unlock_all:
+            return True
+        return char_id in self.unlocked_characters
+
+    def is_item_unlocked(self, item_id: str) -> bool:
+        if self.debug_unlock_all:
+            return True
+        return item_id in self.unlocked_items
+
+    def _allowed_character_ids(self) -> Optional[Set[str]]:
+        """Return None when debug overrides (no filter), else the unlocked set."""
+        if self.debug_unlock_all:
+            return None
+        return set(self.unlocked_characters)
+
+    def _allowed_item_ids(self) -> Optional[Set[str]]:
+        if self.debug_unlock_all:
+            return None
+        return set(self.unlocked_items)
+
+    def _spawn_random_adventurer(self) -> Optional[Adventurer]:
+        return self.adventurer_registry.random_adventurer(
+            allowed_ids=self._allowed_character_ids(),
+        )
+
+    def _spawn_random_item(self, rarity: Optional[str] = None) -> Optional[Item]:
+        return self.item_registry.random_item(
+            rarity, allowed_ids=self._allowed_item_ids(),
+        )
+
+    def reset_unlocks_to_starting(self):
+        """Reset meta-unlocks to the fresh-save baseline. Persists immediately."""
+        self.unlocked_characters = set(STARTING_CHARACTERS)
+        # Generic items (not in any deck-specific drop table) are unlocked
+        # from the start; deck-themed loot waits on deck clears.
+        deck_drop_ids: Set[str] = set()
+        for deck_data in self.deck_registry.decks.values():
+            deck_drop_ids.update(deck_data.get('drop_items', []))
+        all_item_ids = set(self.item_registry.all_ids())
+        self.unlocked_items = all_item_ids - deck_drop_ids
+        self.save_meta_to_disk()
+
+    def toggle_debug_unlock_all(self) -> bool:
+        """Flip the master debug unlock. Persists. Returns new state."""
+        self.debug_unlock_all = not self.debug_unlock_all
+        self.save_meta_to_disk()
+        return self.debug_unlock_all
+
+    def _unlock_for_boss_kill(self, deck_id: str) -> List[str]:
+        """Grant the character unlocks tied to defeating ``deck_id``'s boss.
+
+        Returns the list of newly-unlocked character ids (may be empty if
+        all were already unlocked).
+        """
+        granted: List[str] = []
+        for char_id in DECK_BOSS_UNLOCKS_CHARACTERS.get(deck_id, []):
+            if char_id not in self.unlocked_characters:
+                self.unlocked_characters.add(char_id)
+                granted.append(char_id)
+        if granted:
+            self.save_meta_to_disk()
+        return granted
+
+    def _unlock_for_deck_clear(self, deck_id: str) -> List[str]:
+        """Grant the item unlocks tied to fully clearing a deck.
+
+        Returns newly-unlocked item ids.
+        """
+        deck_data = self.deck_registry.decks.get(deck_id, {})
+        granted: List[str] = []
+        for item_id in deck_data.get('drop_items', []):
+            if item_id in self.item_registry.items and item_id not in self.unlocked_items:
+                self.unlocked_items.add(item_id)
+                granted.append(item_id)
+        if granted:
+            self.save_meta_to_disk()
+        return granted
+
+    # ---------------------------------------------------------------------
+    # Meta-progression persistence (separate from run save)
+    # ---------------------------------------------------------------------
+
+    def load_meta_from_disk(self):
+        """Pull unlocked_characters / unlocked_items / debug flag from save."""
+        data = save_manager.read_save()
+        if not data:
+            self.reset_unlocks_to_starting()
+            return
+        meta = data.get('meta') or {}
+        chars = meta.get('unlocked_characters')
+        items = meta.get('unlocked_items')
+        if isinstance(chars, list) and chars:
+            self.unlocked_characters = set(chars)
+        else:
+            self.unlocked_characters = set(STARTING_CHARACTERS)
+        if isinstance(items, list) and items:
+            self.unlocked_items = set(items)
+        else:
+            deck_drop_ids: Set[str] = set()
+            for deck_data in self.deck_registry.decks.values():
+                deck_drop_ids.update(deck_data.get('drop_items', []))
+            self.unlocked_items = set(self.item_registry.all_ids()) - deck_drop_ids
+        self.debug_unlock_all = bool(meta.get('debug_unlock_all', False))
+
+        # Always ensure starters are present even if save is corrupted
+        self.unlocked_characters |= STARTING_CHARACTERS
+
+    def save_meta_to_disk(self):
+        """Write just the meta block, preserving any in-progress run save."""
+        existing = save_manager.read_save() or {'version': save_manager.SAVE_VERSION}
+        existing.setdefault('version', save_manager.SAVE_VERSION)
+        existing['meta'] = {
+            'unlocked_characters': sorted(self.unlocked_characters),
+            'unlocked_items':      sorted(self.unlocked_items),
+            'debug_unlock_all':    self.debug_unlock_all,
+        }
+        save_manager.write_save(existing)
+
+    # =====================================================================
+    # Run state persistence
+    # =====================================================================
+
+    def has_resumable_run(self) -> bool:
+        return save_manager.has_in_progress_run()
+
+    def autosave(self):
+        """Persist the current run if we're at a stable phase.
+
+        Saves are only safe outside of an active combat row, because we
+        don't snapshot the transient front-row / back-row state. The
+        ``run_in_progress`` flag prevents saves on the main menu.
+        """
+        if not self.run_in_progress:
+            return
+        if self.phase in (GamePhase.MAIN_MENU, GamePhase.GAME_OVER):
+            return
+        existing = save_manager.read_save() or {'version': save_manager.SAVE_VERSION}
+        existing.setdefault('version', save_manager.SAVE_VERSION)
+        existing['meta'] = {
+            'unlocked_characters': sorted(self.unlocked_characters),
+            'unlocked_items':      sorted(self.unlocked_items),
+            'debug_unlock_all':    self.debug_unlock_all,
+        }
+        existing['run'] = self._serialize_run()
+        save_manager.write_save(existing)
+
+    def clear_run_save(self):
+        """Wipe the in-progress run file (meta-unlocks preserved)."""
+        save_manager.clear_run()
+        self.run_in_progress = False
+
+    # ----- Item / Adventurer / Deck serialization helpers -----
+
+    @staticmethod
+    def _item_to_dict(item: Item) -> dict:
+        return {
+            'id':       item.id,
+            'name':     item.name,
+            'keywords': list(item.keywords),
+            'points':   item.points,
+            'rarity':   item.rarity,
+            'slot':     item.slot,
+        }
+
+    @staticmethod
+    def _item_from_dict(data: dict) -> Item:
+        return Item(data.get('id', 'unknown'), {
+            'name':     data['name'],
+            'keywords': list(data.get('keywords', [])),
+            'points':   data.get('points', 0),
+            'rarity':   data.get('rarity', 'common'),
+            'slot':     data.get('slot', 'misc'),
+        })
+
+    def _adv_to_dict(self, adv: Adventurer) -> dict:
+        return {
+            'id':       adv.id,
+            'is_dead':  adv.is_dead,
+            'slots':    adv.slots,          # may have been increased by boss reward
+            'equipped': [self._item_to_dict(it) for it in adv.equipped_items],
+        }
+
+    def _adv_from_dict(self, data: dict) -> Optional[Adventurer]:
+        adv = self.adventurer_registry.create(data['id'])
+        if not adv:
+            # Template went missing - skip rather than crash the save
+            return None
+        adv.is_dead = bool(data.get('is_dead', False))
+        adv.slots = int(data.get('slots', adv.slots))
+        adv.equipped_items = [self._item_from_dict(d) for d in data.get('equipped', [])]
+        return adv
+
+    @staticmethod
+    def _monster_to_dict(m: Monster) -> dict:
+        return {
+            'name':        m.name,
+            'keywords':    list(m.keywords),
+            'base_points': m.base_points,
+        }
+
+    @staticmethod
+    def _monster_from_dict(d: dict) -> Monster:
+        return Monster(d['name'], list(d.get('keywords', [])), int(d.get('base_points', 0)))
+
+    def _deck_to_dict(self, deck: Deck) -> dict:
+        return {
+            'is_completed':      deck.is_completed,
+            'monsters_defeated': deck.monsters_defeated,
+            # round_monsters is empty at save points (PREPARATION / ROUND_END)
+            'monsters':          [self._monster_to_dict(m) for m in deck.monsters],
+        }
+
+    def _apply_deck_dict(self, deck: Deck, data: dict):
+        deck.is_completed = bool(data.get('is_completed', False))
+        deck.monsters_defeated = int(data.get('monsters_defeated', 0))
+        saved_monsters = data.get('monsters')
+        if isinstance(saved_monsters, list):
+            deck.monsters = [self._monster_from_dict(m) for m in saved_monsters]
+        deck.round_monsters = []
+
+    # ----- Whole-run serialization -----
+
+    def _serialize_run(self) -> dict:
+        # Map roster identity -> index for cross-references
+        ros_idx = {id(a): i for i, a in enumerate(self.roster)}
+
+        def adv_ref(adv: Optional[Adventurer]) -> Optional[int]:
+            return ros_idx.get(id(adv)) if adv is not None else None
+
+        return {
+            'phase':              self.phase.value,
+            'coins':              self.coins,
+            'shop_kills_snapshot': self.shop_kills_snapshot,
+            'first_match_done':   self.first_match_done,
+            'completed_decks':    sorted(self.completed_decks),
+
+            'inventory':          [self._item_to_dict(i) for i in self.inventory],
+            'shop_items':         [self._item_to_dict(i) for i in self.shop_items],
+            'dead_adv_loot':      [self._item_to_dict(i) for i in self.dead_adv_loot],
+
+            'roster':             [self._adv_to_dict(a) for a in self.roster],
+            'party_indices':      [adv_ref(a) for a in self.party if adv_ref(a) is not None],
+            'shop_adventurers':   [self._adv_to_dict(a) for a in self.shop_adventurers],
+
+            'last_king_slayer':   adv_ref(self.last_king_slayer),
+
+            'active_decks':       {
+                did: self._deck_to_dict(d) for did, d in self.active_decks.items()
+            },
+        }
+
+    def load_run_from_disk(self) -> bool:
+        """Try to restore an in-progress run. Returns True on success."""
+        data = save_manager.read_save()
+        if not data or not data.get('run'):
+            return False
+        run = data['run']
+
+        try:
+            # ---- Decks ----
+            self._initialize_decks()
+            for did, ddata in run.get('active_decks', {}).items():
+                if did in self.active_decks:
+                    self._apply_deck_dict(self.active_decks[did], ddata)
+            self.completed_decks = set(run.get('completed_decks', []))
+
+            # ---- Roster (referenced by index from party & last_king_slayer) ----
+            self.roster = []
+            for adv_data in run.get('roster', []):
+                adv = self._adv_from_dict(adv_data)
+                if adv:
+                    self.roster.append(adv)
+
+            self.party = []
+            for idx in run.get('party_indices', []):
+                if isinstance(idx, int) and 0 <= idx < len(self.roster):
+                    self.party.append(self.roster[idx])
+
+            slayer_idx = run.get('last_king_slayer')
+            if isinstance(slayer_idx, int) and 0 <= slayer_idx < len(self.roster):
+                self.last_king_slayer = self.roster[slayer_idx]
+            else:
+                self.last_king_slayer = None
+
+            # ---- Items / shop ----
+            self.inventory = [self._item_from_dict(d) for d in run.get('inventory', [])]
+            self.shop_items = [self._item_from_dict(d) for d in run.get('shop_items', [])]
+            self.dead_adv_loot = [self._item_from_dict(d) for d in run.get('dead_adv_loot', [])]
+            self.shop_adventurers = []
+            for adv_data in run.get('shop_adventurers', []):
+                adv = self._adv_from_dict(adv_data)
+                if adv:
+                    self.shop_adventurers.append(adv)
+
+            # ---- Scalars ----
+            self.coins = int(run.get('coins', 10))
+            self.shop_kills_snapshot = int(run.get('shop_kills_snapshot', 0))
+            self.first_match_done = bool(run.get('first_match_done', False))
+
+            # Resumed runs always land in PREPARATION; we never save mid-delve
+            # so any saved combat-phase value would be inconsistent anyway.
+            saved_phase = run.get('phase', GamePhase.PREPARATION.value)
+            try:
+                phase = GamePhase(saved_phase)
+            except ValueError:
+                phase = GamePhase.PREPARATION
+            if phase in (GamePhase.DELVE_SETUP, GamePhase.DELVE_RESULTS,
+                         GamePhase.BOSS_CHOICE, GamePhase.BOSS_RESULT):
+                phase = GamePhase.PREPARATION
+            self.phase = phase
+
+            # ---- Reset transient delve state ----
+            self.current_deck = None
+            self.current_monster = None
+            self.selected_adventurer = None
+            self.front_row = []
+            self.back_row = []
+            self.delve_loot = []
+            self.boss_square = None
+            self.boss_adventurer_index = -1
+            self.delve_inv_open = False
+            self.delve_recruit_open = False
+            self.rows_completed = 0
+            self.row_mult_base = 1
+            self.earned_multipliers = {}
+            self.hero_king = None
+            self.hero_dunce = None
+            self.last_combat_result = None
+
+            self.run_in_progress = True
+            self.set_message("Run resumed from save.")
+            return True
+        except (KeyError, TypeError, ValueError) as e:
+            print(f"[save] Failed to restore run: {e}")
+            return False
 
     # ---------------------------------------------------------------------
     # Keyword reference panel
@@ -223,7 +622,6 @@ class GameState:
             self.ref_scroll = 0
 
     def get_all_keywords_info(self) -> List[dict]:
-        """Get info about all keywords for the reference panel."""
         result = []
         for kw_id in sorted(self.keyword_registry.all_ids()):
             kw = self.keyword_registry.get(kw_id)
@@ -243,7 +641,6 @@ class GameState:
         return result
 
     def get_filtered_keywords(self, search: str) -> List[dict]:
-        """Get keywords filtered by search text."""
         all_kw = self.get_all_keywords_info()
         if not search:
             return all_kw
@@ -251,7 +648,6 @@ class GameState:
         return [kw for kw in all_kw if s in kw['name'].lower() or s in kw['id'].lower()]
 
     def get_deck_keywords_analysis(self, deck_id: str) -> dict:
-        """Analyze all keywords in a deck and what counters them."""
         deck = self.active_decks.get(deck_id)
         if not deck:
             return {'keywords': {}, 'effective_against': {}}
@@ -271,7 +667,6 @@ class GameState:
         return {'keywords': keyword_counts, 'effective_against': effective_against}
 
     def get_adventurer_keywords_analysis(self, adv: Adventurer) -> dict:
-        """Analyze an adventurer's keyword loadout: what they're weak/strong against."""
         keywords = adv.get_all_keywords()
         keyword_counts: Dict[str, int] = {}
         for kw_id in keywords:
@@ -294,7 +689,6 @@ class GameState:
         return {'keywords': keyword_counts, 'weak_to': weak_to, 'strong_against': strong_against}
 
     def compare_keyword_vs_adventurer(self, kw_id: str, adv: Adventurer) -> dict:
-        """Compare a single keyword against an adventurer's loadout."""
         adv_keywords = adv.get_all_keywords()
         kw = self.keyword_registry.get(kw_id)
 
@@ -343,7 +737,6 @@ class GameState:
         return True
 
     def equip_item(self, inventory_index: int, adv: Adventurer) -> bool:
-        """Equip an item from inventory to an adventurer."""
         if not (0 <= inventory_index < len(self.inventory)):
             return False
         if not adv.can_equip():
@@ -355,7 +748,6 @@ class GameState:
         return True
 
     def equip_item_obj(self, item: Item, adv: Adventurer) -> bool:
-        """Equip a specific item object from inventory to an adventurer."""
         if item not in self.inventory:
             return False
         if not adv.can_equip():
@@ -366,7 +758,6 @@ class GameState:
         return True
 
     def unequip_item(self, adv: Adventurer, item_index: int) -> bool:
-        """Unequip an item back to inventory."""
         if not (0 <= item_index < len(adv.equipped_items)):
             return False
         item = adv.equipped_items.pop(item_index)
@@ -374,7 +765,6 @@ class GameState:
         return True
 
     def sell_item(self, inventory_index: int) -> bool:
-        """Sell an item from inventory for coins (about half buy price)."""
         if not (0 <= inventory_index < len(self.inventory)):
             return False
         item = self.inventory[inventory_index]
@@ -386,7 +776,6 @@ class GameState:
         return True
 
     def sell_item_obj(self, item: Item) -> bool:
-        """Sell a specific item object from inventory."""
         if item not in self.inventory:
             return False
         idx = self.inventory.index(item)
@@ -397,7 +786,6 @@ class GameState:
         return sell_prices.get(item.rarity, 1)
 
     def get_filtered_inventory(self) -> List[Item]:
-        """Return inventory filtered by prep_inv_search (name or keyword match)."""
         if not self.prep_inv_search:
             return list(self.inventory)
         s = self.prep_inv_search.lower()
@@ -429,18 +817,16 @@ class GameState:
         return False
 
     def get_filtered_delve_items(self) -> List[Item]:
-        """Return merged delve_loot + inventory filtered by delve_item_search."""
         merged = list(self.delve_loot) + list(self.inventory)
         if not self.delve_item_search:
             return merged
         return [it for it in merged if self._matches_search(it, self.delve_item_search)]
 
     # ---------------------------------------------------------------------
-    # Shop — dead-adventurer loot (#2)
+    # Shop — dead-adventurer loot
     # ---------------------------------------------------------------------
 
     def buy_dead_adv_loot(self, index: int) -> bool:
-        """Buy an item that was lost by a dead adventurer."""
         if not (0 <= index < len(self.dead_adv_loot)):
             return False
         item = self.dead_adv_loot[index]
@@ -458,7 +844,6 @@ class GameState:
     # ---------------------------------------------------------------------
 
     def start_exploration(self, deck_id: str) -> bool:
-        """Begin a seamless delve into a deck."""
         if len(self.party) != 4:
             self.set_message("You need 4 adventurers in your party!")
             return False
@@ -477,7 +862,7 @@ class GameState:
         # Reset delve state
         self.delve_loot = []
         self.rows_completed = 0
-        self.row_mult_base = 1   # kept for compat, unused in king/dunce system
+        self.row_mult_base = 1
         self.boss_square = None
         self.boss_adventurer_index = -1
         self.delve_inv_open = False
@@ -486,7 +871,6 @@ class GameState:
         self.delve_selected_adv_idx = -1
         self.delve_item_search = ""
         self.delve_item_search_active = False
-        # earned_multipliers retained as a no-op for boss compat
         self.earned_multipliers = {adv: 1 for adv in self.party}
 
         # Build rows and assign monster king/dunce flags
@@ -501,25 +885,15 @@ class GameState:
         return True
 
     # ---------------------------------------------------------------------
-    # King / Dunce role assignment (new feature #6)
+    # King / Dunce role assignment
     # ---------------------------------------------------------------------
 
     def _assign_hero_roles_for_row(self):
-        """Set self.hero_king / self.hero_dunce for the upcoming row.
-
-        Rules:
-          - First combat match ever: no hero king, no hero dunce.
-          - After that: hero_king = whoever killed the previous king monster
-            (None if no king has been slain yet, or slayer is dead/gone).
-            hero_dunce = a random alive party member that ISN'T the king.
-        """
         if not self.first_match_done:
-            # Very first combat row of the entire game — no roles yet.
             self.hero_king = None
             self.hero_dunce = None
             return
 
-        # Hero king carries over from last king-slayer if still alive & in party
         if (self.last_king_slayer
                 and self.last_king_slayer in self.party
                 and not self.last_king_slayer.is_dead):
@@ -527,7 +901,6 @@ class GameState:
         else:
             self.hero_king = None
 
-        # Hero dunce: random alive party member that isn't the king
         candidates = [a for a in self.party
                       if not a.is_dead and a is not self.hero_king]
         self.hero_dunce = random.choice(candidates) if candidates else None
@@ -540,7 +913,7 @@ class GameState:
             monster = self.current_deck.round_monsters.pop(0)
             row.append({
                 'monster': monster,
-                'multiplier': 1,    # multipliers removed; kept as 1 for backward compat
+                'multiplier': 1,
                 'bonus': combat.generate_square_bonus(self.keyword_registry),
                 'adventurer': None,
                 'result': None,
@@ -548,7 +921,6 @@ class GameState:
                 'is_dunce': False,
             })
 
-        # King = strongest monster (by base_points).  Dunce = random other.
         if row:
             king_idx = max(range(len(row)),
                            key=lambda i: row[i]['monster'].base_points)
@@ -568,7 +940,6 @@ class GameState:
         return None
 
     def get_adventurer_multiplier(self, adv: Adventurer) -> int:
-        """Adventurer's earned multiplier (from last square they defeated)."""
         return self.earned_multipliers.get(adv, 1)
 
     def remove_adventurer_from_front(self, adv: Adventurer):
@@ -600,7 +971,6 @@ class GameState:
         return sum(1 for a in self.party if not a.is_dead)
 
     def all_alive_placed(self) -> bool:
-        """Every living adventurer is on a front-row square."""
         alive = self.count_alive_party()
         placed = self.count_front_placed()
         return placed >= min(alive, len(self.front_row))
@@ -617,7 +987,6 @@ class GameState:
             self.delve_inv_scroll = 0
 
     def delve_equip_item(self, item_index: int) -> bool:
-        """Equip an item from the currently selected source (loot or inventory)."""
         if not (0 <= self.delve_selected_adv_idx < len(self.party)):
             self.set_message("Select an adventurer first!")
             return False
@@ -633,7 +1002,6 @@ class GameState:
         return True
 
     def delve_equip_item_merged(self, merged_index: int) -> bool:
-        """Equip from merged loot+inventory list (delve_loot first, then inventory)."""
         if not (0 <= self.delve_selected_adv_idx < len(self.party)):
             self.set_message("Select an adventurer first!")
             return False
@@ -653,7 +1021,6 @@ class GameState:
         return True
 
     def delve_equip_item_obj(self, item: Item) -> bool:
-        """Equip a specific item from either delve_loot or inventory."""
         if not (0 <= self.delve_selected_adv_idx < len(self.party)):
             self.set_message("Select an adventurer first!")
             return False
@@ -671,7 +1038,6 @@ class GameState:
         return True
 
     def delve_unequip_item(self, adv_item_index: int) -> bool:
-        """Unequip an item — it goes to the delve loot pile."""
         if not (0 <= self.delve_selected_adv_idx < len(self.party)):
             return False
         adv = self.party[self.delve_selected_adv_idx]
@@ -689,16 +1055,13 @@ class GameState:
         self.delve_recruit_open = not self.delve_recruit_open
 
     def get_available_recruits(self) -> List[Adventurer]:
-        """Roster members not in the current party and not dead."""
         return [a for a in self.roster if a not in self.party and not a.is_dead]
 
     def party_needs_recruits(self) -> bool:
-        """Party has fewer than 4 alive AND there are recruits available."""
         alive_in_party = sum(1 for a in self.party if not a.is_dead)
         return alive_in_party < 4 and len(self.get_available_recruits()) > 0
 
     def delve_recruit(self, recruit_index: int) -> bool:
-        """Add a recruit from the available roster into the party mid-delve."""
         available = self.get_available_recruits()
         if not (0 <= recruit_index < len(available)):
             return False
@@ -717,10 +1080,8 @@ class GameState:
     # ---------------------------------------------------------------------
 
     def resolve_front_row(self):
-        """Run combat for every occupied square; track king-slayer; push lost items."""
         for sq in self.front_row:
             if sq['adventurer'] is not None:
-                # Pass hero king/dunce flags through to combat
                 adv = sq['adventurer']
                 adv_is_king  = (adv is self.hero_king)
                 adv_is_dunce = (adv is self.hero_dunce)
@@ -731,10 +1092,12 @@ class GameState:
                 sq['result'] = result
                 if result['victory']:
                     self.current_deck.record_kill()
-                    # Track king-slayer for next row's hero king (#6)
                     if sq.get('is_king'):
                         self.last_king_slayer = adv
-                    reward = self.current_deck.get_drop_item(self.item_registry)
+                    reward = self.current_deck.get_drop_item(
+                        self.item_registry,
+                        allowed_ids=self._allowed_item_ids(),
+                    )
                     if reward:
                         self.delve_loot.append(reward)
                         result['reward_item'] = reward
@@ -744,18 +1107,14 @@ class GameState:
                     adv.is_dead = True
                     lost = adv.equipped_items.copy()
                     result['lost_items'] = lost
-                    # Lost items go to the shop's dead-adv loot list (#2)
                     self.dead_adv_loot.extend(lost)
                     adv.equipped_items.clear()
-                    # If the dead adventurer was the previous king, clear that
                     if self.last_king_slayer is adv:
                         self.last_king_slayer = None
                     self.current_deck.return_monster(sq['monster'])
             else:
-                # Skipped square — monster goes back to deck
                 self.current_deck.return_monster(sq['monster'])
         self.rows_completed += 1
-        # First combat row complete — hero king/dunce now applies on subsequent rows
         self.first_match_done = True
         self.phase = GamePhase.DELVE_RESULTS
 
@@ -770,7 +1129,6 @@ class GameState:
         }
 
     def advance_row(self):
-        """Shift back row to front, build new back row, and possibly spawn boss."""
         for sq in self.front_row:
             sq['adventurer'] = None
 
@@ -788,13 +1146,10 @@ class GameState:
 
         if not self.front_row:
             if self.current_deck.is_empty():
-                self.current_deck.is_completed = True
-                self.completed_decks.add(self.current_deck.id)
+                self._mark_deck_completed(self.current_deck)
             self.end_exploration()
             return
 
-        # If this is the final row and there's more than one square, lift the
-        # last one into a boss slot.
         if not self.back_row and len(self.front_row) > 1 and not self.boss_square:
             bs = self.front_row.pop()
             self.boss_square = {
@@ -808,7 +1163,6 @@ class GameState:
 
         self.delve_inv_open = False
         self.delve_recruit_open = False
-        # Reassign hero roles now that the new row is built (#6)
         self._assign_hero_roles_for_row()
         self.phase = GamePhase.DELVE_SETUP
         self.set_message(
@@ -829,8 +1183,7 @@ class GameState:
             self.boss_adventurer_index = -1
         elif not self.back_row and not self.current_deck.round_monsters:
             if self.current_deck.is_empty():
-                self.current_deck.is_completed = True
-                self.completed_decks.add(self.current_deck.id)
+                self._mark_deck_completed(self.current_deck)
             self.end_exploration()
         else:
             self.advance_row()
@@ -866,14 +1219,28 @@ class GameState:
         if result['victory']:
             self.current_deck.record_kill()
             self._apply_boss_reward(adv, monster, result)
-            reward_item = self.current_deck.get_drop_item(self.item_registry)
+            reward_item = self.current_deck.get_drop_item(
+                self.item_registry,
+                allowed_ids=self._allowed_item_ids(),
+            )
             if reward_item:
                 self.delve_loot.append(reward_item)
                 result['reward_item'] = reward_item
             self.coins += 3
             result['reward_coins'] = 3
-            # Bosses count as kings too (#6)
             self.last_king_slayer = adv
+
+            # Boss-kill unlock (#new): permanently unlock any classes tied to
+            # this deck. Stash the names so the BOSS_RESULT screen can show
+            # them via the status message.
+            newly_unlocked = self._unlock_for_boss_kill(self.current_deck.id)
+            if newly_unlocked:
+                names = []
+                for cid in newly_unlocked:
+                    tmpl = self.adventurer_registry.get_template(cid)
+                    names.append(tmpl['name'] if tmpl else cid)
+                result['unlocked_classes'] = newly_unlocked
+                result['unlocked_classes_msg'] = "Unlocked: " + ", ".join(names) + "!"
         else:
             adv.is_dead = True
             lost = adv.equipped_items.copy()
@@ -888,7 +1255,6 @@ class GameState:
         self.phase = GamePhase.BOSS_RESULT
 
     def _apply_boss_reward(self, adv: Adventurer, monster: Monster, result: dict):
-        """Roll the boss-victory reward (slot, keyword steal, or stat bump)."""
         roll = random.random()
         if roll < 1 / 8:
             adv.slots += 1
@@ -911,7 +1277,6 @@ class GameState:
             self._apply_small_bonus(result)
 
     def _apply_small_bonus(self, result: dict):
-        """Add a small +points bonus to a random equipped or loot item."""
         candidates = list(result['adventurer'].equipped_items) + list(self.delve_loot)
         if candidates:
             target = random.choice(candidates)
@@ -935,6 +1300,22 @@ class GameState:
             self.advance_row()
         else:
             self.end_exploration()
+
+    # ---------------------------------------------------------------------
+    # Deck-clear bookkeeping (shared helper)
+    # ---------------------------------------------------------------------
+
+    def _mark_deck_completed(self, deck: Deck):
+        """Mark a deck completed, grant item unlocks, persist meta. Idempotent."""
+        first_time = not deck.is_completed
+        deck.is_completed = True
+        self.completed_decks.add(deck.id)
+        if first_time:
+            unlocked_items = self._unlock_for_deck_clear(deck.id)
+            if unlocked_items:
+                self.set_message(
+                    f"{deck.name} cleared! +{len(unlocked_items)} new items unlocked.", 300,
+                )
 
     # ---------------------------------------------------------------------
     # End of expedition
@@ -961,18 +1342,13 @@ class GameState:
         self.earned_multipliers = {}
 
         if self.current_deck and self.current_deck.is_empty() and not self.current_deck.is_completed:
-            self.current_deck.is_completed = True
-            self.completed_decks.add(self.current_deck.id)
+            self._mark_deck_completed(self.current_deck)
         if self.current_deck and self.current_deck.check_completion():
-            self.completed_decks.add(self.current_deck.id)
+            self._mark_deck_completed(self.current_deck)
 
-        # Auto-shop at end-of-delve removed (#5): regenerate shop stock
-        # (kill-gated) so it's ready in prep, but go straight to PREPARATION.
         self.generate_shop()
-        # Prune dead adventurers from roster and keep surviving party
         self.roster = [a for a in self.roster if not a.is_dead]
         self.party = [a for a in self.party if not a.is_dead]
-        # Drop hero-king tracking if that adv is gone
         if self.last_king_slayer and self.last_king_slayer not in self.roster:
             self.last_king_slayer = None
         self.phase = GamePhase.PREPARATION
@@ -981,14 +1357,17 @@ class GameState:
             self.set_message(f" {deck_name} has been permanently cleared!", 300)
         self.current_deck = None
 
-        # Did this clear all decks?  Or wipe out the roster?
         all_cleared = all(deck.is_completed for deck in self.active_decks.values())
         if all_cleared:
             self.phase = GamePhase.GAME_OVER
             self.set_message(" VICTORY! You\'ve cleared all dungeons!")
+            self.clear_run_save()
         elif len(self.roster) == 0:
             self.phase = GamePhase.GAME_OVER
             self.set_message("Game Over! No adventurers remain.")
+            self.clear_run_save()
+        else:
+            self.autosave()
 
     # ---------------------------------------------------------------------
     # Progress tracking
@@ -1001,16 +1380,6 @@ class GameState:
         return len(self.completed_decks)
 
     def get_shop_rarity_weights(self) -> Tuple[float, float, float, float]:
-        """Calculate shop rarity weights based on overall progress.
-
-        Returns (scrap, common, uncommon, rare).
-
-        Progression:
-        - Base: 30% scrap, 45% common, 20% uncommon, 5% rare
-        - Each kill adds slight improvement
-        - Each completed deck adds significant bonus
-        - Max (40+ kills, 6 decks): 5% scrap, 30% common, 40% uncommon, 25% rare
-        """
         total_kills = self.get_total_monsters_defeated()
         completed = self.get_completed_deck_count()
 
@@ -1026,12 +1395,6 @@ class GameState:
     # ---------------------------------------------------------------------
 
     def generate_shop(self):
-        """Generate shop offerings only when new monsters have been killed.
-
-        Feature #6: shop only refreshes if the kill count has increased since
-        the last time generate_shop produced a stock.  The adventurer list
-        always refreshes because it depends on roster health, not kills.
-        """
         current_kills = self.get_total_monsters_defeated()
         items_need_refresh = (not self.shop_items) or (current_kills > self.shop_kills_snapshot)
 
@@ -1045,7 +1408,7 @@ class GameState:
                     ['scrap', 'common', 'uncommon', 'rare'],
                     weights=[scrap_w, common_w, uncommon_w, rare_w],
                 )[0]
-                item = self.item_registry.random_item(rarity)
+                item = self._spawn_random_item(rarity)
                 if item:
                     self.shop_items.append(item)
 
@@ -1057,7 +1420,7 @@ class GameState:
         else:
             adv_count = random.randint(1, 2)
         for _ in range(adv_count):
-            adv = self.adventurer_registry.random_adventurer()
+            adv = self._spawn_random_adventurer()
             if adv:
                 self.shop_adventurers.append(adv)
 
@@ -1095,7 +1458,6 @@ class GameState:
         return True
 
     def end_shop_phase(self):
-        """End shopping; either start the next round, win, or game-over."""
         self.roster = [a for a in self.roster if not a.is_dead]
         self.party = []
 
@@ -1104,8 +1466,11 @@ class GameState:
         if all_cleared:
             self.phase = GamePhase.GAME_OVER
             self.set_message(" VICTORY! You've cleared all dungeons!")
+            self.clear_run_save()
         elif len(self.roster) == 0:
             self.phase = GamePhase.GAME_OVER
             self.set_message("Game Over! No adventurers remain.")
+            self.clear_run_save()
         else:
             self.phase = GamePhase.PREPARATION
+            self.autosave()

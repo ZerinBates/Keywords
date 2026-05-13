@@ -588,6 +588,17 @@ def draw_preparation_tooltip(screen, fonts, state, hover_pos: Tuple[int, int]):
             draw_item_tooltip(screen, fonts, state, adv.equipped_items[chip_idx], hover_pos)
             return
 
+    # --- Equipped items side panel (shared widget) ---
+    from .screens.preparation import STATS_RECT as _STATS_RECT
+    if (_STATS_RECT.collidepoint(hover_pos)
+            and 0 <= state.selected_party_index < len(state.party)):
+        adv = state.party[state.selected_party_index]
+        row_rects = getattr(state, '_prep_equipped_rows', []) or []
+        for item, rr in row_rects:
+            if rr.collidepoint(hover_pos):
+                draw_item_tooltip(screen, fonts, state, item, hover_pos)
+                return
+
     # --- Inventory rows (shared widget layout) ---
     if INV_PANEL_RECT.collidepoint(hover_pos):
         from .widgets import hit_test_item_list
@@ -632,19 +643,31 @@ def draw_preparation_tooltip(screen, fonts, state, hover_pos: Tuple[int, int]):
 def draw_delve_inv_tooltip(screen, fonts, state, hover_pos: Tuple[int, int]):
     """Hover tooltips when state.delve_inv_open is True.
 
-    Covers: adventurer rows in the left column, item chips on the centre
-    paper-doll card, and item rows in the right-column merged list.
+    Covers: adventurer rows in the left column, items in the equipped side
+    panel, item chips on the centre paper-doll card, and rows in the
+    right-column merged list.
     """
     from . import paper_doll
 
     PX, PY, PW, PH = 60, 40, 1160, 710
     col_top = PY + 55
     left_x = PX + 10
-    left_w = 250
-    center_x = left_x + left_w + 15
-    center_w = 370
+    left_w = 220
+    equip_x = left_x + left_w + 15
+    equip_w = 220
+    center_x = equip_x + equip_w + 10
+    center_w = 290
     right_x = center_x + center_w + 15
     right_w = PX + PW - right_x - 10
+
+    # --- Equipped items side panel: hover over a row → tooltip ---
+    if 0 <= state.delve_selected_adv_idx < len(state.party):
+        adv = state.party[state.delve_selected_adv_idx]
+        row_rects = getattr(state, '_delve_equipped_rows', []) or []
+        for item, rr in row_rects:
+            if rr.collidepoint(hover_pos):
+                draw_item_tooltip(screen, fonts, state, item, hover_pos)
+                return
 
     # --- Left column: party member rows ---
     party_row_h = 70

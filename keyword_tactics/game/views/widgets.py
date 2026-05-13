@@ -354,3 +354,189 @@ def draw_item_list_panel(screen, fonts, state, rect: pygame.Rect,
         'hovered_item': hovered_item,
         'max_scroll': max_scroll,
     }
+
+
+
+# ---------------------------------------------------------------------------
+# Shared "equipped items" side-panel
+# Used by both preparation and delve item screens so both behave identically.
+# ---------------------------------------------------------------------------
+
+# Friendly display names for slot types (covers all keys from items.json's
+# "_format" plus the 'misc' fallback)
+SLOT_DISPLAY_NAMES = {
+    'weapon':  'Weapon',
+    'hand':    'Off-hand',
+    'chest':   'Chest',
+    'head':    'Head',
+    'belt':    'Belt',
+    'cape':    'Cape',
+    'boots':   'Boots',
+    'float':   'Floating',
+    'misc':    'Misc',
+}
+
+# Colour for the slot tag (subtle but distinct from rarity/keyword chips)
+SLOT_TAG_COLOR = (140, 145, 175)
+
+
+def draw_equipped_items_panel(screen, fonts, state, rect: pygame.Rect,
+                              adv, paper_doll_module=None) -> List[Tuple[object, pygame.Rect]]:
+    """Render an "equipped items" side-panel for `adv`.
+
+    Layout (top -> bottom):
+      - Header: portrait thumbnail + name + KING/DUNCE badge
+      - Stats line (power = base × multiplier)
+      - Slots line
+      - Ability name (clickable hover area for full description)
+      - Divider
+      - One row per equipped item, showing thumbnail, name, slot type tag,
+        keyword chips, and points.  Clicking a row should call the caller's
+        unequip handler.
+
+    Returns a list of [(item, row_rect)] for click hit-testing.
+    """
+    # Panel background
+    pygame.draw.rect(screen, (30, 32, 44), rect, border_radius=8)
+    pygame.draw.rect(screen, COLORS['accent'], rect, 2, border_radius=8)
+
+    pad = 10
+    PORT = 44
+    # --- Header: portrait + name ---
+    if paper_doll_module is not None:
+        paper_doll_module.draw_adventurer_thumbnail(
+            screen, adv, rect.x + pad, rect.y + 12, PORT)
+    name_surf = fonts['medium'].render(adv.name, True, COLORS['text'])
+    screen.blit(name_surf, (rect.x + pad + PORT + 8, rect.y + 14))
+
+    # Role badge on header right
+    role_badge_y = rect.y + 14
+    if hasattr(state, 'hero_king') and adv is state.hero_king:
+        kb = fonts['small'].render("KING", True, COLORS['gold'])
+        screen.blit(kb, (rect.right - kb.get_width() - pad, role_badge_y))
+    elif hasattr(state, 'hero_dunce') and adv is state.hero_dunce:
+        kb = fonts['small'].render("DUNCE", True, COLORS['text_dim'])
+        screen.blit(kb, (rect.right - kb.get_width() - pad, role_badge_y))
+
+    # --- Power & slots ---
+    try:
+        base = adv.get_base_points()
+        mult = adv.get_multiplier()
+        power = base * mult
+        pwr_text = f"Power: {base} × {mult} = {power}"
+    except Exception:
+        pwr_text = f"Items: {len(adv.equipped_items)}/{adv.slots}"
+    screen.blit(fonts['small'].render(pwr_text, True, COLORS['success']),
+                (rect.x + pad, rect.y + 64))
+
+    used, total = len(adv.equipped_items), adv.slots
+    slot_c = COLORS['warning'] if used >= total else COLORS['text_dim']
+    screen.blit(fonts['small'].render(f"Slots: {used}/{total}", True, slot_c),
+                (rect.x + pad, rect.y + 86))
+
+    # Ability name (description comes via hover tooltip)
+    if getattr(adv, 'ability_name', None):
+        ab = adv.ability_name
+        if len(ab) > 28:
+            ab = ab[:27] + ".."
+        screen.blit(fonts['small'].render(ab, True, COLORS['accent']),
+                    (rect.x + pad, rect.y + 108))
+        # Hint that hover shows full description
+        hint = fonts['tiny'].render("(hover for details)", True, COLORS['text_dim'])
+        screen.blit(hint, (rect.x + pad, rect.y + 128))
+
+    # Divider
+    div_y = rect.y + 148
+    pygame.draw.line(screen, (60, 65, 80),
+                     (rect.x + pad, div_y), (rect.right - pad, div_y), 1)
+
+    # --- Equipped items header ---
+    hdr_text = "Equipped (click to unequip):"
+    screen.blit(fonts['small'].render(hdr_text, True, COLORS['warning']),
+                (rect.x + pad, div_y + 6))
+
+    # --- Item rows ---
+    ITEM_ROW_H = 38
+    list_top = div_y + 32
+    list_h = rect.bottom - list_top - 22
+    row_rects: List[Tuple[object, pygame.Rect]] = []
+
+    if not adv.equipped_items:
+        empty = fonts['small'].render("No items equipped", True, COLORS['text_dim'])
+        screen.blit(empty, (rect.x + pad, list_top + 8))
+        screen.blit(fonts['tiny'].render("× click any item to remove",
+                                          True, COLORS['text_dim']),
+                    (rect.x + pad, rect.bottom - 16))
+        return row_rects
+
+    max_visible = max(1, list_h // ITEM_ROW_H)
+    for j, item in enumerate(adv.equipped_items):
+        if j >= max_visible:
+            break
+        iy = list_top + j * ITEM_ROW_H
+        row_rect = pygame.Rect(rect.x + 4, iy, rect.w - 8, ITEM_ROW_H - 4)
+
+        bg = RARITY_ROW_BG.get(item.rarity, (40, 42, 50))
+        border = RARITY_BORDER.get(item.rarity, (100, 100, 110))
+        pygame.draw.rect(screen, bg, row_rect, border_radius=5)
+        pygame.draw.rect(screen, border, row_rect, 1, border_radius=5)
+
+        # Item thumbnail
+        if paper_doll_module is not None:
+            paper_doll_module.draw_item_thumbnail(
+                screen, item, row_rect.x + 4, row_rect.y + 4, 26)
+
+        # Item name (truncated)
+        iname = item.name
+        if len(iname) > 18:
+            iname = iname[:17] + ".."
+        screen.blit(fonts['small'].render(iname, True, COLORS['text']),
+                    (row_rect.x + 34, row_rect.y + 2))
+
+        # Keyword chips (one per keyword, coloured by keyword) — feature #1
+        kw_x = row_rect.x + 34
+        kw_y = row_rect.y + 20
+        for kw_id in item.keywords[:4]:
+            kw = state.keyword_registry.get(kw_id)
+            if not kw:
+                continue
+            label = kw.name[:7]
+            chip_text = fonts['tiny'].render(label, True, COLORS['bg'])
+            tag_w = chip_text.get_width() + 6
+            # Stop when we'd run into the points column on the right
+            if kw_x + tag_w > row_rect.right - 36:
+                break
+            pygame.draw.rect(screen, kw.color,
+                             (kw_x, kw_y, tag_w, 12), border_radius=2)
+            screen.blit(chip_text, (kw_x + 3, kw_y))
+            kw_x += tag_w + 3
+
+        # Points (top-right)
+        pts_surf = fonts['small'].render(f"+{item.points}", True, COLORS['gold'])
+        screen.blit(pts_surf,
+                    (row_rect.right - pts_surf.get_width() - 8, row_rect.y + 2))
+
+        # Mini × icon (bottom-right) — unequip affordance
+        x_surf = fonts['tiny'].render("×", True, COLORS['danger'])
+        screen.blit(x_surf,
+                    (row_rect.right - x_surf.get_width() - 8, row_rect.y + 20))
+
+        row_rects.append((item, row_rect))
+
+    # Footer hint
+    screen.blit(fonts['tiny'].render("× click any item to remove",
+                                      True, COLORS['text_dim']),
+                (rect.x + pad, rect.bottom - 16))
+
+    return row_rects
+
+
+def hit_test_equipped_panel(adv, row_rects: List[Tuple[object, pygame.Rect]],
+                            mouse_pos: Tuple[int, int]):
+    """Given the row_rects list from draw_equipped_items_panel, return the
+    (index, item) clicked, or (None, None)."""
+    for item, rr in row_rects:
+        if rr.collidepoint(mouse_pos):
+            if item in adv.equipped_items:
+                return adv.equipped_items.index(item), item
+    return None, None

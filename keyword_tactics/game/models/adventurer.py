@@ -1,7 +1,7 @@
 """Adventurer (player character) with equipment slots and special abilities."""
 
 import random
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from .item import Item
 from .keyword import KeywordRegistry
@@ -166,6 +166,9 @@ class AdventurerRegistry:
     def register(self, char_id: str, data: dict):
         self.templates[char_id] = data
 
+    def get_template(self, char_id: str) -> Optional[dict]:
+        return self.templates.get(char_id)
+
     def create(self, char_id: str) -> Optional[Adventurer]:
         data = self.templates.get(char_id)
         return Adventurer(char_id, data) if data else None
@@ -174,8 +177,25 @@ class AdventurerRegistry:
         for char_id, char_data in data.items():
             self.register(char_id, char_data)
 
-    def random_adventurer(self) -> Optional[Adventurer]:
-        if self.templates:
-            char_id = random.choice(list(self.templates.keys()))
-            return self.create(char_id)
-        return None
+    def all_ids(self) -> List[str]:
+        return list(self.templates.keys())
+
+    def random_adventurer(
+        self,
+        allowed_ids: Optional[Iterable[str]] = None,
+    ) -> Optional[Adventurer]:
+        """Pick a random adventurer template.
+
+        If ``allowed_ids`` is provided, only ids appearing in that collection
+        are eligible. Falls back to all templates if the filter excludes
+        everything (so the game never deadlocks on shop generation).
+        """
+        ids = list(self.templates.keys())
+        if allowed_ids is not None:
+            allowed = set(allowed_ids)
+            filtered = [i for i in ids if i in allowed]
+            if filtered:
+                ids = filtered
+        if not ids:
+            return None
+        return self.create(random.choice(ids))

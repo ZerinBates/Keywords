@@ -31,6 +31,10 @@ class InputHandler:
         # Hover position (used for tooltips by the renderer)
         self.hover_mouse_pos: Tuple[int, int] = (0, 0)
 
+        # Wipe-save click needs a confirmation step. Set True on the first
+        # click; second click within the same main-menu visit actually wipes.
+        self._wipe_armed: bool = False
+
     # ------------------------------------------------------------------
     # Convenience accessors
     # ------------------------------------------------------------------
@@ -65,10 +69,6 @@ class InputHandler:
 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 lpos = self.game.screen_to_logical(event.pos)
-                # Try to start a drag in drag-eligible phases.
-                # Guard: overlays cover the combat area, so don't start drags
-                # while they're open (clicking in the overlay would otherwise
-                # also pick up adventurers from the underlying tray/squares).
                 if self.state.phase == GamePhase.DELVE_SETUP:
                     overlays_open = (self.state.delve_inv_open or
                                      self.state.delve_recruit_open)
@@ -80,7 +80,6 @@ class InputHandler:
                 elif self.state.phase == GamePhase.BOSS_CHOICE:
                     if self._try_start_drag_party_boss(lpos):
                         continue
-                # Normal click
                 self._handle_click(event, lpos)
 
             elif event.type == pygame.MOUSEMOTION:
@@ -106,12 +105,8 @@ class InputHandler:
 
     def _try_start_drag_party(self, pos, party_y, card_w, card_h, card_spacing,
                               card_x_start) -> bool:
-        """Try to start dragging an adventurer card from the party tray.
-        Also allows picking up adventurers from front-row squares.
-        """
         px, py = pos
         if py < party_y or py > party_y + card_h:
-            # Could still pick up from front row even outside the party tray
             pass
         else:
             for i, adv in enumerate(self.state.party):
@@ -121,7 +116,6 @@ class InputHandler:
                     self._begin_drag(i, pos, card_rect)
                     return True
 
-        # Allow picking up from front-row squares (drag a placed adventurer back)
         square_rects = [
             pygame.Rect(20, 128, 300, 200),
             pygame.Rect(330, 128, 300, 200),
@@ -140,7 +134,6 @@ class InputHandler:
         return False
 
     def _try_start_drag_party_boss(self, pos) -> bool:
-        """Start dragging an adventurer card during boss choice."""
         x = 30
         for i, adv in enumerate(self.state.party):
             if adv.is_dead:
@@ -160,7 +153,6 @@ class InputHandler:
         self.drag_source_rect = source_rect
 
     def _handle_drop(self, pos):
-        """Handle dropping a dragged adventurer card."""
         if self.state.phase == GamePhase.DELVE_SETUP:
             square_rects = [
                 pygame.Rect(20, 128, 300, 200),
@@ -186,7 +178,6 @@ class InputHandler:
     # ------------------------------------------------------------------
 
     def _handle_scroll(self, event, mouse_pos):
-        # Reference panel scroll
         if self.state.ref_panel_open:
             panel_rect = pygame.Rect(20, 100, 400, 550)
             if panel_rect.collidepoint(mouse_pos):
@@ -196,15 +187,16 @@ class InputHandler:
                 self.state.ref_scroll = max(0, min(self.state.ref_scroll, max_scroll))
                 return
 
-        # Delve inventory panel scroll (right-column item list)
         if self.state.delve_inv_open:
             from ..views import widgets as _w
             PX, PY, PW, PH = 60, 40, 1160, 710
             col_top = PY + 55
             left_x = PX + 10
-            left_w = 250
-            center_x = left_x + left_w + 15
-            center_w = 370
+            left_w = 220
+            equip_x = left_x + left_w + 15
+            equip_w = 220
+            center_x = equip_x + equip_w + 10
+            center_w = 290
             right_x = center_x + center_w + 15
             right_w = PX + PW - right_x - 10
             right_h = PY + PH - col_top - 50
@@ -217,7 +209,6 @@ class InputHandler:
 
             list_rect = pygame.Rect(right_x, list_top, right_w, list_h)
             if list_rect.collidepoint(mouse_pos):
-                # Merged + search-filtered source
                 merged = self.state.get_filtered_delve_items()
                 self.state.delve_inv_scroll -= event.y
                 max_scroll = max(0, len(merged) - visible_count)
@@ -245,31 +236,35 @@ class InputHandler:
     # ------------------------------------------------------------------
 
     def _handle_click(self, event, mouse_pos):
-        # Tutorial UI takes priority — its Next/Back/X are drawn rectangles,
-        # not Button objects, so they need a dedicated hit-test before the
-        # normal button loop.
         if self.game.tutorial.active and self._handle_tutorial_click(mouse_pos):
             return
 
-        # Buttons first
+        # Any click that isn't on the Wipe Save button itself disarms the wipe
+        # confirmation. We detect this here by clearing the flag if the click
+        # doesn't get consumed by a Wipe Save button below.
+        wipe_was_armed = self._wipe_armed
+
         for button in self.game.buttons:
             if button.is_clicked(event):
                 self._handle_button_click(button)
+                if button.text != "Wipe Save" and wipe_was_armed:
+                    self._wipe_armed = False
                 return
 
-        # Reference panel
+        if wipe_was_armed:
+            self._wipe_armed = False
+
         if self.state.ref_panel_open:
             if self._handle_ref_panel_click(mouse_pos):
                 return
 
-        # Phase-specific
         phase = self.state.phase
         if phase == GamePhase.PREPARATION:
             self._handle_preparation_click(mouse_pos)
         elif phase == GamePhase.DELVE_SETUP:
             self._handle_delve_click(mouse_pos)
         elif phase == GamePhase.DELVE_RESULTS:
-            self._handle_delve_click(mouse_pos)  # Inventory panel works during results too
+            self._handle_delve_click(mouse_pos)
         elif phase == GamePhase.BOSS_CHOICE:
             self._handle_boss_choice_click(mouse_pos)
         elif phase == GamePhase.ROUND_END:
@@ -280,7 +275,37 @@ class InputHandler:
         s = self.state
 
         if text == "New Game":
+            # Starting fresh wipes any in-progress run save (meta unlocks
+            # are preserved). Then new_game() rebuilds + autosaves.
+            s.clear_run_save()
             s.new_game()
+        elif text == "Continue":
+            # The MAIN_MENU "Continue" loads the run save; the in-game
+            # "Continue" buttons advance combat / boss flow.
+            if s.phase == GamePhase.MAIN_MENU:
+                if not s.load_run_from_disk():
+                    s.set_message("No save to resume.")
+            elif s.phase == GamePhase.DELVE_RESULTS:
+                s.proceed_after_results()
+            elif s.phase == GamePhase.BOSS_RESULT:
+                s.continue_after_boss()
+        elif text in ("Debug: ON", "Debug: OFF"):
+            now_on = s.toggle_debug_unlock_all()
+            s.set_message(
+                "Debug unlocks ON — everything available." if now_on
+                else "Debug unlocks OFF.",
+            )
+        elif text == "Wipe Save":
+            if not self._wipe_armed:
+                self._wipe_armed = True
+                s.set_message("Click Wipe Save again to confirm.")
+            else:
+                from .save_manager import wipe_everything
+                wipe_everything()
+                s.reset_unlocks_to_starting()
+                s.run_in_progress = False
+                self._wipe_armed = False
+                s.set_message("Save wiped. All unlocks reset.")
         elif text == "Quit":
             self.game.running = False
         elif text in ["Fullscreen", "Windowed"]:
@@ -292,25 +317,19 @@ class InputHandler:
                 s.phase = GamePhase.DECK_SELECT
             else:
                 s.set_message("Add adventurers to party first!")
-        elif text == "Back":
+        elif text == "Back" and s.phase == GamePhase.DECK_SELECT:
             s.phase = GamePhase.PREPARATION
         elif text == "Enter":
             if hasattr(button, 'deck_id'):
                 s.start_exploration(button.deck_id)
         elif text.startswith("Enter "):
-            # Legacy support
             for did in s.deck_registry.all_ids():
                 if did.replace("_", " ") in text.lower() or text.lower().replace("enter ", "") in did:
                     s.start_exploration(did)
                     break
-        elif text == "Continue":
-            if s.phase == GamePhase.DELVE_RESULTS:
-                s.proceed_after_results()
-            elif s.phase == GamePhase.BOSS_RESULT:
-                s.continue_after_boss()
         elif text == "FIGHT!":
             s.resolve_front_row()
-        elif text == "Items":
+        elif text == "Items" or text == "Back":
             s.toggle_delve_inventory()
             s.delve_recruit_open = False
         elif text == "Recruit":
@@ -337,27 +356,18 @@ class InputHandler:
     # ------------------------------------------------------------------
 
     def _handle_tutorial_click(self, mouse_pos) -> bool:
-        """Hit-test Spark's fairy and bubble buttons.
-
-        Returns True if the click was consumed (so the rest of the click
-        pipeline should stop). Imports the rect helpers locally to avoid
-        a hard dependency at module load time — if the tutorial overlay
-        module is missing, tutorial just won't function but won't crash.
-        """
         from ..views.tutorial_overlay import (
             get_fairy_rect, get_bubble_rect, get_bubble_close_rect,
             get_bubble_next_rect, get_bubble_prev_rect,
         )
         tut = self.game.tutorial
 
-        # Minimized: only the fairy is clickable, and it reopens the bubble.
         if tut.minimized:
             if get_fairy_rect().collidepoint(mouse_pos):
                 tut.reopen()
                 return True
             return False
 
-        # Bubble open — check buttons in priority order.
         if not tut.has_messages_for_current_phase():
             return False
         if get_bubble_close_rect().collidepoint(mouse_pos):
@@ -373,7 +383,6 @@ class InputHandler:
             tut.toggle_minimized()
             return True
         if get_bubble_rect().collidepoint(mouse_pos):
-            # Click anywhere else inside the bubble — advance.
             tut.advance()
             return True
         return False
@@ -383,7 +392,6 @@ class InputHandler:
     # ------------------------------------------------------------------
 
     def _handle_ref_panel_click(self, mouse_pos) -> bool:
-        """Returns True if the click was inside the reference panel."""
         panel_rect = pygame.Rect(20, 100, 400, 550)
         if not panel_rect.collidepoint(mouse_pos):
             return False
@@ -391,7 +399,6 @@ class InputHandler:
         x, y = mouse_pos
         s = self.state
 
-        # Keyword list area (scrollable)
         list_area = pygame.Rect(30, 180, 180, 300)
         if list_area.collidepoint(mouse_pos):
             y_offset = y - 180 + s.ref_scroll * 25
@@ -405,7 +412,6 @@ class InputHandler:
                     s.ref_selected_keyword = clicked_kw['id']
             return True
 
-        # Adventurer selection
         adv_area = pygame.Rect(220, 180, 190, 200)
         if adv_area.collidepoint(mouse_pos):
             y_offset = y - 180
@@ -419,7 +425,6 @@ class InputHandler:
                     s.ref_selected_adventurer = clicked_adv
             return True
 
-        # Deck selection
         deck_area = pygame.Rect(220, 390, 190, 150)
         if deck_area.collidepoint(mouse_pos):
             y_offset = y - 390
@@ -433,7 +438,6 @@ class InputHandler:
                     s.ref_selected_deck_id = clicked_deck
             return True
 
-        # Clear selections
         clear_area = pygame.Rect(30, 550, 100, 25)
         if clear_area.collidepoint(mouse_pos):
             s.ref_selected_keyword = None
@@ -442,19 +446,17 @@ class InputHandler:
             s.ref_search_text = ""
             return True
 
-        return True  # Click was in panel but not on specific element
+        return True
 
     # ------------------------------------------------------------------
     # Keyboard
     # ------------------------------------------------------------------
 
     def _handle_keypress(self, event):
-        # F11 toggles fullscreen anytime
         if event.key == pygame.K_F11:
             self.game.toggle_fullscreen()
             return
 
-        # Reference panel text input
         if self.state.ref_panel_open:
             if event.key == pygame.K_BACKSPACE:
                 self.state.ref_search_text = self.state.ref_search_text[:-1]
@@ -464,7 +466,6 @@ class InputHandler:
                 self.state.ref_search_text += event.unicode
             return
 
-        # Preparation inventory search text input
         if (self.state.phase == GamePhase.PREPARATION
                 and self.state.prep_inv_search_active):
             if event.key == pygame.K_BACKSPACE:
@@ -479,7 +480,6 @@ class InputHandler:
                 self.state.inventory_scroll = 0
             return
 
-        # Delve inventory panel search text input
         if (self.state.delve_inv_open
                 and self.state.delve_item_search_active):
             if event.key == pygame.K_BACKSPACE:
@@ -498,7 +498,6 @@ class InputHandler:
             if self.state.phase == GamePhase.DECK_SELECT:
                 self.state.phase = GamePhase.PREPARATION
         elif event.key == pygame.K_TAB:
-            # Quick toggle for the reference panel
             if self.state.phase not in (GamePhase.MAIN_MENU, GamePhase.GAME_OVER):
                 self.state.toggle_ref_panel()
 
@@ -513,11 +512,9 @@ class InputHandler:
             STATS_RECT, CARD_RECT, SHOP_RECT, SHOP_ITEM_ROW_H,
         )
 
-        # Deactivate search when clicking outside the inventory area
         if not INV_PANEL_RECT.collidepoint(mouse_pos):
             s.prep_inv_search_active = False
 
-        # ---- Roster ----
         if ROSTER_RECT.collidepoint(mouse_pos):
             y_offset = mouse_pos[1] - (ROSTER_RECT.y + 30)
             if y_offset >= 0:
@@ -527,7 +524,6 @@ class InputHandler:
                     if not adv.is_dead and adv not in s.party:
                         s.add_to_party(index)
 
-        # ---- Party ----
         elif PARTY_RECT.collidepoint(mouse_pos):
             y_offset = mouse_pos[1] - (PARTY_RECT.y + 30)
             if y_offset >= 0:
@@ -538,7 +534,6 @@ class InputHandler:
                     else:
                         s.selected_party_index = index
 
-        # ---- Inventory (uses shared widgets.draw_item_list_panel layout) ----
         elif INV_PANEL_RECT.collidepoint(mouse_pos):
             from ..views import widgets as _w
             header_rect, search_rect, list_rect = _w.get_item_list_geometry(INV_PANEL_RECT)
@@ -556,17 +551,15 @@ class InputHandler:
                         adv = s.party[s.selected_party_index]
                         s.equip_item_obj(item, adv)
 
-        # ---- Stats panel item list — click to unequip (left panel) ----
         elif STATS_RECT.collidepoint(mouse_pos) and 0 <= s.selected_party_index < len(s.party):
             adv = s.party[s.selected_party_index]
-            item_start_y = STATS_RECT.y + 168
-            y_offset = mouse_pos[1] - item_start_y
-            if y_offset >= 0:
-                idx = y_offset // 28
-                if 0 <= idx < len(adv.equipped_items):
+            row_rects = getattr(s, '_prep_equipped_rows', []) or []
+            for item, rr in row_rects:
+                if rr.collidepoint(mouse_pos) and item in adv.equipped_items:
+                    idx = adv.equipped_items.index(item)
                     s.unequip_item(adv, idx)
+                    return
 
-        # ---- Equipment panel — chip-based unequip via paper doll (right card) ----
         elif CARD_RECT.collidepoint(mouse_pos) and s.selected_party_index >= 0:
             if s.selected_party_index < len(s.party):
                 adv = s.party[s.selected_party_index]
@@ -574,23 +567,17 @@ class InputHandler:
                 if idx is not None:
                     s.unequip_item(adv, idx)
 
-        # ---- Shop panel (#5): buy item ----
         elif SHOP_RECT.collidepoint(mouse_pos):
             self._handle_prep_shop_click(mouse_pos, SHOP_RECT, SHOP_ITEM_ROW_H)
 
     def _handle_prep_shop_click(self, mouse_pos, shop_rect, row_h):
-        """Handle clicks inside the embedded preparation shop panel.
-
-        Items section merges state.shop_items (refreshed-on-kill stock)
-        with state.dead_adv_loot (items recovered from fallen heroes).
-        """
         s = self.state
         sx, sy = shop_rect.x, shop_rect.y
 
         merged = [(it, False) for it in s.shop_items] + \
                  [(it, True)  for it in s.dead_adv_loot]
 
-        items_y_start = sy + 34 + 20  # title row + items header
+        items_y_start = sy + 34 + 20
         if merged:
             for i, (item, is_fallen) in enumerate(merged):
                 iy = items_y_start + i * row_h
@@ -600,7 +587,6 @@ class InputHandler:
                                        shop_rect.w - 8, row_h - 4)
                 if row_rect.collidepoint(mouse_pos):
                     if is_fallen:
-                        # find this item's index in dead_adv_loot
                         try:
                             dl_idx = s.dead_adv_loot.index(item)
                             s.buy_dead_adv_loot(dl_idx)
@@ -614,7 +600,6 @@ class InputHandler:
                             pass
                     return
 
-        # Adventurers section (after items + their header)
         adv_y_start = items_y_start + len(merged) * row_h if merged else sy + 34
         adv_y_start += 20
         for i, adv in enumerate(s.shop_adventurers):
@@ -628,17 +613,17 @@ class InputHandler:
                 return
 
     def _handle_delve_click(self, mouse_pos):
-        """Clicks during delve phases - mainly for the inventory & recruit overlays."""
         s = self.state
 
         if s.delve_inv_open:
-            # Layout constants must match the inventory panel renderer
             PX, PY, PW, PH = 60, 40, 1160, 710
             col_top = PY + 55
             left_x = PX + 10
-            left_w = 250
-            center_x = left_x + left_w + 15
-            center_w = 370
+            left_w = 220
+            equip_x = left_x + left_w + 15
+            equip_w = 220
+            center_x = equip_x + equip_w + 10
+            center_w = 290
             right_x = center_x + center_w + 15
             right_w = PX + PW - right_x - 10
 
@@ -646,7 +631,6 @@ class InputHandler:
             adv_gap = 6
             adv_y_start = col_top + 32
 
-            # Adventurer selection (left column)
             for i, adv in enumerate(s.party):
                 cy = adv_y_start + i * (adv_card_h + adv_gap)
                 adv_rect = pygame.Rect(left_x, cy, left_w, adv_card_h)
@@ -654,20 +638,32 @@ class InputHandler:
                     s.delve_selected_adv_idx = i
                     return
 
-            # Equipped items (center column - click to unequip)
+            equip_rect = pygame.Rect(equip_x, col_top, equip_w,
+                                     PY + PH - col_top - 10)
+            if equip_rect.collidepoint(mouse_pos):
+                if 0 <= s.delve_selected_adv_idx < len(s.party):
+                    adv = s.party[s.delve_selected_adv_idx]
+                    row_rects = getattr(s, '_delve_equipped_rows', []) or []
+                    for item, rr in row_rects:
+                        if rr.collidepoint(mouse_pos) and item in adv.equipped_items:
+                            idx = adv.equipped_items.index(item)
+                            s.delve_unequip_item(idx)
+                            return
+                return
+
             if 0 <= s.delve_selected_adv_idx < len(s.party):
                 adv = s.party[s.delve_selected_adv_idx]
-                equip_y_start = col_top + 75 + 22
-                item_h = 48
-                item_gap = 5
-                for j in range(len(adv.equipped_items)):
-                    iy = equip_y_start + j * (item_h + item_gap)
-                    item_rect = pygame.Rect(center_x, iy, center_w, item_h)
-                    if item_rect.collidepoint(mouse_pos):
-                        s.delve_unequip_item(j)
+                card_x = center_x + (center_w - paper_doll.CARD_W) // 2
+                card_y = col_top + 30
+                card_rect = pygame.Rect(card_x, card_y,
+                                        paper_doll.CARD_W, paper_doll.CARD_H)
+                if card_rect.collidepoint(mouse_pos):
+                    chip_idx = paper_doll.hit_test_chip(
+                        card_x, card_y, mouse_pos, adv)
+                    if chip_idx is not None and 0 <= chip_idx < len(adv.equipped_items):
+                        s.delve_unequip_item(chip_idx)
                         return
 
-            # Available items right-column panel: shared widget layout
             from ..views import widgets as _w
             right_h = PY + PH - col_top - 50
             right_rect = pygame.Rect(right_x, col_top, right_w, right_h)
@@ -675,7 +671,6 @@ class InputHandler:
             if search_rect.collidepoint(mouse_pos):
                 s.delve_item_search_active = True
                 return
-            # Click outside search → deactivate
             s.delve_item_search_active = False
 
             filtered = s.get_filtered_delve_items()
@@ -685,7 +680,7 @@ class InputHandler:
                 s.delve_equip_item_obj(item)
                 return
 
-            return  # Consumed click inside panel
+            return
 
         if s.delve_recruit_open:
             available = s.get_available_recruits()
@@ -709,7 +704,6 @@ class InputHandler:
     def _handle_shop_click(self, mouse_pos):
         s = self.state
 
-        # Shop items
         items_panel = pygame.Rect(20, 100, 600, 350)
         if items_panel.collidepoint(mouse_pos):
             y_offset = mouse_pos[1] - 140
@@ -718,7 +712,6 @@ class InputHandler:
                 if 0 <= index < len(s.shop_items):
                     s.buy_shop_item(index)
 
-        # Shop adventurers
         adv_panel = pygame.Rect(650, 100, 600, 350)
         if adv_panel.collidepoint(mouse_pos):
             y_offset = mouse_pos[1] - 140
