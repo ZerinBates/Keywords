@@ -1,414 +1,388 @@
 {
-    "_comment": "Tactical Deck Builder Keyword Registry - Updated with Triangle Weaknesses",
-    "_triangles": [
-        "1. Fire > Ice > Wind > Fire (fire melts ice, ice freezes air, wind fans flames)",
-        "2. Fire > Water > Earth > Fire (water quenches fire, earth absorbs water, fire scorches earth)",
-        "3. Fire > Water > Thunder > Fire (water douses fire, thunder shocks water, fire overpowers thunder)",
-        "4. Nature > Fire > Water > Nature (fire burns nature, water douses fire, water nourishes nature)",
-        "5. Metal > Thunder > Earth > Metal (thunder shocks metal, earth grounds thunder, metal is forged from earth)",
-        "6. Ice > Fire > Nature > Ice (fire melts ice, nature smothers fire, ice kills plants)",
-        "7. Poison > Nature > Ice > Poison (poison kills plants, nature breaks through ice, ice neutralizes poison)",
-        "8. Beast > Humanoid > Plant > Beast (beasts hunt humans, humans harvest plants, plants entangle beasts)",
-        "9. Light > Undead > Darkness > Light (light destroys undead, undead consume darkness, darkness consumes light)",
-        "10. Dragon > Knight > Beast > Dragon (dragons overpower knights, knights slay beasts, beasts overwhelm dragons)",
-        "11. Insect > Plant > Fire > Insect (insects devour plants, plants smother fire, fire burns swarms)",
-        "12. Warrior > Mage > Assassin > Warrior (warriors rush mages, mages detect assassins, assassins ambush warriors)",
-        "13. Knight > Guardian > Assassin > Knight (knights break guards, guardians block assassins, assassins bypass armor)",
-        "14. Ranger > Mage > Berserker > Ranger (rangers outrange mages, mages control berserkers, berserkers close on rangers)",
-        "15. Monk > Warlock > Paladin > Monk (monks resist dark magic, warlocks corrupt holy power, paladins smite monks)",
-        "16. Arcane > Divine > Occult > Arcane (arcane counters faith, divine banishes darkness, occult corrupts arcane)",
-        "17. Illusion > Psionic > Blood > Illusion (illusions fool minds, psionics overpower blood, blood breaks illusions)",
-        "18. Divine > Necromancy > Blood > Divine (divine purifies undead, necromancy corrupts blood, blood sacrifice corrupts divine)",
-        "19. Angel > Demon > Void > Angel (angels smite demons, demons thrive in void, void erases angels)",
-        "20. Spirit > Monk > Demon > Spirit (monks exorcise spirits, demons corrupt monks, spirits haunt demons)",
-        "21. Engineer > Construct > Thunder > Engineer (engineers control constructs, constructs absorb thunder, thunder fries tools)",
-        "22. Shield > Hammer > Sword > Shield (shields block swords, hammers crush shields, swords outmaneuver hammers)",
-        "23. Bow > Fist > Dagger > Bow (bows outrange fists, fists overpower daggers, daggers close on archers)"
-    ],
-
+    "_comment": "Tactical Deck Builder Keyword Registry - Complete Single Weakness Logic",
     "fire": {
         "name": "Fire",
         "color": [255, 69, 0],
-        "weak_against": ["water", "earth", "darkness", "void", "time", "space", "arcane", "alchemy", "guardian", "shield", "dragon", "angel", "demon", "spirit", "book", "staff", "paladin", "king", "wind", "nature", "plant"]
+        "weak_against": ["water"]
     },
     "water": {
         "name": "Water",
         "color": [30, 144, 255],
-        "weak_against": ["ice", "earth", "wind", "darkness", "void", "time", "space", "arcane", "alchemy", "shield", "metal", "dragon", "angel", "demon", "spirit", "book", "staff", "paladin", "king", "thunder", "nature"]
+        "weak_against": ["thunder"]
     },
     "ice": {
         "name": "Ice",
         "color": [173, 216, 230],
-        "weak_against": ["earth", "darkness", "void", "space", "arcane", "alchemy", "guardian", "shield", "construct", "metal", "dragon", "angel", "spirit", "book", "staff", "paladin", "engineer", "king", "fire", "nature"]
+        "weak_against": ["fire"]
     },
     "thunder": {
         "name": "Thunder",
         "color": [255, 215, 0],
-        "weak_against": ["ice", "earth", "wind", "darkness", "void", "time", "space", "arcane", "alchemy", "dragon", "angel", "demon", "spirit", "book", "staff", "paladin", "king", "fire", "construct"]
+        "weak_against": ["earth"]
     },
     "earth": {
         "name": "Earth",
         "color": [139, 69, 19],
-        "weak_against": ["water", "ice", "darkness", "void", "time", "space", "arcane", "alchemy", "guardian", "shield", "construct", "dragon", "angel", "demon", "spirit", "book", "staff", "paladin", "engineer", "king", "fire", "metal"]
+        "weak_against": ["nature"]
     },
     "wind": {
         "name": "Wind",
         "color": [240, 255, 240],
-        "weak_against": ["water", "ice", "darkness", "void", "time", "space", "arcane", "alchemy", "construct", "metal", "dragon", "angel", "demon", "book", "staff", "paladin", "engineer", "king"]
+        "weak_against": ["earth"]
     },
     "nature": {
         "name": "Nature",
         "color": [34, 139, 34],
-        "weak_against": ["ice", "darkness", "void", "time", "space", "arcane", "alchemy", "guardian", "shield", "construct", "metal", "dragon", "angel", "demon", "book", "staff", "paladin", "engineer", "king", "fire", "poison"]
+        "weak_against": ["fire"]
     },
     "metal": {
         "name": "Metal",
         "color": [192, 192, 192],
-        "weak_against": ["water", "darkness", "void", "time", "space", "arcane", "alchemy", "guardian", "shield", "dragon", "angel", "demon", "spirit", "book", "staff", "paladin", "engineer", "king", "thunder"]
+        "weak_against": ["fire"]
     },
     "light": {
         "name": "Light",
         "color": [255, 255, 224],
-        "weak_against": ["water", "ice", "earth", "wind", "void", "time", "space", "alchemy", "guardian", "shield", "construct", "metal", "dragon", "spirit", "book", "staff", "engineer", "king", "darkness"]
+        "weak_against": ["darkness"]
     },
     "darkness": {
         "name": "Darkness",
         "color": [75, 0, 130],
-        "weak_against": ["water", "ice", "earth", "wind", "time", "arcane", "alchemy", "guardian", "shield", "construct", "metal", "dragon", "angel", "spirit", "book", "staff", "paladin", "engineer", "king", "undead"]
+        "weak_against": ["light"]
     },
     "poison": {
         "name": "Poison",
         "color": [128, 0, 128],
-        "weak_against": ["water", "ice", "earth", "wind", "void", "time", "space", "arcane", "guardian", "shield", "construct", "metal", "dragon", "angel", "spirit", "book", "staff", "paladin", "engineer", "king"]
+        "weak_against": ["alchemy"]
     },
     "steam": {
         "name": "Steam",
         "color": [245, 245, 245],
-        "weak_against": ["ice", "earth", "darkness", "void", "time", "space", "arcane", "alchemy", "guardian", "shield", "construct", "metal", "dragon", "angel", "demon", "spirit", "book", "staff", "paladin", "king"]
+        "weak_against": ["ice"]
     },
     "dust": {
         "name": "Dust",
         "color": [210, 180, 140],
-        "weak_against": ["water", "ice", "darkness", "void", "space", "arcane", "alchemy", "guardian", "shield", "construct", "metal", "dragon", "angel", "demon", "spirit", "book", "staff", "paladin", "engineer", "king"]
+        "weak_against": ["water"]
     },
     "sword": {
         "name": "Sword",
         "color": [169, 169, 169],
-        "weak_against": ["fire", "water", "time", "thunder", "metal", "earth", "construct", "slime", "spirit", "void", "psionic", "wind", "ice", "bomb", "bow", "mage", "arcane", "illusion", "darkness", "shield", "guardian", "monk", "merchant"]
+        "weak_against": ["hammer"]
     },
     "axe": {
         "name": "Axe",
         "color": [139, 0, 0],
-        "weak_against": ["fire", "water", "time", "thunder", "metal", "earth", "construct", "slime", "spirit", "void", "psionic", "wind", "ice", "bomb", "whip", "bow", "mage", "arcane", "illusion", "darkness", "monk", "merchant"]
+        "weak_against": ["sword"]
     },
     "spear": {
         "name": "Spear",
         "color": [205, 133, 63],
-        "weak_against": ["fire", "water", "time", "thunder", "metal", "earth", "construct", "slime", "spirit", "void", "psionic", "wind", "ice", "bomb", "bow", "mage", "arcane", "illusion", "darkness", "shield", "guardian", "merchant"]
+        "weak_against": ["axe"]
     },
     "hammer": {
         "name": "Hammer",
         "color": [112, 128, 144],
-        "weak_against": ["fire", "water", "time", "thunder", "slime", "spirit", "void", "psionic", "wind", "bomb", "whip", "bow", "mage", "arcane", "illusion", "darkness", "monk", "merchant", "sword"]
+        "weak_against": ["dagger"]
     },
     "dagger": {
         "name": "Dagger",
         "color": [47, 79, 79],
-        "weak_against": ["fire", "water", "time", "thunder", "metal", "earth", "construct", "slime", "spirit", "void", "psionic", "wind", "ice", "bomb", "whip", "bow", "mage", "arcane", "illusion", "darkness", "shield", "guardian", "monk", "merchant", "fist"]
+        "weak_against": ["spear"]
     },
     "bow": {
         "name": "Bow",
         "color": [139, 69, 19],
-        "weak_against": ["fire", "water", "time", "thunder", "metal", "earth", "construct", "slime", "spirit", "void", "psionic", "wind", "ice", "mage", "arcane", "illusion", "darkness", "shield", "guardian", "monk", "merchant", "dagger"]
+        "weak_against": ["shield"]
     },
     "staff": {
         "name": "Staff",
         "color": [222, 184, 135],
-        "weak_against": ["fire", "water", "time", "thunder", "metal", "earth", "construct", "slime", "void", "psionic", "wind", "ice", "bomb", "whip", "bow", "darkness", "shield", "guardian", "monk", "merchant"]
+        "weak_against": ["axe"]
     },
     "wand": {
         "name": "Wand",
         "color": [255, 228, 196],
-        "weak_against": ["fire", "water", "time", "thunder", "metal", "earth", "construct", "slime", "void", "psionic", "wind", "ice", "bomb", "whip", "bow", "illusion", "darkness", "guardian", "monk", "merchant"]
+        "weak_against": ["sword"]
     },
     "shield": {
         "name": "Shield",
         "color": [70, 130, 180],
-        "weak_against": ["fire", "water", "time", "thunder", "metal", "earth", "construct", "slime", "spirit", "void", "psionic", "bomb", "whip", "mage", "arcane", "illusion", "darkness", "guardian", "monk", "merchant", "hammer"]
+        "weak_against": ["axe"]
     },
     "fist": {
         "name": "Fist",
         "color": [244, 164, 96],
-        "weak_against": ["fire", "water", "time", "thunder", "metal", "earth", "construct", "slime", "spirit", "void", "psionic", "wind", "ice", "bomb", "whip", "bow", "mage", "arcane", "illusion", "darkness", "shield", "guardian"]
+        "weak_against": ["sword"]
     },
     "claw": {
         "name": "Claw",
         "color": [178, 34, 34],
-        "weak_against": ["fire", "water", "time", "thunder", "metal", "earth", "construct", "slime", "spirit", "void", "psionic", "wind", "ice", "bomb", "whip", "bow", "mage", "arcane", "illusion", "darkness", "shield", "guardian", "monk", "merchant"]
+        "weak_against": ["shield"]
     },
     "whip": {
         "name": "Whip",
         "color": [139, 0, 0],
-        "weak_against": ["fire", "water", "time", "thunder", "metal", "earth", "construct", "slime", "spirit", "void", "psionic", "wind", "ice", "bomb", "whip", "bow", "mage", "arcane", "illusion", "darkness", "merchant"]
+        "weak_against": ["sword"]
     },
     "scythe": {
         "name": "Scythe",
         "color": [47, 79, 79],
-        "weak_against": ["fire", "water", "time", "thunder", "metal", "earth", "construct", "slime", "void", "psionic", "wind", "ice", "bomb", "whip", "bow", "mage", "arcane", "illusion", "guardian", "monk", "merchant"]
+        "weak_against": ["spear"]
     },
     "book": {
         "name": "Book",
         "color": [139, 69, 19],
-        "weak_against": ["fire", "water", "time", "thunder", "metal", "earth", "construct", "slime", "psionic", "wind", "ice", "bomb", "whip", "bow", "illusion", "darkness", "shield", "guardian", "monk", "merchant"]
+        "weak_against": ["fire"]
     },
     "instrument": {
         "name": "Instrument",
         "color": [218, 165, 32],
-        "weak_against": ["fire", "water", "time", "thunder", "earth", "construct", "slime", "spirit", "void", "psionic", "ice", "bomb", "whip", "bow", "mage", "arcane", "monk", "merchant"]
+        "weak_against": ["water"]
     },
     "bomb": {
         "name": "Bomb",
         "color": [25, 25, 112],
-        "weak_against": ["fire", "water", "time", "thunder", "slime", "spirit", "void", "psionic", "wind", "ice", "whip", "bow", "mage", "arcane", "illusion", "darkness", "monk", "merchant"]
+        "weak_against": ["water"]
     },
     "arcane": {
         "name": "Arcane",
         "color": [123, 104, 238],
-        "weak_against": ["fist", "dagger", "bow", "assassin", "monk", "berserker", "engineer", "metal", "void", "time", "sonic", "knight", "paladin", "occult", "blood", "demon", "dragon", "nature", "earth", "gambler"]
+        "weak_against": ["void"]
     },
     "divine": {
         "name": "Divine",
         "color": [255, 215, 0],
-        "weak_against": ["fist", "dagger", "bow", "assassin", "monk", "berserker", "construct", "golem", "engineer", "metal", "void", "time", "sonic", "illusion", "shield", "occult", "blood", "demon", "dragon", "nature", "earth", "gambler", "arcane"]
+        "weak_against": ["occult"]
     },
     "primal": {
         "name": "Primal",
         "color": [34, 139, 34],
-        "weak_against": ["fist", "dagger", "bow", "assassin", "monk", "construct", "golem", "engineer", "metal", "void", "time", "sonic", "illusion", "shield", "guardian", "knight", "paladin", "occult", "blood", "demon", "gambler"]
+        "weak_against": ["arcane"]
     },
     "psionic": {
         "name": "Psionic",
         "color": [238, 130, 238],
-        "weak_against": ["bow", "monk", "berserker", "construct", "golem", "engineer", "metal", "void", "time", "sonic", "knight", "paladin", "occult", "blood", "demon", "dragon", "nature", "earth", "gambler", "illusion"]
+        "weak_against": ["undead"]
     },
     "occult": {
         "name": "Occult",
         "color": [75, 0, 130],
-        "weak_against": ["fist", "dagger", "bow", "assassin", "monk", "berserker", "construct", "golem", "engineer", "metal", "time", "sonic", "illusion", "shield", "guardian", "knight", "paladin", "dragon", "nature", "earth", "divine"]
+        "weak_against": ["divine"]
     },
     "alchemy": {
         "name": "Alchemy",
         "color": [218, 165, 32],
-        "weak_against": ["fist", "dagger", "bow", "assassin", "monk", "berserker", "construct", "golem", "engineer", "void", "time", "sonic", "illusion", "shield", "guardian", "knight", "paladin", "occult", "blood", "demon", "dragon", "gambler"]
+        "weak_against": ["time"]
     },
     "blood": {
         "name": "Blood",
         "color": [139, 0, 0],
-        "weak_against": ["dagger", "bow", "assassin", "monk", "construct", "golem", "engineer", "metal", "void", "time", "sonic", "illusion", "shield", "guardian", "knight", "paladin", "occult", "dragon", "nature", "earth", "gambler", "psionic", "necromancy"]
+        "weak_against": ["necromancy"]
     },
     "time": {
         "name": "Time",
         "color": [255, 250, 205],
-        "weak_against": ["bow", "monk", "berserker", "construct", "golem", "engineer", "metal", "void", "sonic", "illusion", "shield", "guardian", "knight", "paladin", "occult", "blood", "demon", "dragon", "nature", "gambler"]
+        "weak_against": ["void"]
     },
     "space": {
         "name": "Space",
         "color": [72, 61, 139],
-        "weak_against": ["fist", "dagger", "assassin", "monk", "berserker", "construct", "golem", "engineer", "void", "time", "sonic", "illusion", "knight", "paladin", "occult", "blood", "demon", "dragon", "nature", "earth", "gambler"]
+        "weak_against": ["time"]
     },
     "sonic": {
         "name": "Sonic",
         "color": [255, 165, 0],
-        "weak_against": ["fist", "dagger", "bow", "assassin", "monk", "berserker", "construct", "golem", "engineer", "metal", "void", "time", "guardian", "knight", "paladin", "occult", "blood", "demon", "dragon", "nature", "earth", "gambler"]
+        "weak_against": ["void"]
     },
     "illusion": {
         "name": "Illusion",
         "color": [255, 105, 180],
-        "weak_against": ["bow", "assassin", "monk", "construct", "golem", "engineer", "metal", "void", "time", "sonic", "guardian", "knight", "paladin", "occult", "blood", "demon", "dragon", "nature", "earth", "gambler"]
+        "weak_against": ["psionic"]
     },
     "enchantment": {
         "name": "Enchantment",
         "color": [255, 192, 203],
-        "weak_against": ["fist", "dagger", "bow", "assassin", "construct", "golem", "engineer", "metal", "void", "time", "sonic", "illusion", "shield", "occult", "blood", "demon", "dragon", "nature", "earth", "gambler"]
+        "weak_against": ["time"]
     },
     "necromancy": {
         "name": "Necromancy",
         "color": [47, 79, 79],
-        "weak_against": ["bow", "assassin", "monk", "berserker", "construct", "golem", "engineer", "metal", "time", "sonic", "illusion", "shield", "guardian", "knight", "paladin", "occult", "demon", "dragon", "nature", "earth", "gambler", "divine"]
+        "weak_against": ["divine"]
     },
     "void": {
         "name": "Void",
         "color": [0, 0, 0],
-        "weak_against": ["dagger", "bow", "assassin", "monk", "berserker", "construct", "golem", "engineer", "time", "illusion", "guardian", "knight", "paladin", "blood", "dragon", "nature", "earth", "gambler", "demon"]
+        "weak_against": ["space"]
     },
     "beast": {
         "name": "Beast",
         "color": [139, 69, 19],
-        "weak_against": ["sword", "axe", "spear", "dagger", "scythe", "poison", "fire", "ice", "necromancy", "blood", "psionic", "enchantment", "illusion", "assassin", "ranger", "bomb", "undead", "demon", "dragon", "void", "time", "plant", "knight"]
+        "weak_against": ["ranger"]
     },
     "humanoid": {
         "name": "Humanoid",
         "color": [255, 228, 196],
-        "weak_against": ["sword", "axe", "spear", "dagger", "scythe", "claw", "poison", "fire", "ice", "thunder", "necromancy", "blood", "enchantment", "illusion", "assassin", "bomb", "undead", "demon", "dragon", "void", "time", "nature", "darkness", "beast"]
+        "weak_against": ["beast"]
     },
     "undead": {
         "name": "Undead",
         "color": [85, 107, 47],
-        "weak_against": ["hammer", "bomb", "axe", "spear", "dragon", "water", "wind", "nature", "thunder", "sonic", "alchemy", "void", "space", "arcane", "divine", "engineer", "spirit", "light"]
+        "weak_against": ["light"]
     },
     "dragon": {
         "name": "Dragon",
         "color": [178, 34, 34],
-        "weak_against": ["hammer", "bomb", "axe", "spear", "acid", "nature", "sonic", "alchemy", "void", "space", "arcane", "divine", "engineer", "spirit", "psionic", "light", "beast"]
+        "weak_against": ["knight"]
     },
     "construct": {
         "name": "Construct",
         "color": [169, 169, 169],
-        "weak_against": ["hammer", "bomb", "axe", "spear", "dragon", "acid", "water", "time", "nature", "thunder", "sonic", "alchemy", "void", "arcane", "engineer"]
+        "weak_against": ["engineer"]
     },
     "demon": {
         "name": "Demon",
         "color": [139, 0, 0],
-        "weak_against": ["bow", "assassin", "monk", "berserker", "construct", "golem", "engineer", "sonic", "illusion", "shield", "guardian", "knight", "paladin", "dragon", "nature", "earth", "gambler", "divine", "angel", "spirit"]
+        "weak_against": ["angel"]
     },
     "angel": {
         "name": "Angel",
         "color": [255, 250, 250],
-        "weak_against": ["fist", "dagger", "bow", "assassin", "monk", "berserker", "construct", "golem", "engineer", "metal", "void", "illusion", "shield", "guardian", "occult", "blood", "demon", "dragon", "nature", "earth", "gambler"]
+        "weak_against": ["demon"]
     },
     "fey": {
         "name": "Fey",
         "color": [255, 105, 180],
-        "weak_against": ["fire", "water", "time", "thunder", "metal", "earth", "construct", "slime", "spirit", "void", "psionic", "ice", "bomb", "whip", "bow", "arcane", "darkness", "shield", "guardian", "merchant"]
+        "weak_against": ["metal"]
     },
     "slime": {
         "name": "Slime",
         "color": [50, 205, 50],
-        "weak_against": ["ice", "earth", "wind", "darkness", "void", "time", "space", "arcane", "alchemy", "dragon", "angel", "demon", "spirit", "book", "staff", "paladin", "engineer"]
+        "weak_against": ["ice"]
     },
     "insect": {
         "name": "Insect",
         "color": [107, 142, 35],
-        "weak_against": ["sword", "axe", "spear", "scythe", "claw", "poison", "fire", "ice", "thunder", "necromancy", "blood", "psionic", "enchantment", "illusion", "ranger", "bomb", "undead", "demon", "dragon", "void", "time"]
+        "weak_against": ["fire"]
     },
     "plant": {
         "name": "Plant",
         "color": [34, 139, 34],
-        "weak_against": ["sword", "axe", "dagger", "scythe", "claw", "poison", "fire", "ice", "blood", "enchantment", "illusion", "ranger", "bomb", "dragon", "void", "time", "darkness", "insect", "humanoid"]
+        "weak_against": ["insect"]
     },
     "aquatic": {
         "name": "Aquatic",
         "color": [0, 191, 255],
-        "weak_against": ["earth", "wind", "darkness", "void", "thunder", "time", "space", "arcane", "alchemy", "guardian", "shield", "construct", "metal", "angel", "demon", "spirit", "book", "staff", "paladin", "engineer", "king"]
+        "weak_against": ["thunder"]
     },
     "avian": {
         "name": "Avian",
         "color": [255, 255, 224],
-        "weak_against": ["fire", "water", "time", "thunder", "construct", "slime", "spirit", "void", "psionic", "ice", "bomb", "whip", "mage", "arcane", "illusion", "darkness", "shield", "guardian", "monk", "merchant"]
+        "weak_against": ["bow"]
     },
     "reptile": {
         "name": "Reptile",
         "color": [34, 139, 34],
-        "weak_against": ["ice", "wind", "darkness", "void", "time", "space", "arcane", "alchemy", "guardian", "shield", "construct", "metal", "dragon", "angel", "demon", "spirit", "book", "staff", "paladin", "engineer", "king"]
+        "weak_against": ["ice"]
     },
     "spirit": {
         "name": "Spirit",
         "color": [224, 255, 255],
-        "weak_against": ["monk", "engineer", "void", "time", "sonic", "illusion", "shield", "guardian", "knight", "paladin", "occult", "blood", "demon", "dragon", "nature", "earth", "gambler"]
+        "weak_against": ["monk"]
     },
     "aberration": {
         "name": "Aberration",
         "color": [128, 0, 128],
-        "weak_against": ["fist", "dagger", "bow", "assassin", "monk", "berserker", "construct", "golem", "engineer", "metal", "sonic", "shield", "guardian", "knight", "paladin", "blood", "demon", "dragon", "nature", "earth", "gambler"]
+        "weak_against": ["divine"]
     },
     "elemental": {
         "name": "Elemental",
         "color": [255, 69, 0],
-        "weak_against": ["water", "ice", "earth", "wind", "darkness", "void", "time", "space", "alchemy", "construct", "dragon", "angel", "demon", "spirit", "book", "staff", "paladin", "engineer", "king"]
+        "weak_against": ["alchemy"]
     },
     "warrior": {
         "name": "Warrior",
         "color": [178, 34, 34],
-        "weak_against": ["dagger", "scythe", "claw", "poison", "necromancy", "blood", "psionic", "enchantment", "illusion", "assassin", "ranger", "bomb", "undead", "demon", "dragon", "void", "time", "nature", "darkness"]
+        "weak_against": ["mage"]
     },
     "berserker": {
         "name": "Berserker",
         "color": [139, 0, 0],
-        "weak_against": ["fire", "ice", "thunder", "necromancy", "blood", "assassin", "ranger", "bomb", "dragon", "void", "time", "nature", "darkness", "mage"]
+        "weak_against": ["illusion"]
     },
     "guardian": {
         "name": "Guardian",
         "color": [70, 130, 180],
-        "weak_against": ["bomb", "axe", "dragon", "water", "time", "nature", "thunder", "sonic", "alchemy", "void", "space", "arcane", "divine", "engineer", "spirit", "psionic", "darkness", "light", "knight"]
+        "weak_against": ["assassin"]
     },
     "assassin": {
         "name": "Assassin",
         "color": [47, 79, 79],
-        "weak_against": ["sword", "axe", "spear", "scythe", "claw", "fire", "blood", "psionic", "enchantment", "illusion", "ranger", "bomb", "undead", "demon", "dragon", "void", "time", "nature", "mage", "guardian"]
+        "weak_against": ["knight"]
     },
     "ranger": {
         "name": "Ranger",
         "color": [34, 139, 34],
-        "weak_against": ["sword", "axe", "spear", "fire", "necromancy", "blood", "psionic", "enchantment", "illusion", "assassin", "bomb", "undead", "demon", "dragon", "void", "time", "berserker"]
+        "weak_against": ["berserker"]
     },
     "mage": {
         "name": "Mage",
         "color": [123, 104, 238],
-        "weak_against": ["fist", "sword", "axe", "spear", "dagger", "bow", "assassin", "monk", "construct", "golem", "engineer", "metal", "time", "sonic", "shield", "guardian", "knight", "paladin", "blood", "dragon", "nature", "earth", "gambler", "warrior", "ranger"]
+        "weak_against": ["assassin"]
     },
     "healer": {
         "name": "Healer",
         "color": [240, 255, 255],
-        "weak_against": ["fist", "dagger", "bow", "assassin", "engineer", "void", "time", "sonic", "illusion", "shield", "guardian", "knight", "paladin", "demon", "dragon", "nature", "earth", "gambler"]
+        "weak_against": ["assassin"]
     },
     "paladin": {
         "name": "Paladin",
         "color": [255, 215, 0],
-        "weak_against": ["fist", "dagger", "bow", "assassin", "monk", "berserker", "construct", "golem", "engineer", "metal", "void", "time", "sonic", "illusion", "shield", "occult", "blood", "dragon", "nature", "earth", "gambler", "warlock"]
+        "weak_against": ["warlock"]
     },
     "warlock": {
         "name": "Warlock",
         "color": [75, 0, 130],
-        "weak_against": ["fist", "dagger", "bow", "assassin", "monk", "berserker", "construct", "golem", "engineer", "metal", "time", "sonic", "illusion", "shield", "guardian", "knight", "paladin", "dragon", "nature", "earth", "gambler"]
+        "weak_against": ["paladin"]
     },
     "monk": {
         "name": "Monk",
         "color": [244, 164, 96],
-        "weak_against": ["dagger", "scythe", "claw", "poison", "fire", "ice", "thunder", "necromancy", "blood", "psionic", "enchantment", "illusion", "assassin", "ranger", "bomb", "undead", "demon", "dragon", "void", "time", "nature", "darkness", "paladin"]
+        "weak_against": ["berserker"]
     },
     "bard": {
         "name": "Bard",
         "color": [218, 165, 32],
-        "weak_against": ["fist", "dagger", "bow", "assassin", "monk", "berserker", "construct", "golem", "engineer", "metal", "void", "time", "shield", "guardian", "knight", "paladin", "occult", "blood", "demon", "dragon", "nature", "earth"]
+        "weak_against": ["sonic"]
     },
     "knight": {
         "name": "Knight",
         "color": [112, 128, 144],
-        "weak_against": ["hammer", "bomb", "axe", "dragon", "water", "wind", "time", "nature", "thunder", "sonic", "alchemy", "void", "space", "arcane", "divine", "engineer", "spirit", "darkness", "light", "assassin"]
+        "weak_against": ["mage"]
     },
     "pirate": {
         "name": "Pirate",
         "color": [139, 0, 0],
-        "weak_against": ["sword", "spear", "dagger", "scythe", "claw", "fire", "ice", "thunder", "necromancy", "blood", "psionic", "enchantment", "illusion", "assassin", "ranger", "bomb", "undead", "demon", "dragon", "void", "time", "darkness"]
+        "weak_against": ["thunder"]
     },
     "engineer": {
         "name": "Engineer",
         "color": [210, 105, 30],
-        "weak_against": ["sword", "axe", "spear", "dagger", "scythe", "claw", "poison", "ice", "necromancy", "assassin", "ranger", "bomb", "undead", "demon", "dragon", "void", "time", "nature", "thunder"]
+        "weak_against": ["water"]
     },
     "merchant": {
         "name": "Merchant",
         "color": [255, 215, 0],
-        "weak_against": ["sword", "axe", "spear", "dagger", "scythe", "claw", "poison", "fire", "ice", "thunder", "necromancy", "blood", "psionic", "illusion", "ranger", "bomb", "undead", "demon", "dragon", "void", "time", "darkness"]
+        "weak_against": ["pirate"]
     },
     "gambler": {
         "name": "Gambler",
         "color": [128, 0, 128],
-        "weak_against": ["sword", "axe", "spear", "dagger", "scythe", "claw", "poison", "fire", "ice", "thunder", "necromancy", "blood", "enchantment", "assassin", "ranger", "bomb", "undead", "demon", "dragon", "void", "time", "nature"]
+        "weak_against": ["illusion"]
     },
     "king": {
         "name": "King",
         "color": [218, 165, 32],
-        "weak_against": ["sword", "axe", "spear", "dagger", "scythe", "claw", "poison", "fire", "ice", "thunder", "necromancy", "blood", "psionic", "enchantment", "illusion", "ranger", "bomb", "undead", "demon", "dragon", "void", "time", "darkness"]
+        "weak_against": ["assassin"]
     }
 }

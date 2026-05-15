@@ -450,9 +450,7 @@ def _draw_item(screen, fonts, cx: int, cy: int, size: tuple, item,
         3) Programmatic placeholder chip (only path that draws a backdrop)
 
     When real art is found it's blitted with a transparent background — no
-    box, no border — so it sits seamlessly on the body. Rarity is shown as
-    a tiny pip in the top-right corner (only for uncommon/rare, to keep
-    common items visually quiet).
+    box, no border — so it sits seamlessly on the body. 
     flip_h: mirror the sprite horizontally (used for 2nd weapon/hand on the
     opposite side of a symmetrical character).
     """
@@ -469,10 +467,6 @@ def _draw_item(screen, fonts, cx: int, cy: int, size: tuple, item,
         if flip_h:
             scaled = pygame.transform.flip(scaled, True, False)
         screen.blit(scaled, rect.topleft)
-        if rarity in ('uncommon', 'rare'):
-            pip = (rect.right - 5, rect.top + 5)
-            pygame.draw.circle(screen, color, pip, 4)
-            pygame.draw.circle(screen, (15, 15, 20), pip, 4, 1)
         return
 
     # ---- Placeholder fallback (small boxed chip, obvious "missing art") ----

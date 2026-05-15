@@ -17,14 +17,16 @@ PARTY_RECT   = pygame.Rect(420, 100, 380, 340)
 # into header / search / list sections internally.
 INV_PANEL_RECT  = pygame.Rect(820, 100, 440, 340)
 
-# Stats / paper-doll (lower area)
-STATS_RECT   = pygame.Rect(420, 460, 230, 320)
-CARD_RECT    = pygame.Rect(660, 460, paper_doll.CARD_W, paper_doll.CARD_H)
+# Stats / paper-doll (lower area) - Expanded to match the top row's columns
+STATS_RECT   = pygame.Rect(20, 460, 380, 320)
 
-# Shop panel (lower-right, to the right of the paper-doll card)
-SHOP_X       = 660 + paper_doll.CARD_W + 14
+# Centered under the Party Rect (Party is x=420 to 800, center is 610. Card is 280 wide, so 610 - 140 = 470)
+CARD_RECT    = pygame.Rect(470, 460, paper_doll.CARD_W, paper_doll.CARD_H)
+
+# Shop panel (lower-right, aligned perfectly under the inventory)
+SHOP_X       = 820
 SHOP_Y       = 460
-SHOP_W       = SCREEN_WIDTH - SHOP_X - 10
+SHOP_W       = 440
 SHOP_H       = 320
 SHOP_RECT    = pygame.Rect(SHOP_X, SHOP_Y, SHOP_W, SHOP_H)
 SHOP_ITEM_ROW_H = 36    # px per item row inside the shop panel
