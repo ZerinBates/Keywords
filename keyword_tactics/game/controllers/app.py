@@ -179,13 +179,13 @@ class Game:
             self.buttons.append(Button(x, y, 200, 36, fs_text))
             y += 40
 
-            debug_text = "Debug: ON" if self.state.debug_unlock_all else "Debug: OFF"
-            debug_color = COLORS['warning'] if self.state.debug_unlock_all else COLORS['panel']
-            self.buttons.append(Button(
-                x, y, 200, 36, debug_text,
-                color=debug_color, hover_color=(220, 200, 100),
-            ))
-            y += 40
+            # debug_text = "Debug: ON" if self.state.debug_unlock_all else "Debug: OFF"
+            # debug_color = COLORS['warning'] if self.state.debug_unlock_all else COLORS['panel']
+            # self.buttons.append(Button(
+            #     x, y, 200, 36, debug_text,
+            #     color=debug_color, hover_color=(220, 200, 100),
+            # ))
+            # y += 40
 
             self.buttons.append(Button(
                 x, y, 200, 36, "Wipe Save",

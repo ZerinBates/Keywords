@@ -191,6 +191,32 @@ def _draw_shop_panel(screen, fonts, state):
         screen.blit(msg, (sx + sw // 2 - msg.get_width() // 2, sy + sh // 2 - 10))
         return
 
+    # Ensure scroll state exists
+    if not hasattr(state, 'shop_scroll'):
+        state.shop_scroll = 0
+
+    # Build a unified list of renderable rows
+    rows = []
+    
+    # 1. Items
+    all_items = [(it, False) for it in state.shop_items] + \
+                [(it, True)  for it in state.dead_adv_loot]
+    if all_items:
+        rows.append(('header', "Items for Sale  (click to buy):"))
+        for item, is_fallen in all_items:
+            rows.append(('item', item, is_fallen))
+            
+    # 2. Adventurers
+    if state.shop_adventurers:
+        rows.append(('header', "Adventurers for Hire  (click to buy):"))
+        for i, adv in enumerate(state.shop_adventurers):
+            rows.append(('adv', adv, i))
+
+    # Scroll indicators (Up)
+    if state.shop_scroll > 0:
+        screen.blit(fonts['small'].render("^ scroll up", True, COLORS['text_dim']), 
+                    (sx + sw - 100, sy + 8))
+
     y = sy + 34
     row_h = SHOP_ITEM_ROW_H
 
@@ -207,19 +233,19 @@ def _draw_shop_panel(screen, fonts, state):
         'rare':     (36, 40, 58),
     }
 
-    # Merged item list: shop_items first, then dead_adv_loot tagged FALLEN
-    all_items = [(it, False) for it in state.shop_items] + \
-                [(it, True)  for it in state.dead_adv_loot]
+    # Slice the rows based on current scroll position (Max 7 visible rows)
+    visible_rows = rows[state.shop_scroll : state.shop_scroll + 7]
 
-    if all_items:
-        items_hdr = fonts['small'].render(
-            "Items for Sale  (click to buy):", True, COLORS['warning'])
-        screen.blit(items_hdr, (sx + 8, y))
-        y += 20
+    for row in visible_rows:
+        row_type = row[0]
+        
+        if row_type == 'header':
+            hdr = fonts['small'].render(row[1], True, COLORS['warning'])
+            screen.blit(hdr, (sx + 8, y + 8))
+            y += row_h
 
-        for i, (item, is_fallen) in enumerate(all_items):
-            if y + row_h > sy + sh - 6:
-                break
+        elif row_type == 'item':
+            item, is_fallen = row[1], row[2]
             price = state.get_item_price(item)
             can_afford = state.coins >= price
             bg = rarity_bg.get(item.rarity, (40, 42, 50))
@@ -261,20 +287,10 @@ def _draw_shop_panel(screen, fonts, state):
                     screen.blit(fonts['tiny'].render(label, True, COLORS['bg']),
                                 (kw_x + 3, y + 20))
                     kw_x += tw + 3
-
             y += row_h
 
-    # Adventurers for hire
-    if state.shop_adventurers:
-        adv_hdr = fonts['small'].render("Adventurers for Hire  (click to buy):",
-                                        True, COLORS['warning'])
-        if y + 20 < sy + sh - 6:
-            screen.blit(adv_hdr, (sx + 8, y))
-            y += 20
-
-        for i, adv in enumerate(state.shop_adventurers):
-            if y + row_h > sy + sh - 6:
-                break
+        elif row_type == 'adv':
+            adv, idx = row[1], row[2]
             price = state.get_adventurer_price(adv)
             can_afford = state.coins >= price
 
@@ -300,3 +316,8 @@ def _draw_shop_panel(screen, fonts, state):
             screen.blit(price_surf, (sx + sw - price_surf.get_width() - 10, y + 8))
 
             y += row_h
+
+    # Scroll indicators (Down)
+    if state.shop_scroll + 7 < len(rows):
+        screen.blit(fonts['small'].render("v scroll down", True, COLORS['text_dim']), 
+                    (sx + sw - 100, sy + sh - 20))

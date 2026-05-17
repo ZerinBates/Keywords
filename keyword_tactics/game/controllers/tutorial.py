@@ -30,7 +30,7 @@ TUTORIAL_MESSAGES: Dict[GamePhase, List[str]] = {
         "Camp time. Build your party and gear them up here.",
         "LEFT panel: your roster. Click an adventurer to send them to the PARTY (middle). Shift-click to remove.",
         "RIGHT panel: items in your inventory. Select a party member, then click items to equip them.",
-        "Combat math: matching keywords MULTIPLY your damage. Mismatched keywords cause WEAKNESS divisions.",
+        "Combat math: matching keywords MULTIPLY your damage.",
         "Press TAB anywhere to open the keyword reference — it shows what counters what.",
         "Once your party has 4 adventurers, hit 'Select Deck' (top-right).",
     ],
@@ -43,7 +43,8 @@ TUTORIAL_MESSAGES: Dict[GamePhase, List[str]] = {
 
     GamePhase.DELVE_SETUP: [
         "The delve! Each square is one fight.",
-        "The badge (3x, 5x, etc.) is the SQUARE MULTIPLIER. Higher means harder, but also bigger payout.",
+        "There is a king badge and a dunce badge the dunce divides your total by 2 and the king doubles your total killing a king enemy makes that character a king next.",
+        "Optimize your character stats by rearranging items"
         "DRAG adventurers from the bottom tray onto squares to assign matchups.",
         "Each square has a bonus — buff or resist a keyword. Read it before placing.",
         "All living adventurers must be placed before FIGHT! becomes clickable.",

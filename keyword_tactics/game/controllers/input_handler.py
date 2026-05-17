@@ -216,21 +216,36 @@ class InputHandler:
                 return
 
         if self.state.phase == GamePhase.PREPARATION:
-            from ..views.screens.preparation import INV_PANEL_RECT, ROSTER_RECT
-            from ..views import widgets as _w
-            if INV_PANEL_RECT.collidepoint(mouse_pos):
-                _, _, list_rect = _w.get_item_list_geometry(INV_PANEL_RECT)
-                filtered = self.state.get_filtered_inventory()
-                max_vis = list_rect.h // _w.ITEM_LIST_ROW_H
-                self.state.inventory_scroll -= event.y
-                max_scroll = max(0, len(filtered) - max_vis)
-                self.state.inventory_scroll = max(0, min(self.state.inventory_scroll, max_scroll))
+                    from ..views.screens.preparation import INV_PANEL_RECT, ROSTER_RECT, SHOP_RECT
+                    from ..views import widgets as _w
+                    
+                    if INV_PANEL_RECT.collidepoint(mouse_pos):
+                        _, _, list_rect = _w.get_item_list_geometry(INV_PANEL_RECT)
+                        filtered = self.state.get_filtered_inventory()
+                        max_vis = list_rect.h // _w.ITEM_LIST_ROW_H
+                        self.state.inventory_scroll -= event.y
+                        max_scroll = max(0, len(filtered) - max_vis)
+                        self.state.inventory_scroll = max(0, min(self.state.inventory_scroll, max_scroll))
 
-            if ROSTER_RECT.collidepoint(mouse_pos):
-                self.state.roster_scroll -= event.y
-                max_scroll = max(0, len(self.state.roster) - 6)
-                self.state.roster_scroll = max(0, min(self.state.roster_scroll, max_scroll))
+                    if ROSTER_RECT.collidepoint(mouse_pos):
+                        self.state.roster_scroll -= event.y
+                        max_scroll = max(0, len(self.state.roster) - 6)
+                        self.state.roster_scroll = max(0, min(self.state.roster_scroll, max_scroll))
 
+                    if SHOP_RECT.collidepoint(mouse_pos):
+                        if not hasattr(self.state, 'shop_scroll'):
+                            self.state.shop_scroll = 0
+                        
+                        # Count total rows to dictate bounds
+                        rows_count = 0
+                        if len(self.state.shop_items) + len(self.state.dead_adv_loot) > 0:
+                            rows_count += 1 + len(self.state.shop_items) + len(self.state.dead_adv_loot)
+                        if len(self.state.shop_adventurers) > 0:
+                            rows_count += 1 + len(self.state.shop_adventurers)
+                            
+                        self.state.shop_scroll -= event.y
+                        max_scroll = max(0, rows_count - 7) # 7 is our max visible rows
+                        self.state.shop_scroll = max(0, min(self.state.shop_scroll, max_scroll))
     # ------------------------------------------------------------------
     # Click handling
     # ------------------------------------------------------------------
@@ -571,46 +586,62 @@ class InputHandler:
             self._handle_prep_shop_click(mouse_pos, SHOP_RECT, SHOP_ITEM_ROW_H)
 
     def _handle_prep_shop_click(self, mouse_pos, shop_rect, row_h):
-        s = self.state
-        sx, sy = shop_rect.x, shop_rect.y
+            s = self.state
+            sx, sy = shop_rect.x, shop_rect.y
 
-        merged = [(it, False) for it in s.shop_items] + \
-                 [(it, True)  for it in s.dead_adv_loot]
+            # Rebuild the identical rows list used by the renderer
+            rows = []
+            all_items = [(it, False) for it in s.shop_items] + \
+                        [(it, True)  for it in s.dead_adv_loot]
+            if all_items:
+                rows.append(('header', "Items for Sale"))
+                for item, is_fallen in all_items:
+                    rows.append(('item', item, is_fallen))
+            
+            if s.shop_adventurers:
+                rows.append(('header', "Adventurers for Hire"))
+                for i, adv in enumerate(s.shop_adventurers):
+                    rows.append(('adv', adv, i))
 
-        items_y_start = sy + 34 + 20
-        if merged:
-            for i, (item, is_fallen) in enumerate(merged):
-                iy = items_y_start + i * row_h
+            scroll = getattr(s, 'shop_scroll', 0)
+            visible_rows = rows[scroll : scroll + 7]
+
+            y = sy + 34
+            for row in visible_rows:
+                if row[0] == 'header':
+                    y += row_h
+                elif row[0] in ('item', 'adv'):
+                    row_rect = pygame.Rect(sx + 4, y, shop_rect.w - 8, row_h - 4)
+                    if row_rect.collidepoint(mouse_pos):
+                        if row[0] == 'item':
+                            item, is_fallen = row[1], row[2]
+                            if is_fallen:
+                                try:
+                                    dl_idx = s.dead_adv_loot.index(item)
+                                    s.buy_dead_adv_loot(dl_idx)
+                                except ValueError: pass
+                            else:
+                                try:
+                                    si_idx = s.shop_items.index(item)
+                                    s.buy_shop_item(si_idx)
+                                except ValueError: pass
+                        elif row[0] == 'adv':
+                            idx = row[2]
+                            s.buy_shop_adventurer(idx)
+                        return
+                    y += row_h
+
+            adv_y_start = items_y_start + len(merged) * row_h if merged else sy + 34
+            adv_y_start += 20
+            for i, adv in enumerate(s.shop_adventurers):
+                iy = adv_y_start + i * row_h
                 if iy + row_h > shop_rect.bottom - 6:
                     break
                 row_rect = pygame.Rect(shop_rect.x + 4, iy,
-                                       shop_rect.w - 8, row_h - 4)
+                                    shop_rect.w - 8, row_h - 4)
                 if row_rect.collidepoint(mouse_pos):
-                    if is_fallen:
-                        try:
-                            dl_idx = s.dead_adv_loot.index(item)
-                            s.buy_dead_adv_loot(dl_idx)
-                        except ValueError:
-                            pass
-                    else:
-                        try:
-                            si_idx = s.shop_items.index(item)
-                            s.buy_shop_item(si_idx)
-                        except ValueError:
-                            pass
+                    s.buy_shop_adventurer(i)
                     return
-
-        adv_y_start = items_y_start + len(merged) * row_h if merged else sy + 34
-        adv_y_start += 20
-        for i, adv in enumerate(s.shop_adventurers):
-            iy = adv_y_start + i * row_h
-            if iy + row_h > shop_rect.bottom - 6:
-                break
-            row_rect = pygame.Rect(shop_rect.x + 4, iy,
-                                   shop_rect.w - 8, row_h - 4)
-            if row_rect.collidepoint(mouse_pos):
-                s.buy_shop_adventurer(i)
-                return
 
     def _handle_delve_click(self, mouse_pos):
         s = self.state
