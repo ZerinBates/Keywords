@@ -19,6 +19,7 @@ from .screens import (
     main_menu as main_menu_screen,
     preparation as preparation_screen,
     shop as shop_screen,
+    unlock_reveal as unlock_reveal_screen,
 )
 
 if TYPE_CHECKING:
@@ -83,6 +84,10 @@ class Renderer:
             boss_screen.draw_result(screen, self.fonts, self.state)
         elif phase == GamePhase.ROUND_END:
             shop_screen.draw(screen, self.fonts, self.state)
+        elif phase == GamePhase.UNLOCK_REVEAL:
+            unlock_reveal_screen.draw(
+                screen, self.fonts, self.state, self.game.sprite_manager,
+            )
         elif phase == GamePhase.GAME_OVER:
             game_over_screen.draw(screen, self.fonts, self.state)
 

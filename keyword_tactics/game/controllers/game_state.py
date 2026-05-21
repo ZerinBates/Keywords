@@ -174,6 +174,14 @@ class GameState:
         self.unlocked_items: Set[str] = set()
         self.debug_unlock_all: bool = False
 
+        # Accumulator for the post-delve "what you unlocked" reveal screen.
+        # Entries: {'type': 'character'|'item', 'id': str}
+        # Populated by _unlock_for_boss_kill and _unlock_for_deck_clear;
+        # consumed and cleared by acknowledge_unlock_reveals().
+        self.pending_unlock_reveals: List[dict] = []
+        # Current page index on the reveal screen (when >12 unlocks).
+        self.unlock_reveal_page: int = 0
+
         # ---- Run-progress tracking ----
         # True once new_game() runs; cleared on game-over. Used by the main
         # menu Continue button + auto-save guard.
@@ -213,6 +221,8 @@ class GameState:
         self.hero_dunce = None
         self.last_king_slayer = None
         self.first_match_done = False
+        self.pending_unlock_reveals = []
+        self.unlock_reveal_page = 0
 
         # Reset reference panel
         self.ref_panel_open = False
@@ -330,6 +340,9 @@ class GameState:
             if char_id not in self.unlocked_characters:
                 self.unlocked_characters.add(char_id)
                 granted.append(char_id)
+                self.pending_unlock_reveals.append({
+                    'type': 'character', 'id': char_id,
+                })
         if granted:
             self.save_meta_to_disk()
         return granted
@@ -345,6 +358,9 @@ class GameState:
             if item_id in self.item_registry.items and item_id not in self.unlocked_items:
                 self.unlocked_items.add(item_id)
                 granted.append(item_id)
+                self.pending_unlock_reveals.append({
+                    'type': 'item', 'id': item_id,
+                })
         if granted:
             self.save_meta_to_disk()
         return granted
@@ -520,6 +536,11 @@ class GameState:
             'active_decks':       {
                 did: self._deck_to_dict(d) for did, d in self.active_decks.items()
             },
+
+            # Visual-reveal queue: empty most of the time, populated only
+            # between the boss/clear that unlocked the content and the
+            # player clicking Continue on the reveal screen.
+            'pending_unlock_reveals': list(self.pending_unlock_reveals),
         }
 
     def load_run_from_disk(self) -> bool:
@@ -570,8 +591,9 @@ class GameState:
             self.shop_kills_snapshot = int(run.get('shop_kills_snapshot', 0))
             self.first_match_done = bool(run.get('first_match_done', False))
 
-            # Resumed runs always land in PREPARATION; we never save mid-delve
-            # so any saved combat-phase value would be inconsistent anyway.
+            # Resumed runs always land in PREPARATION (or UNLOCK_REVEAL if
+            # they were mid-reveal); we never save mid-delve so any saved
+            # combat-phase value would be inconsistent anyway.
             saved_phase = run.get('phase', GamePhase.PREPARATION.value)
             try:
                 phase = GamePhase(saved_phase)
@@ -581,6 +603,24 @@ class GameState:
                          GamePhase.BOSS_CHOICE, GamePhase.BOSS_RESULT):
                 phase = GamePhase.PREPARATION
             self.phase = phase
+
+            # ---- Restore pending unlock reveals (filtered to valid ids) ----
+            self.pending_unlock_reveals = []
+            self.unlock_reveal_page = 0
+            for entry in run.get('pending_unlock_reveals', []):
+                if not isinstance(entry, dict):
+                    continue
+                etype = entry.get('type')
+                eid = entry.get('id')
+                if etype == 'character' and eid in self.adventurer_registry.templates:
+                    self.pending_unlock_reveals.append({'type': 'character', 'id': eid})
+                elif etype == 'item' and eid in self.item_registry.items:
+                    self.pending_unlock_reveals.append({'type': 'item', 'id': eid})
+
+            # If we restored phase == UNLOCK_REVEAL but list is empty, fall
+            # back to PREPARATION rather than show an empty reveal screen.
+            if self.phase == GamePhase.UNLOCK_REVEAL and not self.pending_unlock_reveals:
+                self.phase = GamePhase.PREPARATION
 
             # ---- Reset transient delve state ----
             self.current_deck = None
@@ -1318,6 +1358,21 @@ class GameState:
                 )
 
     # ---------------------------------------------------------------------
+    # Unlock reveal screen
+    # ---------------------------------------------------------------------
+
+    def acknowledge_unlock_reveals(self):
+        """User clicked Continue on the post-delve unlock screen.
+
+        Clears the pending list and lands in PREPARATION. Persists so a
+        crash before the next stable phase won't re-show the reveal.
+        """
+        self.pending_unlock_reveals = []
+        self.unlock_reveal_page = 0
+        self.phase = GamePhase.PREPARATION
+        self.autosave()
+
+    # ---------------------------------------------------------------------
     # End of expedition
     # ---------------------------------------------------------------------
 
@@ -1361,11 +1416,17 @@ class GameState:
         if all_cleared:
             self.phase = GamePhase.GAME_OVER
             self.set_message(" VICTORY! You\'ve cleared all dungeons!")
+            self.pending_unlock_reveals = []  # game over: skip reveal screen
             self.clear_run_save()
         elif len(self.roster) == 0:
             self.phase = GamePhase.GAME_OVER
             self.set_message("Game Over! No adventurers remain.")
+            self.pending_unlock_reveals = []
             self.clear_run_save()
+        elif self.pending_unlock_reveals:
+            # New unlocks to celebrate before going back to preparation.
+            self.phase = GamePhase.UNLOCK_REVEAL
+            self.autosave()
         else:
             self.autosave()
 

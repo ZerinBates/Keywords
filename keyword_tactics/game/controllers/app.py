@@ -273,5 +273,20 @@ class Game:
         elif phase == GamePhase.ROUND_END:
             self.buttons.append(Button(SCREEN_WIDTH // 2 - 100, 720, 200, 50, "End Shopping"))
 
+        elif phase == GamePhase.UNLOCK_REVEAL:
+            # Pagination buttons if needed
+            total = len(self.state.pending_unlock_reveals)
+            page_count = max(1, (total + 11) // 12)
+            if page_count > 1:
+                self.buttons.append(Button(
+                    SCREEN_WIDTH // 2 - 240, 720, 120, 50, "< Prev",
+                ))
+                self.buttons.append(Button(
+                    SCREEN_WIDTH // 2 + 120, 720, 120, 50, "Next >",
+                ))
+            self.buttons.append(Button(
+                SCREEN_WIDTH // 2 - 100, 720, 200, 50, "Continue",
+            ))
+
         elif phase == GamePhase.GAME_OVER:
             self.buttons.append(Button(SCREEN_WIDTH // 2 - 100, 400, 200, 50, "Main Menu"))

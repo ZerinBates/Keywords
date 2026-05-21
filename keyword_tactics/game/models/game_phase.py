@@ -13,4 +13,5 @@ class GamePhase(Enum):
     BOSS_RESULT    = "boss_result"
     ROUND_END      = "round_end"
     SHOP           = "shop"
+    UNLOCK_REVEAL  = "unlock_reveal"    # Show newly-unlocked classes/items after delve
     GAME_OVER      = "game_over"
