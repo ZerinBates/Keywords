@@ -10,21 +10,48 @@ from typing import Callable, List, Optional, Tuple
 
 import pygame
 
+from .. import theme
 from ..config import COLORS
+
+# Standardized spacing tokens (XS=4, S=8, M=16, L=24, XL=40).
+XS, S, M, L = theme.XS, theme.S, theme.M, theme.L
+R_S, R_M = theme.RADIUS['S'], theme.RADIUS['M']
+BW = theme.BORDER_W
+
+
+def inner_rect(rect: pygame.Rect, padding: int = S) -> pygame.Rect:
+    """Return `rect` inset on all sides by `padding` (a spacing token)."""
+    return rect.inflate(-2 * padding, -2 * padding)
+
+
+def draw_panel(surface, rect: pygame.Rect, *, fill=None, border=None,
+               radius: int = R_M, border_w: int = BW) -> pygame.Rect:
+    """Draw a standard panel/window surface and return its padded content rect."""
+    pygame.draw.rect(surface, fill or COLORS['panel'], rect, border_radius=radius)
+    pygame.draw.rect(surface, border or COLORS['border'], rect, border_w,
+                     border_radius=radius)
+    return inner_rect(rect, M)
+
+
+def draw_text_box(surface, rect: pygame.Rect, *, active: bool = False,
+                  radius: int = R_S) -> pygame.Rect:
+    """Draw an inset text/search box and return its padded content rect."""
+    border = COLORS['accent'] if active else COLORS['border']
+    pygame.draw.rect(surface, COLORS['well'], rect, border_radius=radius)
+    pygame.draw.rect(surface, border, rect, 1, border_radius=radius)
+    return inner_rect(rect, S)
 
 
 class Button:
     """A clickable button with hover state and enabled/disabled flag."""
 
     def __init__(self, x: int, y: int, width: int, height: int, text: str,
-                 color=COLORS['panel_light'],
-                 hover_color=COLORS['accent'],
-                 text_color=COLORS['text']):
+                 color=None, hover_color=None, text_color=None):
         self.rect = pygame.Rect(x, y, width, height)
         self.text = text
-        self.color = color
-        self.hover_color = hover_color
-        self.text_color = text_color
+        self.color = color or COLORS['panel_light']
+        self.hover_color = hover_color or COLORS['accent']
+        self.text_color = text_color or COLORS['text']
         self.hovered = False
         self.enabled = True
 
@@ -34,10 +61,10 @@ class Button:
     def draw(self, surface, font):
         color = self.hover_color if self.hovered else self.color
         if not self.enabled:
-            color = (60, 60, 60)
+            color = COLORS['panel_dark']
 
-        pygame.draw.rect(surface, color, self.rect, border_radius=5)
-        pygame.draw.rect(surface, COLORS['text_dim'], self.rect, 2, border_radius=5)
+        pygame.draw.rect(surface, color, self.rect, border_radius=R_S)
+        pygame.draw.rect(surface, COLORS['border'], self.rect, BW, border_radius=R_S)
 
         text_surf = font.render(
             self.text, True,
@@ -63,13 +90,13 @@ class Panel:
         self.title = title
 
     def draw(self, surface, font, title_font=None):
-        pygame.draw.rect(surface, COLORS['panel'], self.rect, border_radius=8)
-        pygame.draw.rect(surface, COLORS['panel_light'], self.rect, 2, border_radius=8)
+        pygame.draw.rect(surface, COLORS['panel'], self.rect, border_radius=R_M)
+        pygame.draw.rect(surface, COLORS['border'], self.rect, BW, border_radius=R_M)
 
         if self.title:
             tf = title_font or font
             title_surf = tf.render(self.title, True, COLORS['accent'])
-            surface.blit(title_surf, (self.rect.x + 10, self.rect.y + 8))
+            surface.blit(title_surf, (self.rect.x + S, self.rect.y + S))
 
 
 # ---------------------------------------------------------------------------
@@ -160,9 +187,9 @@ def hit_test_item_list(rect: pygame.Rect, items: List, scroll: int,
 def draw_item_search_bar(screen, fonts, rect: pygame.Rect,
                          search_text: str, active: bool):
     """Render a labelled search bar with caret + Esc hint."""
-    border = COLORS['accent'] if active else (70, 72, 88)
-    pygame.draw.rect(screen, (28, 28, 40), rect, border_radius=5)
-    pygame.draw.rect(screen, border, rect, 1, border_radius=5)
+    border = COLORS['accent'] if active else COLORS['border']
+    pygame.draw.rect(screen, COLORS['well'], rect, border_radius=R_S)
+    pygame.draw.rect(screen, border, rect, 1, border_radius=R_S)
 
     lbl = fonts['tiny'].render("Search:", True, COLORS['text_dim'])
     screen.blit(lbl, (rect.x + 6, rect.centery - lbl.get_height() // 2))
@@ -291,8 +318,8 @@ def draw_item_list_panel(screen, fonts, state, rect: pygame.Rect,
     header_rect, search_rect, list_rect = get_item_list_geometry(rect)
 
     # Header
-    pygame.draw.rect(screen, (38, 38, 55), header_rect, border_radius=6)
-    pygame.draw.rect(screen, COLORS['accent'], header_rect, 1, border_radius=6)
+    pygame.draw.rect(screen, COLORS['panel_light'], header_rect, border_radius=R_M)
+    pygame.draw.rect(screen, COLORS['accent'], header_rect, 1, border_radius=R_M)
     hs = fonts['small'].render(header_text, True, COLORS['accent'])
     screen.blit(hs, (header_rect.centerx - hs.get_width() // 2,
                      header_rect.centery - hs.get_height() // 2))
@@ -301,8 +328,8 @@ def draw_item_list_panel(screen, fonts, state, rect: pygame.Rect,
     draw_item_search_bar(screen, fonts, search_rect, search_text, search_active)
 
     # List background
-    pygame.draw.rect(screen, (28, 28, 40), list_rect, border_radius=6)
-    pygame.draw.rect(screen, (55, 55, 70), list_rect, 1, border_radius=6)
+    pygame.draw.rect(screen, COLORS['well'], list_rect, border_radius=R_M)
+    pygame.draw.rect(screen, COLORS['border'], list_rect, 1, border_radius=R_M)
 
     # Empty message
     if not items:
@@ -397,10 +424,10 @@ def draw_equipped_items_panel(screen, fonts, state, rect: pygame.Rect,
     Returns a list of [(item, row_rect)] for click hit-testing.
     """
     # Panel background
-    pygame.draw.rect(screen, (30, 32, 44), rect, border_radius=8)
-    pygame.draw.rect(screen, COLORS['accent'], rect, 2, border_radius=8)
+    pygame.draw.rect(screen, COLORS['panel'], rect, border_radius=R_M)
+    pygame.draw.rect(screen, COLORS['accent'], rect, BW, border_radius=R_M)
 
-    pad = 10
+    pad = M
     PORT = 44
     # --- Header: portrait + name ---
     if paper_doll_module is not None:
@@ -447,7 +474,7 @@ def draw_equipped_items_panel(screen, fonts, state, rect: pygame.Rect,
 
     # Divider
     div_y = rect.y + 148
-    pygame.draw.line(screen, (60, 65, 80),
+    pygame.draw.line(screen, COLORS['divider'],
                      (rect.x + pad, div_y), (rect.right - pad, div_y), 1)
 
     # --- Equipped items header ---

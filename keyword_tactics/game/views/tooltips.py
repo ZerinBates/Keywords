@@ -179,8 +179,8 @@ def draw_tooltip_panel(screen, font_tiny, lines: List[Tuple[str, tuple]],
 
     # Background
     tooltip_surf = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
-    tooltip_surf.fill((20, 20, 35, 230))
-    pygame.draw.rect(tooltip_surf, (100, 200, 255, 200),
+    tooltip_surf.fill((*COLORS['bg'], 235))
+    pygame.draw.rect(tooltip_surf, (*COLORS['accent'], 220),
                      (0, 0, panel_w, panel_h), 2, border_radius=6)
     screen.blit(tooltip_surf, (tx, ty))
 
@@ -218,14 +218,14 @@ def draw_combat_tooltip(screen, fonts, state, hover_pos: Tuple[int, int]):
                     lines.append(("Weak to:", COLORS['success']))
                     for j in range(0, len(weak_display), 4):
                         chunk = ", ".join(weak_display[j:j + 4])
-                        lines.append((f"  {chunk}", (120, 220, 140)))
+                        lines.append((f"  {chunk}", COLORS['success']))
 
                 exploit_display = info['exploits'][:10]
                 if exploit_display:
                     lines.append(("Exploits (hurts adventurers with):", COLORS['danger']))
                     for j in range(0, len(exploit_display), 4):
                         chunk = ", ".join(exploit_display[j:j + 4])
-                        lines.append((f"  {chunk}", (255, 140, 140)))
+                        lines.append((f"  {chunk}", COLORS['danger']))
 
                 # Matchups vs party
                 lines.append(("", COLORS['text']))
@@ -289,14 +289,14 @@ def draw_combat_tooltip(screen, fonts, state, hover_pos: Tuple[int, int]):
                     lines.append(("Weak to (enemy keywords that hurt you):", COLORS['danger']))
                     for j in range(0, len(weak_display), 4):
                         chunk = ", ".join(weak_display[j:j + 4])
-                        lines.append((f"  {chunk}", (255, 140, 140)))
+                        lines.append((f"  {chunk}", COLORS['danger']))
 
                 strong_display = info['strong_vs'][:10]
                 if strong_display:
                     lines.append(("Strong vs (enemy keywords you exploit):", COLORS['success']))
                     for j in range(0, len(strong_display), 4):
                         chunk = ", ".join(strong_display[j:j + 4])
-                        lines.append((f"  {chunk}", (120, 220, 140)))
+                        lines.append((f"  {chunk}", COLORS['success']))
 
                 # Per-monster matchups
                 if state.front_row:
@@ -348,13 +348,13 @@ def draw_combat_tooltip(screen, fonts, state, hover_pos: Tuple[int, int]):
                     lines.append(("Weak to:", COLORS['danger']))
                     for j in range(0, len(weak_display), 4):
                         chunk = ", ".join(weak_display[j:j + 4])
-                        lines.append((f"  {chunk}", (255, 140, 140)))
+                        lines.append((f"  {chunk}", COLORS['danger']))
                 strong_display = info['strong_vs'][:8]
                 if strong_display:
                     lines.append(("Strong vs:", COLORS['success']))
                     for j in range(0, len(strong_display), 4):
                         chunk = ", ".join(strong_display[j:j + 4])
-                        lines.append((f"  {chunk}", (120, 220, 140)))
+                        lines.append((f"  {chunk}", COLORS['success']))
                 est_h = len(lines) * 18 + 16
                 draw_tooltip_panel(screen, font_tiny, lines, ex, py - est_h - 5)
                 return
@@ -375,13 +375,13 @@ def draw_combat_tooltip(screen, fonts, state, hover_pos: Tuple[int, int]):
                 lines.append(("Weak to:", COLORS['success']))
                 for j in range(0, len(weak_display), 4):
                     chunk = ", ".join(weak_display[j:j + 4])
-                    lines.append((f"  {chunk}", (120, 220, 140)))
+                    lines.append((f"  {chunk}", COLORS['success']))
             exploit_display = info['exploits'][:10]
             if exploit_display:
                 lines.append(("Exploits:", COLORS['danger']))
                 for j in range(0, len(exploit_display), 4):
                     chunk = ", ".join(exploit_display[j:j + 4])
-                    lines.append((f"  {chunk}", (255, 140, 140)))
+                    lines.append((f"  {chunk}", COLORS['danger']))
             lines.append(("", COLORS['text']))
             lines.append(("--- Party Matchups ---", COLORS['accent']))
             for m in info['matchups']:

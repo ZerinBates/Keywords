@@ -2,6 +2,7 @@
 
 import pygame
 
+from ... import theme
 from ...config import COLORS, SCREEN_WIDTH
 
 
@@ -32,7 +33,8 @@ def draw(screen, fonts, state):
 
         # Panel
         panel_rect = pygame.Rect(SCREEN_WIDTH // 2 - 350, y - 10, 700, 95)
-        panel_color = (40, 50, 40) if is_completed else COLORS['panel']
+        panel_color = (theme.mix(COLORS['bg'], COLORS['success'], 0.22)
+                       if is_completed else COLORS['panel'])
         pygame.draw.rect(screen, panel_color, panel_rect, border_radius=8)
         pygame.draw.rect(screen, COLORS['panel_light'], panel_rect, 2, border_radius=8)
 

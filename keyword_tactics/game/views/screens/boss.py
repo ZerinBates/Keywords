@@ -89,7 +89,7 @@ def draw_choice(screen, fonts, state, sprite_manager,
         is_being_dragged = dragging and drag_adv_index == i
 
         if is_being_dragged:
-            color = (40, 45, 55)
+            color = COLORS['panel_dark']
         elif is_selected:
             color = COLORS['accent']
         else:
@@ -109,7 +109,7 @@ def draw_choice(screen, fonts, state, sprite_manager,
         # Grab handle bars
         if not is_selected and not is_being_dragged:
             for bar_y in range(486, 500, 5):
-                pygame.draw.line(screen, (100, 130, 170),
+                pygame.draw.line(screen, COLORS['muted'],
                                  (x + 55, bar_y), (x + 95, bar_y), 1)
 
         # Character sprite

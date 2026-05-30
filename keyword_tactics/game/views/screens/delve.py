@@ -2,6 +2,7 @@
 
 import pygame
 
+from ... import theme
 from ...config import COLORS, SCREEN_WIDTH, SCREEN_HEIGHT
 from .. import paper_doll
 from .. import widgets
@@ -29,9 +30,11 @@ def draw_square_card(screen, fonts, state, x: int, y: int, w: int, h: int,
 
     # Background color
     if show_result and result:
-        bg_color = (35, 75, 35) if result['victory'] else (75, 35, 35)
+        bg_color = (theme.mix(COLORS['bg'], COLORS['success'], 0.30)
+                    if result['victory']
+                    else theme.mix(COLORS['bg'], COLORS['danger'], 0.30))
     elif adv:
-        bg_color = (48, 52, 64)
+        bg_color = COLORS['panel_light']
     else:
         bg_color = COLORS['panel']
 
@@ -131,7 +134,7 @@ def draw_square_card(screen, fonts, state, x: int, y: int, w: int, h: int,
     # Row 4: adventurer slot (or drop zone, or result)
     slot_y = y + 118
     if adv:
-        pygame.draw.line(screen, (80, 80, 100),
+        pygame.draw.line(screen, COLORS['divider'],
                          (x + pad, slot_y - 3), (x + w - pad, slot_y - 3), 1)
 
         adv_color = COLORS['success'] if not adv.is_dead else COLORS['danger']
@@ -162,7 +165,7 @@ def draw_square_card(screen, fonts, state, x: int, y: int, w: int, h: int,
             )
     elif not show_result:
         drop_rect = pygame.Rect(x + pad, slot_y, w - pad * 2, 40)
-        pygame.draw.rect(screen, (55, 55, 70), drop_rect, border_radius=6)
+        pygame.draw.rect(screen, COLORS['well'], drop_rect, border_radius=6)
         pygame.draw.rect(screen, COLORS['text_dim'], drop_rect, 1, border_radius=6)
         drop_text = fonts['medium'].render("Drop Here", True, COLORS['text_dim'])
         drop_rect_c = drop_text.get_rect(center=(x + w // 2, slot_y + 20))
@@ -177,7 +180,7 @@ def draw_square_card(screen, fonts, state, x: int, y: int, w: int, h: int,
         px = x + w - port_size - 6
         py = y + h - port_size - 8
         # Dark backing frame
-        pygame.draw.rect(screen, (18, 20, 28),
+        pygame.draw.rect(screen, COLORS['well'],
                          (px - 2, py - 2, port_size + 4, port_size + 4),
                          border_radius=6)
         # Draw adventurer thumbnail with item chips (feature #1/#2)
@@ -190,7 +193,7 @@ def draw_square_card(screen, fonts, state, x: int, y: int, w: int, h: int,
     # Result overlay
     if show_result and result:
         ry = y + 118
-        pygame.draw.line(screen, (80, 80, 100),
+        pygame.draw.line(screen, COLORS['divider'],
                          (x + pad, ry - 3), (x + w - pad, ry - 3), 1)
 
         if result['victory']:
@@ -285,8 +288,8 @@ def draw_setup(screen, fonts, state, dragging: bool, drag_adv_index: int):
         for i, sq in enumerate(state.back_row):
             bx = CXS[i] if i < 4 else 20
             rect = pygame.Rect(bx, by + 18, CW, 50)
-            pygame.draw.rect(screen, (35, 35, 48), rect, border_radius=6)
-            pygame.draw.rect(screen, (60, 60, 75), rect, 1, border_radius=6)
+            pygame.draw.rect(screen, COLORS['well'], rect, border_radius=6)
+            pygame.draw.rect(screen, COLORS['border'], rect, 1, border_radius=6)
 
             # role badge (or blank) for back row preview
             back_badge = ""
@@ -300,7 +303,7 @@ def draw_setup(screen, fonts, state, dragging: bool, drag_adv_index: int):
             if len(name) > 22:
                 name = name[:21] + "..."
             screen.blit(
-                fonts['small'].render(name, True, (140, 110, 110)),
+                fonts['small'].render(name, True, COLORS['text_dim']),
                 (bx + 10, by + 22),
             )
             kws = ", ".join(sq['monster'].keywords[:3])
@@ -348,9 +351,9 @@ def draw_setup(screen, fonts, state, dragging: bool, drag_adv_index: int):
         is_dragging = dragging and drag_adv_index == i
         earned_m = state.get_adventurer_multiplier(adv)
 
-        if adv.is_dead:    bg = (60, 30, 30)
-        elif is_dragging:  bg = (40, 42, 52)
-        elif current_sq:   bg = (45, 55, 65)
+        if adv.is_dead:    bg = theme.mix(COLORS['bg'], COLORS['danger'], 0.25)
+        elif is_dragging:  bg = COLORS['panel_dark']
+        elif current_sq:   bg = theme.mix(COLORS['panel'], COLORS['accent'], 0.18)
         else:              bg = COLORS['panel_light']
 
         rect = pygame.Rect(cx, party_y, CW, party_h)
@@ -550,7 +553,7 @@ def draw_inventory_panel(screen, fonts, state):
     screen.blit(overlay, (0, 0))
 
     PX, PY, PW, PH = 60, 40, 1160, 710
-    pygame.draw.rect(screen, (32, 32, 45), (PX, PY, PW, PH), border_radius=12)
+    pygame.draw.rect(screen, COLORS['panel'], (PX, PY, PW, PH), border_radius=12)
     pygame.draw.rect(screen, COLORS['accent'], (PX, PY, PW, PH), 2, border_radius=12)
 
     # Title bar
@@ -575,11 +578,11 @@ def draw_inventory_panel(screen, fonts, state):
         is_dead = adv.is_dead
 
         if is_dead:
-            bg, border = (55, 30, 30), COLORS['danger']
+            bg, border = theme.mix(COLORS['bg'], COLORS['danger'], 0.28), COLORS['danger']
         elif is_sel:
-            bg, border = (40, 55, 80), COLORS['accent']
+            bg, border = theme.mix(COLORS['panel'], COLORS['accent'], 0.22), COLORS['accent']
         else:
-            bg, border = COLORS['panel_light'], (80, 80, 95)
+            bg, border = COLORS['panel_light'], COLORS['border']
 
         card_rect = pygame.Rect(left_x, cy, left_w, adv_card_h)
         pygame.draw.rect(screen, bg, card_rect, border_radius=8)
@@ -640,7 +643,7 @@ def draw_inventory_panel(screen, fonts, state):
         )
     else:
         # Stub panel when no adventurer is selected
-        pygame.draw.rect(screen, (30, 32, 44), equip_rect, border_radius=8)
+        pygame.draw.rect(screen, COLORS['panel'], equip_rect, border_radius=8)
         pygame.draw.rect(screen, COLORS['text_dim'], equip_rect, 1, border_radius=8)
         prompt = fonts['small'].render("Select adventurer", True, COLORS['text_dim'])
         screen.blit(prompt,

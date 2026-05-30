@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 import pygame
 
+from .. import theme
 from ..config import COLORS, SCREEN_HEIGHT
 
 if TYPE_CHECKING:
@@ -160,7 +161,7 @@ def _draw_speech_bubble(screen, fonts, tutorial: 'Tutorial'):
     br = get_bubble_rect()
 
     # Bubble body
-    pygame.draw.rect(screen, (28, 30, 50), br, border_radius=12)
+    pygame.draw.rect(screen, COLORS['panel'], br, border_radius=12)
     pygame.draw.rect(screen, FAIRY_COLOR_GLOW, br, 2, border_radius=12)
 
     # Speech tail pointing toward fairy (lower-left of bubble)
@@ -169,7 +170,7 @@ def _draw_speech_bubble(screen, fonts, tutorial: 'Tutorial'):
         (br.left + 38, br.bottom - 8),
         (FAIRY_X + 14, FAIRY_Y - 12),
     ]
-    pygame.draw.polygon(screen, (28, 30, 50), tail_pts)
+    pygame.draw.polygon(screen, COLORS['panel'], tail_pts)
     pygame.draw.line(screen, FAIRY_COLOR_GLOW, tail_pts[0], tail_pts[2], 2)
     pygame.draw.line(screen, FAIRY_COLOR_GLOW, tail_pts[1], tail_pts[2], 2)
 
@@ -194,7 +195,8 @@ def _draw_speech_bubble(screen, fonts, tutorial: 'Tutorial'):
 
     # Close (X)
     close_r = get_bubble_close_rect()
-    pygame.draw.rect(screen, (60, 30, 30), close_r, border_radius=4)
+    pygame.draw.rect(screen, theme.mix(COLORS['bg'], COLORS['danger'], 0.30),
+                     close_r, border_radius=4)
     pygame.draw.rect(screen, COLORS['danger'], close_r, 1, border_radius=4)
     x_label = fonts['small'].render("x", True, COLORS['text'])
     screen.blit(x_label, x_label.get_rect(center=close_r.center))

@@ -33,6 +33,7 @@ from typing import Optional
 
 import pygame
 
+from .. import theme
 from ..config import COLORS
 
 
@@ -649,19 +650,20 @@ def draw_character_card(screen, fonts, state, x: int, y: int, adv,
 
     # ---- Card background ----
     card_rect = pygame.Rect(x, y, CARD_W, CARD_H)
-    bg_color = (40, 28, 28) if is_dead else (35, 38, 50)
+    bg_color = (theme.mix(COLORS['bg'], COLORS['danger'], 0.22) if is_dead
+                else COLORS['panel'])
     pygame.draw.rect(screen, bg_color, card_rect, border_radius=10)
 
     border_color = (
         COLORS['accent'] if selected
-        else (COLORS['danger'] if is_dead else (75, 80, 100))
+        else (COLORS['danger'] if is_dead else COLORS['border'])
     )
     border_width = 3 if selected else 2
     pygame.draw.rect(screen, border_color, card_rect, border_width, border_radius=10)
 
     # ---- Banner ----
     banner_rect = pygame.Rect(x, y, CARD_W, BANNER_H)
-    pygame.draw.rect(screen, (28, 30, 42), banner_rect,
+    pygame.draw.rect(screen, COLORS['panel_dark'], banner_rect,
                      border_top_left_radius=10, border_top_right_radius=10)
     pygame.draw.line(screen, border_color,
                      (x, y + BANNER_H), (x + CARD_W, y + BANNER_H), 1)
@@ -677,8 +679,8 @@ def draw_character_card(screen, fonts, state, x: int, y: int, adv,
 
     # ---- Doll viewport ----
     doll_rect = pygame.Rect(x + DOLL_X, y + DOLL_Y, DOLL_W, DOLL_H)
-    pygame.draw.rect(screen, (22, 24, 34), doll_rect, border_radius=6)
-    pygame.draw.rect(screen, (50, 52, 65), doll_rect, 1, border_radius=6)
+    pygame.draw.rect(screen, COLORS['well'], doll_rect, border_radius=6)
+    pygame.draw.rect(screen, COLORS['border'], doll_rect, 1, border_radius=6)
 
     doll_ox = x + DOLL_X
     doll_oy = y + DOLL_Y
@@ -705,7 +707,7 @@ def draw_character_card(screen, fonts, state, x: int, y: int, adv,
 
     # ---- Footer ----
     footer_y = y + CARD_H - FOOTER_H
-    pygame.draw.line(screen, (60, 65, 80),
+    pygame.draw.line(screen, COLORS['divider'],
                      (x + 10, footer_y), (x + CARD_W - 10, footer_y), 1)
 
     try:

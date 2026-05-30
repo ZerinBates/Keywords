@@ -1,28 +1,23 @@
 """
 Global configuration: screen dimensions, FPS, color palette.
-Single source of truth for visual constants.
+
+Visual constants are now centralized in ``game/theme.py`` (the theme manager).
+``COLORS`` is *derived* from the active 6-colour palette there, so changing
+``theme.ACTIVE_PALETTE`` re-themes the entire game. Spacing tokens
+(XS/S/M/L/XL) are re-exported here too for convenience.
 """
+
+from . import theme
 
 SCREEN_WIDTH = 1280
 SCREEN_HEIGHT = 800
 FPS = 60
 
-# Color palette - referenced everywhere via COLORS['name']
-COLORS = {
-    'bg':           (30, 30, 40),
-    'panel':        (45, 45, 60),
-    'panel_light':  (60, 60, 80),
-    'text':         (240, 240, 240),
-    'text_dim':     (160, 160, 170),
-    'accent':       (100, 200, 255),
-    'success':      (100, 220, 120),
-    'danger':       (255, 100, 100),
-    'warning':      (255, 200, 80),
-    'gold':         (255, 215, 0),
-    'fire':         (255, 100, 50),
-    'water':        (50, 150, 255),
-    'earth':        (150, 120, 80),
-    'nature':       (80, 200, 80),
-    'dark':         (100, 50, 150),
-    'light':        (255, 255, 200),
-}
+# Runtime colour map, built from the active theme palette. Every
+# `COLORS['name']` lookup across the game flows from the theme manager.
+COLORS = theme.build_colors()
+
+# Standardized spacing scale (pixels), re-exported for convenience.
+PADDING = theme.PADDING
+XS, S, M, L, XL = theme.XS, theme.S, theme.M, theme.L, theme.XL
+RADIUS = theme.RADIUS

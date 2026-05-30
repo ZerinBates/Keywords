@@ -12,6 +12,7 @@ from typing import List, Tuple
 import pygame
 
 from ..widgets import Panel  # noqa: F401
+from ... import theme
 from ...config import COLORS, SCREEN_WIDTH, SCREEN_HEIGHT
 
 
@@ -60,7 +61,7 @@ def _resolve_entry(state, entry: dict):
             'name':         tmpl.get('name', eid),
             'subtitle':     tmpl.get('ability_name') or "New Class",
             'border_color': COLORS['gold'],
-            'bg_color':     (50, 46, 30),
+            'bg_color':     theme.mix(COLORS['bg'], COLORS['gold'], 0.22),
         }
     if etype == 'item':
         item = state.item_registry.items.get(eid)

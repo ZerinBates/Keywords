@@ -23,8 +23,8 @@ def draw_ref_panel(screen, fonts, state):
 
     # Search box
     search_rect = pygame.Rect(30, 110, 200, 30)
-    pygame.draw.rect(screen, COLORS['panel_light'], search_rect, border_radius=5)
-    pygame.draw.rect(screen, COLORS['text_dim'], search_rect, 2, border_radius=5)
+    pygame.draw.rect(screen, COLORS['well'], search_rect, border_radius=5)
+    pygame.draw.rect(screen, COLORS['border'], search_rect, 2, border_radius=5)
 
     search_text = state.ref_search_text or "Type to search..."
     search_color = COLORS['text'] if state.ref_search_text else COLORS['text_dim']

@@ -22,22 +22,22 @@ def draw_drag_ghost(screen, fonts, state, drag_adv_index: int, drag_pos):
 
     # Semi-transparent ghost surface
     ghost = pygame.Surface((cw, ch), pygame.SRCALPHA)
-    ghost.fill((60, 80, 120, 180))
-    pygame.draw.rect(ghost, (100, 200, 255, 220), (0, 0, cw, ch), 3, border_radius=8)
+    ghost.fill((*COLORS['panel_light'], 210))
+    pygame.draw.rect(ghost, (*COLORS['accent'], 230), (0, 0, cw, ch), 3, border_radius=8)
 
     # Name
-    ghost.blit(fonts['medium'].render(adv.name, True, (255, 255, 255)), (8, 8))
+    ghost.blit(fonts['medium'].render(adv.name, True, COLORS['text']), (8, 8))
 
     # Power summary
     power = adv.get_base_points()
     mult = adv.get_multiplier()
     stat_text = f"Pwr: {power}x{mult}={power * mult}"
-    ghost.blit(fonts['small'].render(stat_text, True, (200, 220, 255)), (8, 42))
+    ghost.blit(fonts['small'].render(stat_text, True, COLORS['success']), (8, 42))
 
     # Keywords
     keywords = adv.get_all_keywords()[:3]
     kw_text = ", ".join(keywords) if keywords else "none"
-    ghost.blit(fonts['small'].render(kw_text, True, (180, 180, 200)), (8, 65))
+    ghost.blit(fonts['small'].render(kw_text, True, COLORS['text_dim']), (8, 65))
 
     screen.blit(ghost, (gx, gy))
 
@@ -54,14 +54,14 @@ def draw_drag_ghost(screen, fonts, state, drag_adv_index: int, drag_pos):
                 sq = state.front_row[i]
                 if sq['adventurer'] is None and rect.collidepoint(dx, dy):
                     highlight = pygame.Surface((rect.w, rect.h), pygame.SRCALPHA)
-                    highlight.fill((100, 200, 255, 50))
+                    highlight.fill((*COLORS['accent'], 50))
                     screen.blit(highlight, rect.topleft)
-                    pygame.draw.rect(screen, (100, 200, 255, 180), rect, 3, border_radius=8)
+                    pygame.draw.rect(screen, COLORS['accent'], rect, 3, border_radius=8)
 
     elif state.phase == GamePhase.BOSS_CHOICE:
         boss_rect = pygame.Rect(SCREEN_WIDTH // 2 - 200, 80, 400, 250)
         if boss_rect.collidepoint(dx, dy):
             highlight = pygame.Surface((boss_rect.w, boss_rect.h), pygame.SRCALPHA)
-            highlight.fill((255, 100, 100, 50))
+            highlight.fill((*COLORS['danger'], 50))
             screen.blit(highlight, boss_rect.topleft)
-            pygame.draw.rect(screen, (255, 150, 100, 200), boss_rect, 3, border_radius=8)
+            pygame.draw.rect(screen, COLORS['danger'], boss_rect, 3, border_radius=8)

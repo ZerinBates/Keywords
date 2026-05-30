@@ -171,7 +171,7 @@ def _draw_shop_panel(screen, fonts, state):
     sx, sy, sw, sh = SHOP_RECT.x, SHOP_RECT.y, SHOP_RECT.w, SHOP_RECT.h
 
     # Panel background
-    pygame.draw.rect(screen, (28, 30, 42), SHOP_RECT, border_radius=8)
+    pygame.draw.rect(screen, COLORS['panel'], SHOP_RECT, border_radius=8)
     pygame.draw.rect(screen, COLORS['gold'], SHOP_RECT, 2, border_radius=8)
 
     # Title
@@ -253,7 +253,7 @@ def _draw_shop_panel(screen, fonts, state):
 
             row_rect = pygame.Rect(sx + 4, y, sw - 8, row_h - 4)
             pygame.draw.rect(screen, bg, row_rect, border_radius=5)
-            border_c = rc if can_afford else (60, 60, 70)
+            border_c = rc if can_afford else COLORS['border']
             pygame.draw.rect(screen, border_c, row_rect, 1, border_radius=5)
 
             paper_doll.draw_item_thumbnail(screen, item, sx + 8, y + 4, 26)
@@ -295,9 +295,9 @@ def _draw_shop_panel(screen, fonts, state):
             can_afford = state.coins >= price
 
             row_rect = pygame.Rect(sx + 4, y, sw - 8, row_h - 4)
-            bg_c = (35, 40, 55) if can_afford else (35, 35, 45)
+            bg_c = COLORS['panel_light'] if can_afford else COLORS['panel']
             pygame.draw.rect(screen, bg_c, row_rect, border_radius=5)
-            pygame.draw.rect(screen, COLORS['accent'] if can_afford else (55, 55, 70),
+            pygame.draw.rect(screen, COLORS['accent'] if can_afford else COLORS['border'],
                              row_rect, 1, border_radius=5)
 
             paper_doll.draw_adventurer_thumbnail(screen, adv, sx + 8, y + 3, 28)
