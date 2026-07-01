@@ -267,9 +267,9 @@ def draw_item_row(screen, fonts, state, row_rect: pygame.Rect, item,
     screen.blit(pts_surf,
                 (row_rect.right - pts_surf.get_width() - 10, row_rect.y + 2))
 
-    # Keywords inline (bottom left)
+    # Keywords inline (bottom left) — show all that fit; break on overflow.
     kw_x = row_rect.x + 50
-    for kw_id in item.keywords[:3]:
+    for kw_id in item.keywords:
         kw = state.keyword_registry.get(kw_id)
         if kw:
             label = kw.name[:8]
@@ -408,7 +408,8 @@ SLOT_TAG_COLOR = (140, 145, 175)
 
 
 def draw_equipped_items_panel(screen, fonts, state, rect: pygame.Rect,
-                              adv, paper_doll_module=None) -> List[Tuple[object, pygame.Rect]]:
+                              adv, paper_doll_module=None,
+                              scroll: int = 0) -> List[Tuple[object, pygame.Rect]]:
     """Render an "equipped items" side-panel for `adv`.
 
     Layout (top -> bottom):
@@ -497,9 +498,11 @@ def draw_equipped_items_panel(screen, fonts, state, rect: pygame.Rect,
         return row_rects
 
     max_visible = max(1, list_h // ITEM_ROW_H)
-    for j, item in enumerate(adv.equipped_items):
-        if j >= max_visible:
-            break
+    total = len(adv.equipped_items)
+    scroll = max(0, min(scroll, max(0, total - max_visible)))
+    visible_slice = adv.equipped_items[scroll:scroll + max_visible]
+
+    for j, item in enumerate(visible_slice):
         iy = list_top + j * ITEM_ROW_H
         row_rect = pygame.Rect(rect.x + 4, iy, rect.w - 8, ITEM_ROW_H - 4)
 
@@ -520,10 +523,10 @@ def draw_equipped_items_panel(screen, fonts, state, rect: pygame.Rect,
         screen.blit(fonts['small'].render(iname, True, COLORS['text']),
                     (row_rect.x + 34, row_rect.y + 2))
 
-        # Keyword chips (one per keyword, coloured by keyword) — feature #1
+        # Keyword chips — show as many as fit; the break handles overflow.
         kw_x = row_rect.x + 34
         kw_y = row_rect.y + 20
-        for kw_id in item.keywords[:4]:
+        for kw_id in item.keywords:
             kw = state.keyword_registry.get(kw_id)
             if not kw:
                 continue
@@ -549,6 +552,14 @@ def draw_equipped_items_panel(screen, fonts, state, rect: pygame.Rect,
                     (row_rect.right - x_surf.get_width() - 8, row_rect.y + 20))
 
         row_rects.append((item, row_rect))
+
+    # Scroll affordances
+    if scroll > 0:
+        screen.blit(fonts['tiny'].render("^ scroll up", True, COLORS['text_dim']),
+                    (rect.right - 80, list_top - 12))
+    if scroll + max_visible < total:
+        screen.blit(fonts['tiny'].render("v more below", True, COLORS['text_dim']),
+                    (rect.right - 80, rect.bottom - 30))
 
     # Footer hint
     screen.blit(fonts['tiny'].render("× click any item to remove",

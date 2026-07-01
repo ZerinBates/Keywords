@@ -27,12 +27,12 @@ TUTORIAL_MESSAGES: Dict[GamePhase, List[str]] = {
     ],
 
     GamePhase.PREPARATION: [
-        "Camp time. Build your party and gear them up here.",
-        "LEFT panel: your roster. Click an adventurer to send them to the PARTY (middle). Shift-click to remove.",
-        "RIGHT panel: items in your inventory. Select a party member, then click items to equip them.",
-        "Combat math: matching keywords MULTIPLY your damage.",
+        "Shop time. Manage your roster and gear them up between delves.",
+        "LEFT panel: your roster. Click a row to select that adventurer for editing.",
+        "RIGHT panel: items in your inventory. Click an item to equip it on the selected adventurer.",
+        "Lower-right: the shop — buy adventurers and items with coins.",
         "Press TAB anywhere to open the keyword reference — it shows what counters what.",
-        "Once your party has 4 adventurers, hit 'Select Deck' (top-right).",
+        "Click 'To Delve' (top-right) when ready. Pick your team inside the delve.",
     ],
 
     GamePhase.DECK_SELECT: [
@@ -43,8 +43,8 @@ TUTORIAL_MESSAGES: Dict[GamePhase, List[str]] = {
 
     GamePhase.DELVE_SETUP: [
         "The delve! Each square is one fight.",
-        "There is a king badge and a dunce badge the dunce divides your total by 2 and the king doubles your total killing a king enemy makes that character a king next.",
-        "Optimize your character stats by rearranging items"
+        "First: click Recruit to pick your team — up to 4 adventurers from your roster.",
+        "King badge doubles your total; dunce badge halves it. Killing a king enemy makes that character a king next.",
         "DRAG adventurers from the bottom tray onto squares to assign matchups.",
         "Each square has a bonus — buff or resist a keyword. Read it before placing.",
         "All living adventurers must be placed before FIGHT! becomes clickable.",
@@ -58,14 +58,16 @@ TUTORIAL_MESSAGES: Dict[GamePhase, List[str]] = {
     ],
 
     GamePhase.BOSS_CHOICE: [
-        "A BOSS! Only ONE adventurer fights it.",
-        "The boss multiplier is huge. Send your strongest, best-equipped pick.",
-        "Drag an adventurer onto the boss card to choose them. 'Skip Boss' to leave with what you've got.",
+        "A BOSS! Your living heroes fight it one at a time, in order.",
+        "Each hero must beat the 30% threshold: pass to survive, chip the boss's score, and strip a keyword.",
+        "Miss the threshold and that hero dies. Drop the score to 0 for an early KO.",
+        "The LAST hero has no threshold — they just need to out-score whatever's left. 'Skip Boss' bails.",
     ],
 
     GamePhase.BOSS_RESULT: [
-        "Boss fight done.",
-        "If you won, the boss drops a special reward: bonus slot, stolen keyword, or stat bump.",
+        "Boss relay done — see how each hero fared.",
+        "Win and the boss drops a reward: bonus slot, stolen keyword, or stat bump.",
+        "Lose the final fight and the boss fully resets for next time.",
     ],
 
     GamePhase.ROUND_END: [

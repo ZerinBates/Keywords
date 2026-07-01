@@ -1,6 +1,6 @@
 {
   "_comment": "Tactical Deck Builder Dungeon Registry - 17 Themed Decks (x2 Points, Repeated Keywords)",
-"training_den": {
+  "training_den": {
     "name": "Novice Proving Grounds",
     "description": "A controlled environment filled with weak, mixed-breed stragglers from across the realms. Perfect for testing new decks and basic tactics.",
     "color": [200, 200, 200],
@@ -18,23 +18,29 @@
       "torn_wing"
     ],
     "monsters": [
-      { "name": "Lost Pup", "keywords": ["beast", "spirit"], "base_points": 13 },
-      { "name": "Rusty Cog", "keywords": ["construct", "metal"], "base_points": 15 },
-      { "name": "Sickly Goblin", "keywords": ["humanoid", "poison"], "base_points": 17 },
-      { "name": "Withered Spore", "keywords": ["plant", "undead"], "base_points": 19 },
-      { "name": "Confused Imp", "keywords": ["demon", "fey"], "base_points": 20 },
-      { "name": "Dull Slime", "keywords": ["slime", "earth"], "base_points": 30 },
-      { "name": "Small Flame", "keywords": ["elemental", "fire"], "base_points": 32 },
-      { "name": "Muddy Crab", "keywords": ["aquatic", "beast"], "base_points": 33 },
-      { "name": "Tired Hatchling", "keywords": ["dragon", "avian"], "base_points": 35 },
-      { "name": "Weak Poltergeist", "keywords": ["spirit", "wind"], "base_points": 37 },
-      { "name": "Clumsy Cultist", "keywords": ["humanoid", "occult"], "base_points": 60 },
-      { "name": "Dazed Larva", "keywords": ["insect", "aberration"], "base_points": 63 },
-      { "name": "Shed Snake Skin", "keywords": ["reptile", "construct"], "base_points": 67 },
-      { "name": "Fallen Cherub", "keywords": ["angel", "darkness"], "base_points": 70 },
-      { "name": "Lost Shadow", "keywords": ["undead", "illusion"], "base_points": 73 },
+      { "name": "Lost Pup", "keywords": ["beast", "spirit"], "base_points": 1 },
+      { "name": "Rusty Cog", "keywords": ["construct", "metal"], "base_points": 1 },
+      { "name": "Sickly Goblin", "keywords": ["humanoid", "poison"], "base_points": 1 },
+      { "name": "Withered Spore", "keywords": ["plant", "undead"], "base_points": 1 },
+      { "name": "Confused Imp", "keywords": ["demon", "fey"], "base_points": 2 },
+      { "name": "Dull Slime", "keywords": ["slime", "earth"], "base_points": 3 },
+      { "name": "Small Flame", "keywords": ["elemental", "fire"], "base_points": 3 },
+      { "name": "Muddy Crab", "keywords": ["aquatic", "beast"], "base_points": 3 },
+      { "name": "Tired Hatchling", "keywords": ["dragon", "avian"], "base_points": 5 },
+      { "name": "Weak Poltergeist", "keywords": ["spirit", "wind"], "base_points": 7 },
+      { "name": "Clumsy Cultist", "keywords": ["humanoid", "occult"], "base_points": 0 },
+      { "name": "Dazed Larva", "keywords": ["insect", "aberration"], "base_points": 6 },
+      { "name": "Shed Snake Skin", "keywords": ["reptile", "construct"], "base_points": 6 },
+      { "name": "Fallen Cherub", "keywords": ["angel", "darkness"], "base_points": 7 },
+      { "name": "Lost Shadow", "keywords": ["undead", "illusion"], "base_points": 7 },
       { "name": "The Practice Dummy", "keywords": ["construct", "construct", "construct", "wood", "dummy"], "base_points": 147 }
-    ]
+    ],
+    "boss": {
+      "name": "The Grand Overseer Golem",
+      "keywords": ["construct", "metal", "elite", "boss"],
+      "base_points": 500,
+      "guaranteed_drop": "overseer_core"
+    }
   },
   "beast_den": {
     "name": "Beast's Den",
@@ -59,9 +65,14 @@
       { "name": "Sabertooth Tiger", "keywords": ["beast", "beast", "ice", "claw"], "base_points": 210 },
       { "name": "Venomous Hydra", "keywords": ["beast", "beast", "poison", "reptile"], "base_points": 220 },
       { "name": "King of Beasts", "keywords": ["beast", "beast", "beast", "king", "primal"], "base_points": 440 }
-    ]
+    ],
+    "boss": {
+      "name": "Apex Predator Primal Beast",
+      "keywords": ["beast", "nature", "elite", "boss"],
+      "base_points": 900,
+      "guaranteed_drop": "apex_pelt"
+    }
   },
-
   "humanoid_fortress": {
     "name": "Bandit Fortress",
     "description": "A fortified keep held by brigands and knights. Expect organized resistance and diverse weaponry.",
@@ -85,9 +96,14 @@
       { "name": "Royal Guard", "keywords": ["humanoid", "humanoid", "guardian", "gold"], "base_points": 230 },
       { "name": "High Priest", "keywords": ["humanoid", "humanoid", "healer", "divine"], "base_points": 240 },
       { "name": "Bandit King", "keywords": ["humanoid", "humanoid", "humanoid", "king", "warrior", "gold"], "base_points": 480 }
-    ]
+    ],
+    "boss": {
+      "name": "The Usurper Warlord",
+      "keywords": ["humanoid", "sword", "elite", "boss"],
+      "base_points": 1000,
+      "guaranteed_drop": "warlord_crown"
+    }
   },
-
   "undead_crypt": {
     "name": "Cursed Crypt",
     "description": "The dead do not rest here. Skeletons and ghosts guard ancient secrets in the dark.",
@@ -111,9 +127,14 @@
       { "name": "Death Knight", "keywords": ["undead", "undead", "knight", "ice"], "base_points": 230 },
       { "name": "Necromancer", "keywords": ["undead", "undead", "mage", "necromancy"], "base_points": 240 },
       { "name": "Elder Lich", "keywords": ["undead", "undead", "undead", "necromancy", "king"], "base_points": 480 }
-    ]
+    ],
+    "boss": {
+      "name": "The Forgotten Bone Dragon",
+      "keywords": ["undead", "dragon", "elite", "boss"],
+      "base_points": 1000,
+      "guaranteed_drop": "cursed_skull"
+    }
   },
-
   "dragon_peak": {
     "name": "Dragon's Peak",
     "description": "High altitude nests where wyrms rule. Fire and scales make for a tough ascent.",
@@ -137,9 +158,14 @@
       { "name": "Shadow Dragon", "keywords": ["dragon", "dragon", "darkness", "void"], "base_points": 270 },
       { "name": "Ice Dragon", "keywords": ["dragon", "dragon", "ice", "water"], "base_points": 280 },
       { "name": "Ancient Red Dragon", "keywords": ["dragon", "dragon", "dragon", "fire", "king"], "base_points": 560 }
-    ]
+    ],
+    "boss": {
+      "name": "Bahamut, the Platinum Emperor",
+      "keywords": ["dragon", "divine", "elite", "boss"],
+      "base_points": 1200,
+      "guaranteed_drop": "platinum_scale"
+    }
   },
-
   "construct_foundry": {
     "name": "Iron Foundry",
     "description": "An automated factory churning out machines. Bring hammers to smash the metal defenses.",
@@ -163,9 +189,14 @@
       { "name": "Clockwork Mage", "keywords": ["construct", "construct", "arcane", "time"], "base_points": 230 },
       { "name": "War Machine", "keywords": ["construct", "construct", "warrior", "hammer"], "base_points": 240 },
       { "name": "The Titan", "keywords": ["construct", "construct", "construct", "metal", "king"], "base_points": 480 }
-    ]
+    ],
+    "boss": {
+      "name": "Omega Forge Core",
+      "keywords": ["construct", "metal", "elite", "boss"],
+      "base_points": 1000,
+      "guaranteed_drop": "omega_gear"
+    }
   },
-
   "demon_rift": {
     "name": "Abyssal Rift",
     "description": "A tear in reality where demons spill forth. Fire, blood, and dark pacts abound.",
@@ -189,9 +220,14 @@
       { "name": "Balor", "keywords": ["demon", "demon", "fire", "sword", "whip"], "base_points": 230 },
       { "name": "Doom Caster", "keywords": ["demon", "demon", "mage", "occult"], "base_points": 240 },
       { "name": "Demon Prince", "keywords": ["demon", "demon", "demon", "king", "occult"], "base_points": 480 }
-    ]
+    ],
+    "boss": {
+      "name": "Azazel, the Hellbringer",
+      "keywords": ["demon", "fire", "elite", "boss"],
+      "base_points": 1000,
+      "guaranteed_drop": "hellbringer_horns"
+    }
   },
-
   "angel_spire": {
     "name": "Celestial Spire",
     "description": "Floating islands guarded by divine beings. Light burns the unworthy.",
@@ -215,9 +251,14 @@
       { "name": "Celestial Lion", "keywords": ["angel", "angel", "beast", "warrior"], "base_points": 230 },
       { "name": "Divine Arbiter", "keywords": ["angel", "angel", "mage", "light"], "base_points": 240 },
       { "name": "Archangel", "keywords": ["angel", "angel", "angel", "divine", "king"], "base_points": 480 }
-    ]
+    ],
+    "boss": {
+      "name": "Metatron, Voice of the Divine",
+      "keywords": ["angel", "light", "elite", "boss"],
+      "base_points": 1000,
+      "guaranteed_drop": "divine_halo"
+    }
   },
-
   "fey_wilds": {
     "name": "Fey Wilds",
     "description": "A magical forest of trickery. Illusions and enchantments will test your mind.",
@@ -241,9 +282,14 @@
       { "name": "Displacer Beast", "keywords": ["fey", "fey", "beast", "illusion"], "base_points": 230 },
       { "name": "Moon Dancer", "keywords": ["fey", "fey", "mage", "arcane"], "base_points": 240 },
       { "name": "Fey Queen", "keywords": ["fey", "fey", "fey", "king", "arcane"], "base_points": 480 }
-    ]
+    ],
+    "boss": {
+      "name": "The Archfey of the Changing Seasons",
+      "keywords": ["fey", "nature", "elite", "boss"],
+      "base_points": 1000,
+      "guaranteed_drop": "archfey_heart"
+    }
   },
-
   "slime_sewer": {
     "name": "Toxic Sewers",
     "description": "Dank tunnels filled with amorphous ooze. Physical attacks may get stuck.",
@@ -267,9 +313,14 @@
       { "name": "Mimic", "keywords": ["slime", "slime", "illusion", "construct"], "base_points": 230 },
       { "name": "Corrosive Mass", "keywords": ["slime", "slime", "fire", "acid"], "base_points": 240 },
       { "name": "Slime King", "keywords": ["slime", "slime", "slime", "king", "poison"], "base_points": 480 }
-    ]
+    ],
+    "boss": {
+      "name": "The Primordial Ooze",
+      "keywords": ["slime", "acid", "elite", "boss"],
+      "base_points": 1000,
+      "guaranteed_drop": "primordial_nucleus"
+    }
   },
-
   "insect_hive": {
     "name": "Buzzing Hive",
     "description": "A claustrophobic nest of chitin and stingers. Swarm tactics overwhelm the slow.",
@@ -293,9 +344,14 @@
       { "name": "Scorpion King", "keywords": ["insect", "insect", "poison", "desert"], "base_points": 230 },
       { "name": "Moth Mage", "keywords": ["insect", "insect", "mage", "dust"], "base_points": 240 },
       { "name": "Hive Queen", "keywords": ["insect", "insect", "insect", "king", "psionic"], "base_points": 480 }
-    ]
+    ],
+    "boss": {
+      "name": "The Apex Swarm-Mother",
+      "keywords": ["insect", "poison", "elite", "boss"],
+      "base_points": 1000,
+      "guaranteed_drop": "royal_jelly"
+    }
   },
-
   "plant_grove": {
     "name": "Overgrown Grove",
     "description": "The flora here is aggressive. Vines constrict and spores choke the air.",
@@ -319,9 +375,14 @@
       { "name": "Shambling Mound", "keywords": ["plant", "plant", "slime", "thunder"], "base_points": 230 },
       { "name": "Lotus Monk", "keywords": ["plant", "plant", "monk", "healer"], "base_points": 240 },
       { "name": "World Tree Avatar", "keywords": ["plant", "plant", "plant", "divine", "nature"], "base_points": 480 }
-    ]
+    ],
+    "boss": {
+      "name": "Yggdrasil's Corrupted Root",
+      "keywords": ["plant", "earth", "elite", "boss"],
+      "base_points": 1000,
+      "guaranteed_drop": "world_root"
+    }
   },
-
   "aquatic_trench": {
     "name": "Abyssal Trench",
     "description": "Crushing depths where light fades. Aquatic beasts and merfolk guard the sunken city.",
@@ -345,9 +406,14 @@
       { "name": "Tidal Elemental", "keywords": ["aquatic", "aquatic", "elemental", "water"], "base_points": 230 },
       { "name": "Merfolk King", "keywords": ["aquatic", "aquatic", "humanoid", "spear"], "base_points": 240 },
       { "name": "Kraken", "keywords": ["aquatic", "aquatic", "aquatic", "king", "beast"], "base_points": 480 }
-    ]
+    ],
+    "boss": {
+      "name": "Leviathan of the Depths",
+      "keywords": ["aquatic", "water", "elite", "boss"],
+      "base_points": 1000,
+      "guaranteed_drop": "abyssal_pearl"
+    }
   },
-
   "avian_peaks": {
     "name": "Cloud Peaks",
     "description": "Roosts high above the clouds. Fast, flying enemies that strike from above.",
@@ -371,9 +437,14 @@
       { "name": "Wyvern Lord", "keywords": ["avian", "avian", "dragon", "poison"], "base_points": 230 },
       { "name": "Cloud Giant", "keywords": ["avian", "avian", "humanoid", "wind"], "base_points": 240 },
       { "name": "Roc", "keywords": ["avian", "avian", "avian", "earth", "king"], "base_points": 480 }
-    ]
+    ],
+    "boss": {
+      "name": "The Zenith Stormbird",
+      "keywords": ["avian", "wind", "elite", "boss"],
+      "base_points": 1000,
+      "guaranteed_drop": "zenith_feather"
+    }
   },
-
   "reptile_swamp": {
     "name": "Festering Swamp",
     "description": "A humid marsh of lizards and snakes. Cold-blooded killers wait in the mud.",
@@ -397,9 +468,14 @@
       { "name": "Naga Siren", "keywords": ["reptile", "reptile", "arcane", "water"], "base_points": 230 },
       { "name": "Dragon Turtle", "keywords": ["reptile", "reptile", "dragon", "fire"], "base_points": 240 },
       { "name": "Serpent God", "keywords": ["reptile", "reptile", "reptile", "divine", "poison"], "base_points": 480 }
-    ]
+    ],
+    "boss": {
+      "name": "Quetzalcoatl, the Feathered Serpent",
+      "keywords": ["reptile", "wind", "elite", "boss"],
+      "base_points": 1000,
+      "guaranteed_drop": "feathered_scale"
+    }
   },
-
   "spirit_haunt": {
     "name": "Haunted Manor",
     "description": "A mansion trapped between worlds. Physical weapons often pass right through these foes.",
@@ -423,9 +499,14 @@
       { "name": "Specter", "keywords": ["spirit", "spirit", "illusion", "mind"], "base_points": 230 },
       { "name": "Ghost Ship", "keywords": ["spirit", "spirit", "water", "construct"], "base_points": 240 },
       { "name": "Spirit Lord", "keywords": ["spirit", "spirit", "spirit", "king", "arcane"], "base_points": 480 }
-    ]
+    ],
+    "boss": {
+      "name": "The Amalgamated Soul-Mass",
+      "keywords": ["spirit", "void", "elite", "boss"],
+      "base_points": 1000,
+      "guaranteed_drop": "soul_gem"
+    }
   },
-
   "aberration_void": {
     "name": "Void Rift",
     "description": "A dimension of madness. Creatures here defy logic and biology.",
@@ -449,9 +530,14 @@
       { "name": "Void Walker", "keywords": ["aberration", "aberration", "space", "time"], "base_points": 270 },
       { "name": "Star Spawn", "keywords": ["aberration", "aberration", "fire", "elemental"], "base_points": 280 },
       { "name": "Elder God", "keywords": ["aberration", "aberration", "aberration", "god", "space"], "base_points": 560 }
-    ]
+    ],
+    "boss": {
+      "name": "Cthulhu, the Dreamer in the Deep",
+      "keywords": ["aberration", "psionic", "elite", "boss"],
+      "base_points": 1200,
+      "guaranteed_drop": "eldritch_idol"
+    }
   },
-
   "elemental_plane": {
     "name": "Elemental Chaos",
     "description": "Pure energy given form. Fire, water, earth, and air clash in this unstable realm.",
@@ -475,6 +561,12 @@
       { "name": "Tsunami", "keywords": ["elemental", "elemental", "water", "guardian"], "base_points": 230 },
       { "name": "Mountain King", "keywords": ["elemental", "elemental", "earth", "warrior"], "base_points": 240 },
       { "name": "Avatar of Elements", "keywords": ["elemental", "elemental", "elemental", "fire", "ice"], "base_points": 480 }
-    ]
+    ],
+    "boss": {
+      "name": "The Primordial Convergence",
+      "keywords": ["elemental", "magic", "elite", "boss"],
+      "base_points": 1000,
+      "guaranteed_drop": "convergence_core"
+    }
   }
 }

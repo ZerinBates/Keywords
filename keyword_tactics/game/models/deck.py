@@ -36,6 +36,23 @@ class Deck:
                 m_data['base_points'],
             ))
 
+        # Dedicated final boss (data-defined). The boss is NOT part of the
+        # regular monster list: it always appears once every regular monster
+        # in the deck has been defeated, and the deck is only "cleared" after
+        # the boss itself falls. The boss Monster object is never mutated, so a
+        # lost boss fight simply leaves it pending (full-strength) for a retry.
+        self.boss_monster: Optional[Monster] = None
+        self.boss_guaranteed_drop: Optional[str] = None
+        self.boss_defeated: bool = False
+        boss_data = data.get('boss')
+        if boss_data:
+            self.boss_monster = Monster(
+                boss_data['name'],
+                boss_data['keywords'],
+                boss_data['base_points'],
+            )
+            self.boss_guaranteed_drop = boss_data.get('guaranteed_drop')
+
         # Current round's pool (monsters pulled for this exploration)
         self.round_monsters: List[Monster] = []
 
@@ -80,7 +97,18 @@ class Deck:
     # ----- State queries -----
 
     def is_empty(self) -> bool:
+        """True only when the deck is fully cleared: every regular monster is
+        defeated AND the dedicated boss (if any) has been beaten."""
+        boss_clear = self.boss_monster is None or self.boss_defeated
+        return self.regular_monsters_cleared() and boss_clear
+
+    def regular_monsters_cleared(self) -> bool:
+        """True when no regular (non-boss) monsters remain to fight."""
         return len(self.monsters) == 0 and len(self.round_monsters) == 0
+
+    def has_pending_boss(self) -> bool:
+        """True when this deck has a dedicated boss that hasn't been beaten."""
+        return self.boss_monster is not None and not self.boss_defeated
 
     def rounds_monsters_empty(self) -> bool:
         return len(self.round_monsters) == 0

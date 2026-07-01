@@ -1,17 +1,28 @@
-"""Preparation phase: build your party, equip items, buy/sell in the shop."""
+"""Shop phase: manage roster, equip items, and buy/sell at the shop.
+
+Team selection no longer happens here — the player picks their delve team
+inside the delve via the recruit overlay.  This screen now exists purely
+for roster management, equipment, and shopping between delves.
+"""
 
 import pygame
 
 from ..widgets import Panel
 from .. import widgets
+from ... import theme
 from ...config import COLORS, SCREEN_WIDTH, SCREEN_HEIGHT
 from .. import paper_doll
 
 # ---------------------------------------------------------------------------
 # Layout constants (kept in one place so renderer + input_handler agree)
 # ---------------------------------------------------------------------------
-ROSTER_RECT  = pygame.Rect(20,  100, 380, 340)
-PARTY_RECT   = pygame.Rect(420, 100, 380, 340)
+# Roster spans the full top-left area; the old separate "Party" panel was
+# removed when team-selection moved into the delve.
+ROSTER_RECT  = pygame.Rect(20,  100, 780, 340)
+# Roster row geometry — shared with input_handler so click/scroll hit-testing
+# matches what's drawn. ROSTER_LIST_TOP is the gap below the panel title.
+ROSTER_ROW_H    = 58
+ROSTER_LIST_TOP = 34
 
 # Inventory: one unified rect — widgets.draw_item_list_panel subdivides it
 # into header / search / list sections internally.
@@ -33,23 +44,13 @@ SHOP_ITEM_ROW_H = 36    # px per item row inside the shop panel
 
 
 def draw(screen, fonts, state):
-    """Render the preparation screen."""
-    # Tag adventurers with their roles so paper_doll thumbnails render the
-    # KING/DUNCE crown.  Roles only meaningful inside a delve, but tagging
-    # in prep lets the player see who'd be king if last_king_slayer is set.
+    """Render the shop screen."""
+    # Clear any leftover king/dunce role badges from the previous delve.
     for adv in state.roster:
-        if adv is state.hero_king:
-            setattr(adv, '_role_badge', 'king')
-        elif adv is state.hero_dunce:
-            setattr(adv, '_role_badge', 'dunce')
-        elif adv is state.last_king_slayer:
-            # Show pre-emptive king status while in prep
-            setattr(adv, '_role_badge', 'king')
-        else:
-            setattr(adv, '_role_badge', None)
+        setattr(adv, '_role_badge', None)
 
     # Header
-    header = fonts['large'].render("PREPARE YOUR PARTY", True, COLORS['accent'])
+    header = fonts['large'].render("SHOP", True, COLORS['accent'])
     screen.blit(header, (20, 20))
 
     # Coins
@@ -64,61 +65,59 @@ def draw(screen, fonts, state):
     )
     screen.blit(cleared_text, (200, 60))
 
-    # ---- Roster panel ----
+    # ---- Roster panel (full-width; replaces old Party panel too) ----
     panel = Panel(ROSTER_RECT.x, ROSTER_RECT.y, ROSTER_RECT.w, ROSTER_RECT.h,
-                  "Roster (click to add to party)")
+                  "Roster — click to edit loadout (team picked at delve start)")
     panel.draw(screen, fonts['small'], fonts['medium'])
 
     if state.roster_scroll > 0:
         screen.blit(fonts['small'].render("^ scroll up", True, COLORS['text_dim']),
-                    (300, ROSTER_RECT.y + 5))
+                    (ROSTER_RECT.right - 100, ROSTER_RECT.y + 5))
 
-    y = ROSTER_RECT.y + 30
-    visible_roster = state.roster[state.roster_scroll:state.roster_scroll + 6]
-    for adv in visible_roster:
-        color = COLORS['text_dim'] if adv.is_dead else COLORS['text']
-        if adv in state.party:
-            color = COLORS['success']
+    y = ROSTER_RECT.y + ROSTER_LIST_TOP
+    row_h = ROSTER_ROW_H
+    visible_count = max(1, (ROSTER_RECT.h - ROSTER_LIST_TOP - 10) // row_h)
+    visible_roster = state.roster[state.roster_scroll:state.roster_scroll + visible_count]
+    for i, adv in enumerate(visible_roster):
+        roster_idx = state.roster_scroll + i
+        is_sel = (roster_idx == state.selected_party_index)
 
-        adv_id = getattr(adv, 'id', adv.name)
-        # Portrait + item chips thumbnail (#1)
-        paper_doll.draw_adventurer_thumbnail(screen, adv, ROSTER_RECT.x + 10, y + 2, 36)
+        # Selection highlight
+        if is_sel:
+            sel_rect = pygame.Rect(ROSTER_RECT.x + 4, y - 2,
+                                   ROSTER_RECT.w - 8, row_h - 4)
+            pygame.draw.rect(screen, theme.mix(COLORS['panel'], COLORS['accent'], 0.22),
+                             sel_rect, border_radius=4)
+            pygame.draw.rect(screen, COLORS['accent'], sel_rect, 1, border_radius=4)
 
-        text = f"{adv.name} [{adv.slots} slots] - {adv.ability_name}"
-        screen.blit(fonts['small'].render(text, True, color), (ROSTER_RECT.x + 52, y + 5))
+        color = COLORS['text_dim'] if adv.is_dead else (
+            COLORS['accent'] if is_sel else COLORS['text']
+        )
+
+        paper_doll.draw_adventurer_thumbnail(screen, adv, ROSTER_RECT.x + 10, y + 4, 36)
+
+        text = f"{adv.name} [{len(adv.equipped_items)}/{adv.slots}] - {adv.ability_name}"
+        screen.blit(fonts['small'].render(text, True, color), (ROSTER_RECT.x + 52, y + 6))
+
+        # Keyword strip — one line, show all that fit (truncated naturally).
+        kws = adv.get_all_keywords()
+        if kws:
+            kw_text = ", ".join(kws[:8])
+            if len(kws) > 8:
+                kw_text += "..."
+            screen.blit(fonts['small'].render(kw_text, True, COLORS['text_dim']),
+                        (ROSTER_RECT.x + 52, y + 32))
 
         if adv.is_dead:
             screen.blit(fonts['small'].render("DEAD", True, COLORS['danger']),
-                        (ROSTER_RECT.x + ROSTER_RECT.w - 60, y + 5))
-        y += 52
+                        (ROSTER_RECT.x + ROSTER_RECT.w - 60, y + 6))
+        y += row_h
 
-    if state.roster_scroll + 6 < len(state.roster):
+    if state.roster_scroll + visible_count < len(state.roster):
         screen.blit(
             fonts['small'].render("v scroll down", True, COLORS['text_dim']),
             (ROSTER_RECT.x + 10, ROSTER_RECT.bottom - 20),
         )
-
-    # ---- Party panel ----
-    panel2 = Panel(PARTY_RECT.x, PARTY_RECT.y, PARTY_RECT.w, PARTY_RECT.h,
-                   f"Party ({len(state.party)}/4) - Shift+click to remove")
-    panel2.draw(screen, fonts['small'], fonts['medium'])
-
-    y = PARTY_RECT.y + 30
-    for i, adv in enumerate(state.party):
-        color = COLORS['accent'] if i == state.selected_party_index else COLORS['text']
-        # Portrait + item chips thumbnail (#1)
-        paper_doll.draw_adventurer_thumbnail(screen, adv, PARTY_RECT.x + 10, y + 2, 36)
-        text = f"{adv.name} [{len(adv.equipped_items)}/{adv.slots}]"
-        screen.blit(fonts['small'].render(text, True, color), (PARTY_RECT.x + 52, y + 5))
-
-        keywords = adv.get_all_keywords()
-        if keywords:
-            kw_text = ", ".join(keywords[:6])
-            if len(keywords) > 6:
-                kw_text += "..."
-            screen.blit(fonts['small'].render(kw_text, True, COLORS['text_dim']),
-                        (PARTY_RECT.x + 52, y + 24))
-        y += 52
 
     # ---- Inventory: search + scrollable list (shared widget; #2) ----
     filtered_inv = state.get_filtered_inventory()
@@ -131,20 +130,22 @@ def draw(screen, fonts, state):
         header_text=f"Inventory ({len(state.inventory)}) — click: equip | Ctrl+click: sell",
         sell_price_func=lambda it: state.get_item_sell_price(it),
         paper_doll_module=paper_doll,
+        hover_pos=state.hover_pos,
     )
 
     # ---- Left stats/items panel — shared widget (#2) ----
     state._prep_equipped_rows = []  # transient: stores [(item, rect)] for clicks
-    if 0 <= state.selected_party_index < len(state.party):
-        adv = state.party[state.selected_party_index]
+    if 0 <= state.selected_party_index < len(state.roster):
+        adv = state.roster[state.selected_party_index]
         state._prep_equipped_rows = widgets.draw_equipped_items_panel(
             screen, fonts, state, STATS_RECT, adv,
             paper_doll_module=paper_doll,
+            scroll=state.prep_equipped_scroll,
         )
 
     # ---- Selected adventurer paper-doll card ----
-    if 0 <= state.selected_party_index < len(state.party):
-        adv = state.party[state.selected_party_index]
+    if 0 <= state.selected_party_index < len(state.roster):
+        adv = state.roster[state.selected_party_index]
         paper_doll.draw_character_card(
             screen, fonts, state, CARD_RECT.x, CARD_RECT.y, adv, selected=True,
         )
@@ -158,9 +159,9 @@ def draw(screen, fonts, state):
 
     # Instructions
     inst = fonts['small'].render(
-        "Hover any card/item for details  |  Click roster → party  |  "
+        "Hover any card/item for details  |  Click roster → select for equip  |  "
         "Click inventory → equip  |  Ctrl+click inventory → sell  |  "
-        "Shift+click party → remove",
+        "Click 'To Delve' to start a delve (team picked there)",
         True, COLORS['text_dim'],
     )
     screen.blit(inst, (20, SCREEN_HEIGHT - 28))
@@ -274,9 +275,9 @@ def _draw_shop_panel(screen, fonts, state):
             pts_surf = fonts['tiny'].render(f"+{item.points}", True, COLORS['success'])
             screen.blit(pts_surf, (sx + sw - pts_surf.get_width() - 10, y + 20))
 
-            # Keyword tags
+            # Keyword tags — show all that fit; break on overflow.
             kw_x = sx + 38
-            for kw_id in item.keywords[:3]:
+            for kw_id in item.keywords:
                 kw = state.keyword_registry.get(kw_id)
                 if kw:
                     label = kw.name[:7]

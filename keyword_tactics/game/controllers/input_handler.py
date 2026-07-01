@@ -7,7 +7,6 @@ The Renderer reads drag state from here when it needs to draw the ghost card.
 import pygame
 from typing import TYPE_CHECKING, Tuple
 
-from ..config import SCREEN_WIDTH, SCREEN_HEIGHT
 from ..models import GamePhase
 from ..views import paper_doll
 
@@ -51,6 +50,8 @@ class InputHandler:
         raw_mouse = pygame.mouse.get_pos()
         mouse_pos = self.game.screen_to_logical(raw_mouse)
         self.hover_mouse_pos = mouse_pos
+        # Mirror onto state so screen modules can read hover without plumbing.
+        self.state.hover_pos = mouse_pos
 
         # Update button hover states
         for button in self.game.buttons:
@@ -70,15 +71,17 @@ class InputHandler:
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 lpos = self.game.screen_to_logical(event.pos)
                 if self.state.phase == GamePhase.DELVE_SETUP:
+                    from ..views.screens.delve import (
+                        PARTY_TRAY_Y, PARTY_TRAY_H, DELVE_CARD_W, DELVE_CARD_XS,
+                    )
                     overlays_open = (self.state.delve_inv_open or
                                      self.state.delve_recruit_open)
                     if not overlays_open and self._try_start_drag_party(
-                        lpos, party_y=345, card_w=300, card_h=160,
-                        card_spacing=310, card_x_start=20,
+                        lpos, party_y=PARTY_TRAY_Y, card_w=DELVE_CARD_W,
+                        card_h=PARTY_TRAY_H,
+                        card_spacing=DELVE_CARD_XS[1] - DELVE_CARD_XS[0],
+                        card_x_start=DELVE_CARD_XS[0],
                     ):
-                        continue
-                elif self.state.phase == GamePhase.BOSS_CHOICE:
-                    if self._try_start_drag_party_boss(lpos):
                         continue
                 self._handle_click(event, lpos)
 
@@ -103,6 +106,17 @@ class InputHandler:
     # Drag handling
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _front_square_rects():
+        """Front-row square hit-boxes, matching delve.draw_setup geometry."""
+        from ..views.screens.delve import (
+            DELVE_CARD_XS, DELVE_CARD_W, FRONT_ROW_Y, FRONT_ROW_H,
+        )
+        return [
+            pygame.Rect(cx, FRONT_ROW_Y, DELVE_CARD_W, FRONT_ROW_H)
+            for cx in DELVE_CARD_XS
+        ]
+
     def _try_start_drag_party(self, pos, party_y, card_w, card_h, card_spacing,
                               card_x_start) -> bool:
         px, py = pos
@@ -116,12 +130,7 @@ class InputHandler:
                     self._begin_drag(i, pos, card_rect)
                     return True
 
-        square_rects = [
-            pygame.Rect(20, 128, 300, 200),
-            pygame.Rect(330, 128, 300, 200),
-            pygame.Rect(640, 128, 300, 200),
-            pygame.Rect(950, 128, 300, 200),
-        ]
+        square_rects = self._front_square_rects()
         for sq_idx, rect in enumerate(square_rects):
             if sq_idx < len(self.state.front_row) and rect.collidepoint(pos):
                 sq = self.state.front_row[sq_idx]
@@ -133,18 +142,6 @@ class InputHandler:
                         return True
         return False
 
-    def _try_start_drag_party_boss(self, pos) -> bool:
-        x = 30
-        for i, adv in enumerate(self.state.party):
-            if adv.is_dead:
-                continue
-            card_rect = pygame.Rect(x, 480, 280, 200)
-            if card_rect.collidepoint(pos):
-                self._begin_drag(i, pos, card_rect)
-                return True
-            x += 300
-        return False
-
     def _begin_drag(self, party_index: int, pos, source_rect):
         self.dragging = True
         self.drag_adv_index = party_index
@@ -153,25 +150,49 @@ class InputHandler:
         self.drag_source_rect = source_rect
 
     def _handle_drop(self, pos):
-        if self.state.phase == GamePhase.DELVE_SETUP:
-            square_rects = [
-                pygame.Rect(20, 128, 300, 200),
-                pygame.Rect(330, 128, 300, 200),
-                pygame.Rect(640, 128, 300, 200),
-                pygame.Rect(950, 128, 300, 200),
-            ]
-            for sq_idx, rect in enumerate(square_rects):
-                if sq_idx < len(self.state.front_row) and rect.collidepoint(pos):
-                    sq = self.state.front_row[sq_idx]
-                    adv = self.state.party[self.drag_adv_index]
-                    if sq['adventurer'] is None or sq['adventurer'] is adv:
-                        self.state.place_adventurer_on_front(self.drag_adv_index, sq_idx)
-                        return
+        if self.state.phase != GamePhase.DELVE_SETUP:
+            return
+        s = self.state
+        if not (0 <= self.drag_adv_index < len(s.party)):
+            return
 
-        elif self.state.phase == GamePhase.BOSS_CHOICE:
-            boss_rect = pygame.Rect(SCREEN_WIDTH // 2 - 200, 80, 400, 250)
-            if boss_rect.collidepoint(pos):
-                self.state.select_boss_adventurer(self.drag_adv_index)
+        dragged = s.party[self.drag_adv_index]
+        # The hero is left on its square during the drag, so this tells us
+        # where (if anywhere) the drag originated.
+        source_sq = s.find_adventurer_square(dragged)
+
+        # Which front square, if any, did we drop onto?
+        target_idx = None
+        for sq_idx, rect in enumerate(self._front_square_rects()):
+            if sq_idx < len(s.front_row) and rect.collidepoint(pos):
+                target_idx = sq_idx
+                break
+
+        # Dropped off the board: pull a placed hero off the square (unmatch).
+        if target_idx is None:
+            if source_sq is not None:
+                s.remove_adventurer_from_front(dragged)
+            return
+
+        target_sq = s.front_row[target_idx]
+
+        # Released on the hero's own square (e.g. a plain click): toggle off.
+        if source_sq is target_sq:
+            s.remove_adventurer_from_front(dragged)
+            return
+
+        occupant = target_sq['adventurer']
+        if occupant is None:
+            # Empty square — move/place the dragged hero here.
+            s.place_adventurer_on_front(self.drag_adv_index, target_idx)
+        elif source_sq is not None:
+            # Both heroes are placed — swap their squares.
+            source_sq['adventurer'] = occupant
+            target_sq['adventurer'] = dragged
+        else:
+            # Dragged from the party tray onto a matched square — bump the
+            # current occupant back to the party and take the square.
+            target_sq['adventurer'] = dragged
 
     # ------------------------------------------------------------------
     # Scroll handling
@@ -215,8 +236,22 @@ class InputHandler:
                 self.state.delve_inv_scroll = max(0, min(self.state.delve_inv_scroll, max_scroll))
                 return
 
+            equip_rect = pygame.Rect(equip_x, col_top, equip_w,
+                                     PY + PH - col_top - 10)
+            if (equip_rect.collidepoint(mouse_pos)
+                    and 0 <= self.state.delve_selected_adv_idx < len(self.state.party)):
+                adv = self.state.party[self.state.delve_selected_adv_idx]
+                self.state.delve_equipped_scroll -= event.y
+                max_scroll = max(0, len(adv.equipped_items) - 1)
+                self.state.delve_equipped_scroll = max(
+                    0, min(self.state.delve_equipped_scroll, max_scroll))
+                return
+
         if self.state.phase == GamePhase.PREPARATION:
-            from ..views.screens.preparation import INV_PANEL_RECT, ROSTER_RECT
+            from ..views.screens.preparation import (
+                INV_PANEL_RECT, ROSTER_RECT, STATS_RECT,
+                ROSTER_ROW_H, ROSTER_LIST_TOP,
+            )
             from ..views import widgets as _w
             if INV_PANEL_RECT.collidepoint(mouse_pos):
                 _, _, list_rect = _w.get_item_list_geometry(INV_PANEL_RECT)
@@ -228,8 +263,28 @@ class InputHandler:
 
             if ROSTER_RECT.collidepoint(mouse_pos):
                 self.state.roster_scroll -= event.y
-                max_scroll = max(0, len(self.state.roster) - 6)
+                visible_count = max(1, (ROSTER_RECT.h - ROSTER_LIST_TOP - 10) // ROSTER_ROW_H)
+                max_scroll = max(0, len(self.state.roster) - visible_count)
                 self.state.roster_scroll = max(0, min(self.state.roster_scroll, max_scroll))
+
+            if (STATS_RECT.collidepoint(mouse_pos)
+                    and 0 <= self.state.selected_party_index < len(self.state.roster)):
+                adv = self.state.roster[self.state.selected_party_index]
+                self.state.prep_equipped_scroll -= event.y
+                max_scroll = max(0, len(adv.equipped_items) - 1)
+                self.state.prep_equipped_scroll = max(
+                    0, min(self.state.prep_equipped_scroll, max_scroll))
+
+        if self.state.phase == GamePhase.DECK_SELECT:
+            from ..views.screens.deck_select import (
+                DECK_LIST_RECT, deck_visible_count,
+            )
+            if DECK_LIST_RECT.collidepoint(mouse_pos):
+                total = len(self.state.deck_registry.all_ids())
+                max_scroll = max(0, total - deck_visible_count())
+                self.state.deck_select_scroll -= event.y
+                self.state.deck_select_scroll = max(
+                    0, min(self.state.deck_select_scroll, max_scroll))
 
     # ------------------------------------------------------------------
     # Click handling
@@ -288,7 +343,7 @@ class InputHandler:
             elif s.phase == GamePhase.DELVE_RESULTS:
                 s.proceed_after_results()
             elif s.phase == GamePhase.BOSS_RESULT:
-                s.continue_after_boss()
+                s.acknowledge_boss_step()
             elif s.phase == GamePhase.UNLOCK_REVEAL:
                 s.acknowledge_unlock_reveals()
         elif text == "< Prev" and s.phase == GamePhase.UNLOCK_REVEAL:
@@ -320,13 +375,15 @@ class InputHandler:
             self.game.toggle_fullscreen()
         elif text in ["> Keywords", "v Keywords"]:
             s.toggle_ref_panel()
-        elif text == "Select Deck":
-            if len(s.party) > 0:
+        elif text in ("Select Deck", "To Delve"):
+            # No party-size gate: the team is recruited inside the delve.
+            if any(not a.is_dead for a in s.roster):
                 s.phase = GamePhase.DECK_SELECT
             else:
-                s.set_message("Add adventurers to party first!")
-        elif text == "Back" and s.phase == GamePhase.DECK_SELECT:
+                s.set_message("Your roster is empty — buy adventurers first.")
+        elif text in ("Back", "Back to Party", "Back to Shop") and s.phase == GamePhase.DECK_SELECT:
             s.phase = GamePhase.PREPARATION
+            s.deck_select_scroll = 0
         elif text == "Enter":
             if hasattr(button, 'deck_id'):
                 s.start_exploration(button.deck_id)
@@ -345,8 +402,8 @@ class InputHandler:
             s.delve_inv_open = False
         elif text == "Retreat":
             s.retreat_from_delve()
-        elif text == "Challenge Boss!":
-            s.challenge_boss()
+        elif text == "Next Hero":
+            s.acknowledge_boss_step()
         elif text == "Skip Boss":
             s.skip_boss()
         elif text == "End Shopping":
@@ -516,31 +573,24 @@ class InputHandler:
     def _handle_preparation_click(self, mouse_pos):
         s = self.state
         from ..views.screens.preparation import (
-            ROSTER_RECT, PARTY_RECT, INV_PANEL_RECT,
+            ROSTER_RECT, INV_PANEL_RECT,
             STATS_RECT, CARD_RECT, SHOP_RECT, SHOP_ITEM_ROW_H,
+            ROSTER_ROW_H, ROSTER_LIST_TOP,
         )
 
         if not INV_PANEL_RECT.collidepoint(mouse_pos):
             s.prep_inv_search_active = False
 
         if ROSTER_RECT.collidepoint(mouse_pos):
-            y_offset = mouse_pos[1] - (ROSTER_RECT.y + 30)
+            # In Shop, roster row click selects that adventurer for editing.
+            # Team selection itself happens inside the delve via Recruit.
+            y_offset = mouse_pos[1] - (ROSTER_RECT.y + ROSTER_LIST_TOP)
             if y_offset >= 0:
-                index = (y_offset // 52) + s.roster_scroll
+                index = (y_offset // ROSTER_ROW_H) + s.roster_scroll
                 if 0 <= index < len(s.roster):
-                    adv = s.roster[index]
-                    if not adv.is_dead and adv not in s.party:
-                        s.add_to_party(index)
-
-        elif PARTY_RECT.collidepoint(mouse_pos):
-            y_offset = mouse_pos[1] - (PARTY_RECT.y + 30)
-            if y_offset >= 0:
-                index = y_offset // 52
-                if 0 <= index < len(s.party):
-                    if pygame.key.get_mods() & pygame.KMOD_SHIFT:
-                        s.remove_from_party(index)
-                    else:
-                        s.selected_party_index = index
+                    if s.selected_party_index != index:
+                        s.prep_equipped_scroll = 0
+                    s.selected_party_index = index
 
         elif INV_PANEL_RECT.collidepoint(mouse_pos):
             from ..views import widgets as _w
@@ -555,12 +605,14 @@ class InputHandler:
                 if pygame.key.get_mods() & pygame.KMOD_CTRL:
                     s.sell_item_obj(item)
                 else:
-                    if 0 <= s.selected_party_index < len(s.party):
-                        adv = s.party[s.selected_party_index]
+                    if 0 <= s.selected_party_index < len(s.roster):
+                        adv = s.roster[s.selected_party_index]
                         s.equip_item_obj(item, adv)
+                    else:
+                        s.set_message("Select a roster member first (click a row).")
 
-        elif STATS_RECT.collidepoint(mouse_pos) and 0 <= s.selected_party_index < len(s.party):
-            adv = s.party[s.selected_party_index]
+        elif STATS_RECT.collidepoint(mouse_pos) and 0 <= s.selected_party_index < len(s.roster):
+            adv = s.roster[s.selected_party_index]
             row_rects = getattr(s, '_prep_equipped_rows', []) or []
             for item, rr in row_rects:
                 if rr.collidepoint(mouse_pos) and item in adv.equipped_items:
@@ -569,8 +621,8 @@ class InputHandler:
                     return
 
         elif CARD_RECT.collidepoint(mouse_pos) and s.selected_party_index >= 0:
-            if s.selected_party_index < len(s.party):
-                adv = s.party[s.selected_party_index]
+            if s.selected_party_index < len(s.roster):
+                adv = s.roster[s.selected_party_index]
                 idx = paper_doll.hit_test_chip(CARD_RECT.x, CARD_RECT.y, mouse_pos, adv)
                 if idx is not None:
                     s.unequip_item(adv, idx)
@@ -635,14 +687,16 @@ class InputHandler:
             right_x = center_x + center_w + 15
             right_w = PX + PW - right_x - 10
 
-            adv_card_h = 80
-            adv_gap = 6
-            adv_y_start = col_top + 32
+            adv_card_h = 94
+            adv_gap = 8
+            adv_y_start = col_top + 36
 
             for i, adv in enumerate(s.party):
                 cy = adv_y_start + i * (adv_card_h + adv_gap)
                 adv_rect = pygame.Rect(left_x, cy, left_w, adv_card_h)
                 if adv_rect.collidepoint(mouse_pos) and not adv.is_dead:
+                    if s.delve_selected_adv_idx != i:
+                        s.delve_equipped_scroll = 0
                     s.delve_selected_adv_idx = i
                     return
 
@@ -693,7 +747,7 @@ class InputHandler:
         if s.delve_recruit_open:
             available = s.get_available_recruits()
             for j, adv in enumerate(available):
-                recruit_rect = pygame.Rect(660, 140 + j * 65, 560, 58)
+                recruit_rect = pygame.Rect(660, 142 + j * 74, 560, 64)
                 if recruit_rect.collidepoint(mouse_pos):
                     s.delve_recruit(j)
                     if not s.party_needs_recruits():
@@ -701,13 +755,18 @@ class InputHandler:
                     return
 
     def _handle_boss_choice_click(self, mouse_pos):
+        """Click an available hero card to send them at the boss next."""
         s = self.state
-        party_area = pygame.Rect(20, 500, 700, 220)
-        if party_area.collidepoint(mouse_pos):
-            x_offset = mouse_pos[0] - 30
-            index = x_offset // 160
-            if 0 <= index < len(s.party):
-                s.select_boss_adventurer(index)
+        if not s.boss_square or s.boss_square.get('outcome'):
+            return
+        # Cards mirror boss.draw_choice: available heroes laid out left->right.
+        x = 30
+        for adv in s.boss_available_heroes():
+            card_rect = pygame.Rect(x, 505, 280, 200)
+            if card_rect.collidepoint(mouse_pos):
+                s.fight_boss_hero(s.party.index(adv))
+                return
+            x += 300
 
     def _handle_shop_click(self, mouse_pos):
         s = self.state

@@ -48,7 +48,7 @@ from .data_loader import load_all_data
 # choice on a fresh save.
 STARTING_CHARACTERS: Set[str] = {"commoner", "warrior", "mage", "ranger"}
 
-# Defeating a deck's BOSS (the lifted final-row monster, via challenge_boss)
+# Defeating a deck's BOSS (the deck's dedicated final boss, via the boss relay)
 # unlocks the classes mapped to that deck. One entry per deck; a deck may
 # unlock multiple classes if there are more classes than decks.
 DECK_BOSS_UNLOCKS_CHARACTERS: Dict[str, List[str]] = {
@@ -140,6 +140,13 @@ class GameState:
         self.message_timer: int = 0
         self.inventory_scroll: int = 0
         self.roster_scroll: int = 0
+        self.deck_select_scroll: int = 0
+        self.prep_equipped_scroll: int = 0
+        self.delve_equipped_scroll: int = 0
+
+        # Latest hover position (logical coords). Refreshed by input_handler
+        # so screens can read it without an explicit pass-through.
+        self.hover_pos: Tuple[int, int] = (0, 0)
 
         # ---- Keyword reference panel ----
         self.ref_panel_open: bool = False
@@ -257,9 +264,11 @@ class GameState:
         if item:
             self.inventory.append(item)
 
-        self.phase = GamePhase.PREPARATION
+        # New runs land at Deck Select; the team is picked inside the first
+        # delve via the recruit overlay (which auto-opens when party is empty).
+        self.phase = GamePhase.DECK_SELECT
         self.run_in_progress = True
-        self.set_message("Welcome! Equip your adventurers and choose a deck to explore.")
+        self.set_message("Pick a dungeon — your team is recruited at the start of the delve.")
         self.autosave()
 
     # ---------------------------------------------------------------------
@@ -884,8 +893,10 @@ class GameState:
     # ---------------------------------------------------------------------
 
     def start_exploration(self, deck_id: str) -> bool:
-        if len(self.party) != 4:
-            self.set_message("You need 4 adventurers in your party!")
+        # No party-size requirement: the team is built during the delve via
+        # the recruit overlay. If you have nobody available at all, bail.
+        if not self.get_available_recruits() and not [a for a in self.party if not a.is_dead]:
+            self.set_message("No adventurers available to recruit!")
             return False
 
         self.current_deck = self.active_decks.get(deck_id)
@@ -920,8 +931,33 @@ class GameState:
         # Assign hero roles for the FIRST row of this delve
         self._assign_hero_roles_for_row()
 
+        alive_in_party = sum(1 for a in self.party if not a.is_dead)
+
+        # Boss-only delve: every regular monster is already defeated (e.g. the
+        # player is returning after losing the boss fight) and only the deck's
+        # dedicated final boss remains. With a ready party we drop straight into
+        # the boss relay; otherwise the player recruits first and the (empty)
+        # FIGHT then routes to the boss via resolve_front_row().
+        if not self.front_row and not self.back_row and self._deck_boss_pending():
+            if alive_in_party > 0:
+                self._spawn_deck_boss()
+                self._init_boss_fight()
+                self.phase = GamePhase.BOSS_CHOICE
+                return True
+            self.delve_recruit_open = True
+            self.set_message("Recruit a team, then face the final boss!")
+            self.phase = GamePhase.DELVE_SETUP
+            return True
+
+        # If we entered the delve with no living party, force the recruit
+        # overlay open so the player picks a team before fighting.
+        if alive_in_party == 0:
+            self.delve_recruit_open = True
+            self.set_message("Recruit your team! Click an adventurer to add them to your party.")
+        else:
+            self.set_message("Drag adventurers onto the front row, then FIGHT!")
+
         self.phase = GamePhase.DELVE_SETUP
-        self.set_message("Drag all adventurers onto the front row! Back row previews what's next.")
         return True
 
     # ---------------------------------------------------------------------
@@ -1012,6 +1048,8 @@ class GameState:
 
     def all_alive_placed(self) -> bool:
         alive = self.count_alive_party()
+        if alive == 0:
+            return False
         placed = self.count_front_placed()
         return placed >= min(alive, len(self.front_row))
 
@@ -1025,6 +1063,7 @@ class GameState:
             self.delve_selected_adv_idx = -1
         else:
             self.delve_inv_scroll = 0
+            self.delve_equipped_scroll = 0
 
     def delve_equip_item(self, item_index: int) -> bool:
         if not (0 <= self.delve_selected_adv_idx < len(self.party)):
@@ -1120,6 +1159,15 @@ class GameState:
     # ---------------------------------------------------------------------
 
     def resolve_front_row(self):
+        # Boss-only delve (no regular monsters placed): skip straight to the
+        # deck's dedicated boss instead of resolving an empty row.
+        if (not self.front_row and self._deck_boss_pending()
+                and any(not a.is_dead for a in self.party)):
+            self._spawn_deck_boss()
+            self._init_boss_fight()
+            self.phase = GamePhase.BOSS_CHOICE
+            return
+
         for sq in self.front_row:
             if sq['adventurer'] is not None:
                 adv = sq['adventurer']
@@ -1185,21 +1233,10 @@ class GameState:
             self.back_row = []
 
         if not self.front_row:
-            if self.current_deck.is_empty():
-                self._mark_deck_completed(self.current_deck)
-            self.end_exploration()
+            # No regular monsters left this delve — face the deck's dedicated
+            # boss if it's still standing, otherwise wrap the delve up.
+            self._conclude_regular_monsters()
             return
-
-        if not self.back_row and len(self.front_row) > 1 and not self.boss_square:
-            bs = self.front_row.pop()
-            self.boss_square = {
-                'monster': bs['monster'],
-                'multiplier': bs['multiplier'] + 1,
-                'bonus': combat.generate_square_bonus(self.keyword_registry),
-                'adventurer': None,
-                'result': None,
-                'revealed': False,
-            }
 
         self.delve_inv_open = False
         self.delve_recruit_open = False
@@ -1218,81 +1255,183 @@ class GameState:
         self.end_exploration()
 
     def proceed_after_results(self):
-        if self.boss_square and any(not a.is_dead for a in self.party):
-            self.phase = GamePhase.BOSS_CHOICE
-            self.boss_adventurer_index = -1
-        elif not self.back_row and not self.current_deck.round_monsters:
-            if self.current_deck.is_empty():
-                self._mark_deck_completed(self.current_deck)
-            self.end_exploration()
-        else:
+        # More regular rows still to fight — keep delving.
+        if self.back_row or self.current_deck.round_monsters:
             self.advance_row()
+            return
+        # Regular monsters exhausted: face the deck's final boss, or finish.
+        self._conclude_regular_monsters()
+
+    def _conclude_regular_monsters(self):
+        """All regular monsters in the deck are defeated. Start the deck's
+        dedicated boss fight if one is still standing (and heroes remain to
+        send), otherwise mark the deck cleared and end the delve."""
+        if self._deck_boss_pending() and any(not a.is_dead for a in self.party):
+            self._spawn_deck_boss()
+            self._init_boss_fight()
+            self.phase = GamePhase.BOSS_CHOICE
+            return
+        if self.current_deck.is_empty():
+            self._mark_deck_completed(self.current_deck)
+        self.end_exploration()
 
     # ---------------------------------------------------------------------
     # Boss combat
     # ---------------------------------------------------------------------
 
-    def select_boss_adventurer(self, party_index: int) -> bool:
-        if not (0 <= party_index < len(self.party)):
-            return False
-        adv = self.party[party_index]
-        if adv.is_dead:
-            self.set_message("This adventurer is dead!")
-            return False
-        self.boss_adventurer_index = party_index
-        return True
+    def _deck_boss_pending(self) -> bool:
+        """True when the current deck has a dedicated boss left to beat."""
+        d = self.current_deck
+        return bool(d and d.has_pending_boss())
 
-    def challenge_boss(self):
-        if self.boss_adventurer_index < 0 or not self.boss_square:
+    def _spawn_deck_boss(self):
+        """Create the transient boss_square from the deck's dedicated boss."""
+        d = self.current_deck
+        if not d or not d.boss_monster or self.boss_square:
+            return
+        self.boss_square = {
+            'monster': d.boss_monster,
+            # The x2 "king" bonus is baked into boss_total_score; this field is
+            # only vestigial display state for the square.
+            'multiplier': 2,
+            'bonus': combat.generate_square_bonus(self.keyword_registry),
+            'adventurer': None,
+            'result': None,
+            'revealed': False,
+        }
+
+    def _init_boss_fight(self):
+        """Set up the interactive relay state on boss_square (called once,
+        when entering BOSS_CHOICE from the delve results)."""
+        bs = self.boss_square
+        if not bs:
+            return
+        monster = bs['monster']
+        bs['total'] = combat.boss_total_score(monster.base_points, monster.keywords)
+        bs['score'] = bs['total']            # current remaining boss score (HP)
+        bs['keywords'] = list(monster.keywords)  # current boss keywords
+        bs['fought'] = []                    # adventurers who already attacked
+        bs['log'] = []                       # resolved step dicts (history)
+        bs['outcome'] = None                 # None | 'victory' | 'defeat'
+        bs['result'] = None                  # the most recent step (BOSS_RESULT)
+        bs['revealed'] = True
+        self.boss_adventurer_index = -1
+
+    def boss_available_heroes(self) -> List[Adventurer]:
+        """Living party heroes who haven't attacked the boss yet (party order)."""
+        if not self.boss_square:
+            return []
+        fought = self.boss_square.get('fought', [])
+        return [a for a in self.party if not a.is_dead and a not in fought]
+
+    def fight_boss_hero(self, party_index: int):
+        """Resolve ONE hero's attack on the boss, then show the step result."""
+        bs = self.boss_square
+        if not bs or bs.get('outcome'):
+            return
+        if not (0 <= party_index < len(self.party)):
             return
 
-        adv = self.party[self.boss_adventurer_index]
-        adv_square_mult = self.get_adventurer_multiplier(adv)
-        self.boss_square['adventurer'] = adv
-        self.boss_square['revealed'] = True
-        monster = self.boss_square['monster']
+        adv = self.party[party_index]
+        available = self.boss_available_heroes()
+        if adv not in available:
+            self.set_message("That hero can't attack right now.")
+            return
 
-        result = combat.calculate_boss_combat(
-            adv, monster, self.boss_square, adv_square_mult, self.keyword_registry,
+        # The last available hero is the finisher: no threshold.
+        is_final = (len(available) == 1)
+        monster = bs['monster']
+
+        step, new_score, new_keywords = combat.resolve_boss_step(
+            adv, bs['keywords'], bs['score'], bs['bonus'],
+            self.keyword_registry, is_final,
         )
+        bs['score'] = new_score
+        bs['keywords'] = new_keywords
+        bs['fought'].append(adv)
+        bs['log'].append(step)
+        bs['result'] = step
 
-        if result['victory']:
-            self.current_deck.record_kill()
-            self._apply_boss_reward(adv, monster, result)
-            reward_item = self.current_deck.get_drop_item(
-                self.item_registry,
-                allowed_ids=self._allowed_item_ids(),
-            )
-            if reward_item:
-                self.delve_loot.append(reward_item)
-                result['reward_item'] = reward_item
-            self.coins += 3
-            result['reward_coins'] = 3
-            self.last_king_slayer = adv
-
-            # Boss-kill unlock (#new): permanently unlock any classes tied to
-            # this deck. Stash the names so the BOSS_RESULT screen can show
-            # them via the status message.
-            newly_unlocked = self._unlock_for_boss_kill(self.current_deck.id)
-            if newly_unlocked:
-                names = []
-                for cid in newly_unlocked:
-                    tmpl = self.adventurer_registry.get_template(cid)
-                    names.append(tmpl['name'] if tmpl else cid)
-                result['unlocked_classes'] = newly_unlocked
-                result['unlocked_classes_msg'] = "Unlocked: " + ", ".join(names) + "!"
-        else:
+        # A hero who did not survive their step dies and drops their gear.
+        if not step['survived']:
             adv.is_dead = True
             lost = adv.equipped_items.copy()
-            result['lost_items'] = lost
+            step['lost_items'] = lost
             self.dead_adv_loot.extend(lost)
             adv.equipped_items.clear()
             if self.last_king_slayer is adv:
                 self.last_king_slayer = None
-            self.current_deck.return_monster(monster)
 
-        self.boss_square['result'] = result
+        # Decide whether the relay is over.
+        if step['killed_boss']:
+            bs['outcome'] = 'victory'
+            self._on_boss_defeated(adv)
+        elif is_final:
+            # Final hero fought but didn't bring the score to 0 -> battle lost.
+            bs['outcome'] = 'defeat'
+            self._on_boss_lost()
+        # else: fight continues; the player selects the next hero.
+
         self.phase = GamePhase.BOSS_RESULT
+
+    def acknowledge_boss_step(self):
+        """'Continue' on the step-result screen: either advance to the next
+        hero's selection, or finish the boss flow when the relay is over."""
+        bs = self.boss_square
+        if not bs or bs.get('outcome'):
+            self.continue_after_boss()
+        else:
+            bs['result'] = None
+            self.phase = GamePhase.BOSS_CHOICE
+
+    def _on_boss_defeated(self, victor: Adventurer):
+        """Apply kill credit, rewards, loot and unlocks when the boss falls."""
+        bs = self.boss_square
+        monster = bs['monster']
+        self.current_deck.record_kill()
+        self.current_deck.boss_defeated = True
+
+        summary = {'adventurer': victor}
+        self._apply_boss_reward(victor, monster, summary)
+        bs['boss_reward'] = summary.get('boss_reward')
+
+        # Data-defined guaranteed boss drop. Granted whenever the item id is
+        # present in the registry; silently skipped if it isn't defined yet.
+        guaranteed_id = self.current_deck.boss_guaranteed_drop
+        if guaranteed_id:
+            g_item = self.item_registry.create_copy(guaranteed_id)
+            if g_item:
+                self.delve_loot.append(g_item)
+                bs['guaranteed_item'] = g_item
+
+        reward_item = self.current_deck.get_drop_item(
+            self.item_registry,
+            allowed_ids=self._allowed_item_ids(),
+        )
+        if reward_item:
+            self.delve_loot.append(reward_item)
+            bs['reward_item'] = reward_item
+        self.coins += 3
+        bs['reward_coins'] = 3
+        self.last_king_slayer = victor
+
+        newly_unlocked = self._unlock_for_boss_kill(self.current_deck.id)
+        if newly_unlocked:
+            names = []
+            for cid in newly_unlocked:
+                tmpl = self.adventurer_registry.get_template(cid)
+                names.append(tmpl['name'] if tmpl else cid)
+            bs['unlocked_classes'] = newly_unlocked
+            bs['unlocked_classes_msg'] = "Unlocked: " + ", ".join(names) + "!"
+
+    def _on_boss_lost(self):
+        """Battle lost: the boss fully resets for the next attempt.
+
+        The deck's dedicated boss lives on the deck itself (never the regular
+        monster list) and its Monster object is never mutated during the relay,
+        so we simply leave ``boss_defeated`` False — the deck stays uncleared
+        and re-entering spawns the full-strength boss again."""
+        # Nothing to return; the boss persists on the deck at full strength.
 
     def _apply_boss_reward(self, adv: Adventurer, monster: Monster, result: dict):
         roll = random.random()
@@ -1330,8 +1469,8 @@ class GameState:
             result['boss_reward'] = {'type': 'none', 'desc': "No items to enhance!"}
 
     def skip_boss(self):
-        if self.boss_square:
-            self.current_deck.return_monster(self.boss_square['monster'])
+        # Bail out before committing a hero. The boss is left pending (the deck
+        # stays uncleared), so it'll be waiting on the next delve.
         self.end_exploration()
 
     def continue_after_boss(self):
@@ -1396,6 +1535,12 @@ class GameState:
         self.rows_completed = 0
         self.earned_multipliers = {}
 
+        # Reset king/dunce roles between delves - each delve starts fresh.
+        self.hero_king = None
+        self.hero_dunce = None
+        self.last_king_slayer = None
+        self.first_match_done = False
+
         if self.current_deck and self.current_deck.is_empty() and not self.current_deck.is_completed:
             self._mark_deck_completed(self.current_deck)
         if self.current_deck and self.current_deck.check_completion():
@@ -1403,7 +1548,10 @@ class GameState:
 
         self.generate_shop()
         self.roster = [a for a in self.roster if not a.is_dead]
-        self.party = [a for a in self.party if not a.is_dead]
+        # Team selection now happens at the start of each delve via the
+        # recruit overlay — clear the party so the player picks fresh.
+        self.party = []
+        self.selected_party_index = -1
         if self.last_king_slayer and self.last_king_slayer not in self.roster:
             self.last_king_slayer = None
         self.phase = GamePhase.PREPARATION

@@ -179,13 +179,13 @@ class Game:
             self.buttons.append(Button(x, y, 200, 36, fs_text))
             y += 40
 
-            # debug_text = "Debug: ON" if self.state.debug_unlock_all else "Debug: OFF"
-            # debug_color = COLORS['warning'] if self.state.debug_unlock_all else COLORS['panel']
-            # self.buttons.append(Button(
-            #     x, y, 200, 36, debug_text,
-            #     color=debug_color, hover_color=(220, 200, 100),
-            # ))
-            # y += 40
+            debug_text = "Debug: ON" if self.state.debug_unlock_all else "Debug: OFF"
+            debug_color = COLORS['warning'] if self.state.debug_unlock_all else COLORS['panel']
+            self.buttons.append(Button(
+                x, y, 200, 36, debug_text,
+                color=debug_color, hover_color=(220, 200, 100),
+            ))
+            y += 40
 
             self.buttons.append(Button(
                 x, y, 200, 36, "Wipe Save",
@@ -196,13 +196,25 @@ class Game:
             self.buttons.append(Button(x, y, 200, 36, "Quit"))
 
         elif phase == GamePhase.PREPARATION:
-            btn = Button(SCREEN_WIDTH - 180, 20, 160, 40, "Select Deck")
-            btn.enabled = len(self.state.party) == 4
+            # Team is now picked at the start of each delve (via the recruit
+            # overlay) — Shop only requires a non-empty roster to enter delve.
+            btn = Button(SCREEN_WIDTH - 180, 20, 160, 40, "To Delve")
+            btn.enabled = any(not a.is_dead for a in self.state.roster)
             self.buttons.append(btn)
 
         elif phase == GamePhase.DECK_SELECT:
-            y = 140
-            for deck_id in self.state.deck_registry.all_ids():
+            # Fixed top-left Back button — always visible regardless of scroll.
+            self.buttons.append(Button(20, 20, 160, 40, "Back to Shop"))
+
+            from ..views.screens.deck_select import (
+                DECK_LIST_RECT, DECK_ROW_H, deck_visible_count,
+            )
+            all_ids = list(self.state.deck_registry.all_ids())
+            scroll = self.state.deck_select_scroll
+            visible = deck_visible_count()
+            base_y = DECK_LIST_RECT.y + 10
+            for i, deck_id in enumerate(all_ids[scroll:scroll + visible]):
+                y = base_y + i * DECK_ROW_H
                 active_deck = self.state.active_decks.get(deck_id)
                 is_completed = active_deck and (
                     active_deck.is_completed or active_deck.is_empty()
@@ -217,12 +229,14 @@ class Game:
                     btn.deck_id = deck_id  # type: ignore[attr-defined]
 
                 self.buttons.append(btn)
-                y += 105
-            self.buttons.append(Button(SCREEN_WIDTH // 2 - 75, y + 20, 150, 40, "Back"))
-
+           
+            #the +150 was a quick spacing fix because I plan on redoing the ui soon
         elif phase == GamePhase.DELVE_SETUP:
+            from ..views.screens.delve import PARTY_TRAY_Y, PARTY_TRAY_H
             inv_open = self.state.delve_inv_open
-            btn_y = SCREEN_HEIGHT - 55 if inv_open else 530
+            # Sit the action row just below the party tray so it never overlaps
+            # the character cards (tracks the tray geometry automatically).
+            btn_y = PARTY_TRAY_Y + PARTY_TRAY_H + 12
             items_label = "Back" if inv_open else "Items"
 
             fight_btn = Button(
@@ -259,16 +273,19 @@ class Game:
                 ))
 
         elif phase == GamePhase.BOSS_CHOICE:
-            boss_btn = Button(
-                SCREEN_WIDTH // 2 - 200, 720, 180, 50, "Challenge Boss!",
-                color=COLORS['danger'], hover_color=(255, 150, 100),
-            )
-            boss_btn.enabled = self.state.boss_adventurer_index >= 0
-            self.buttons.append(boss_btn)
-            self.buttons.append(Button(SCREEN_WIDTH // 2 + 20, 720, 180, 50, "Skip Boss"))
+            # Heroes attack one at a time — click a hero card to send them.
+            # 'Skip Boss' is only offered before the first hero commits.
+            bs = self.state.boss_square
+            if bs and not bs.get('fought'):
+                self.buttons.append(Button(
+                    SCREEN_WIDTH // 2 - 90, 730, 180, 45, "Skip Boss",
+                ))
 
         elif phase == GamePhase.BOSS_RESULT:
-            self.buttons.append(Button(SCREEN_WIDTH // 2 - 75, 720, 150, 50, "Continue"))
+            bs = self.state.boss_square
+            # Mid-relay -> 'Next Hero'; relay finished -> 'Continue'.
+            label = "Next Hero" if (bs and not bs.get('outcome')) else "Continue"
+            self.buttons.append(Button(SCREEN_WIDTH // 2 - 90, 730, 180, 50, label))
 
         elif phase == GamePhase.ROUND_END:
             self.buttons.append(Button(SCREEN_WIDTH // 2 - 100, 720, 200, 50, "End Shopping"))

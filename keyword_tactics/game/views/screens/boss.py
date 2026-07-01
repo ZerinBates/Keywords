@@ -1,269 +1,281 @@
-"""Boss phase rendering: choice and result screens."""
+"""Boss phase rendering: choice and result screens.
+
+The boss is fought as an interactive relay. On BOSS_CHOICE the player sees the
+boss's CURRENT total score + 30% threshold and clicks one hero to send at it.
+That single attack resolves on BOSS_RESULT, the boss state updates, and the
+player returns here to pick the next hero — until the boss falls, or the last
+hero (the finisher, no threshold) decides it.
+"""
 
 import pygame
 
 from ..widgets import Panel
 from ...config import COLORS, SCREEN_WIDTH
+from ...controllers import combat
+
+
+def _draw_boss_panel(screen, fonts, state, boss):
+    """Boss summary panel: name, current keywords, current score + threshold."""
+    monster = boss['monster']
+    keywords = boss.get('keywords', monster.keywords)
+    score = boss.get('score', combat.boss_total_score(monster.base_points, monster.keywords))
+    total = boss.get('total', score)
+    threshold = combat.boss_threshold(score)
+
+    panel = Panel(SCREEN_WIDTH // 2 - 220, 78, 440, 232, "BOSS")
+    panel.draw(screen, fonts['small'], fonts['large'])
+
+    name_surf = fonts['large'].render(monster.name, True, COLORS['danger'])
+    screen.blit(name_surf, name_surf.get_rect(centerx=SCREEN_WIDTH // 2, y=112))
+
+    # Current keywords
+    kw_x = SCREEN_WIDTH // 2 - 200
+    kw_y = 156
+    if keywords:
+        for kw_id in keywords:
+            kw = state.keyword_registry.get(kw_id)
+            if kw:
+                pygame.draw.rect(screen, kw.color, (kw_x, kw_y, 80, 24), border_radius=4)
+                screen.blit(fonts['small'].render(kw.name[:10], True, COLORS['bg']),
+                            (kw_x + 5, kw_y + 3))
+                kw_x += 88
+                if kw_x > SCREEN_WIDTH // 2 + 130:
+                    kw_x = SCREEN_WIDTH // 2 - 200
+                    kw_y += 28
+    else:
+        screen.blit(fonts['small'].render("(no keywords left)", True, COLORS['text_dim']),
+                    (kw_x, kw_y))
+
+    # Current score (with original for reference if reduced)
+    if score != total:
+        score_text = f"Score: {score}  (of {total})"
+    else:
+        score_text = f"Total Score: {score}"
+    score_surf = fonts['large'].render(score_text, True, COLORS['danger'])
+    screen.blit(score_surf, score_surf.get_rect(centerx=SCREEN_WIDTH // 2, y=224))
+
+    thr_surf = fonts['medium'].render(
+        f"Threshold to beat (30%): {threshold}", True, COLORS['warning'],
+    )
+    screen.blit(thr_surf, thr_surf.get_rect(centerx=SCREEN_WIDTH // 2, y=268))
+
+
+def _draw_history(screen, fonts, state, boss):
+    """Compact log of resolved steps so far."""
+    log = boss.get('log', [])
+    if not log:
+        return
+    screen.blit(fonts['small'].render("So far:", True, COLORS['text']), (40, 318))
+    y = 346
+    for i, step in enumerate(log[-4:]):
+        adv = step['adventurer']
+        if step['killed_boss']:
+            mark, mc = "KO!", COLORS['gold']
+        elif step['survived']:
+            mark, mc = "ok ", COLORS['success']
+        else:
+            mark, mc = "fell", COLORS['danger']
+        bits = [f"{mark} {adv.name}: power {step['power']}"]
+        if step['damage'] and not step['is_final']:
+            bits.append(f"-{step['damage']}")
+        if step['removed_keyword']:
+            bits.append(f"strip {step['removed_keyword']}")
+        bits.append(f"({step['boss_score_before']}->{step['boss_score_after']})")
+        screen.blit(fonts['small'].render("  ".join(bits), True, mc), (52, y))
+        y += 26
 
 
 def draw_choice(screen, fonts, state, sprite_manager,
                 dragging: bool, drag_adv_index: int):
-    """Render the boss-challenge choice screen with party drag-target."""
-    header = fonts['title'].render("CHALLENGE THE BOSS?", True, COLORS['warning'])
-    header_rect = header.get_rect(centerx=SCREEN_WIDTH // 2, y=20)
-    screen.blit(header, header_rect)
+    """Render the 'send a hero' screen for the interactive boss relay."""
+    header = fonts['title'].render("BOSS FIGHT", True, COLORS['warning'])
+    screen.blit(header, header.get_rect(centerx=SCREEN_WIDTH // 2, y=14))
 
     boss = state.boss_square
-    if boss:
-        monster = boss['monster']
-        boss_mult = boss['multiplier']
+    if not boss:
+        return
 
-        # Boss panel
-        boss_panel = Panel(SCREEN_WIDTH // 2 - 200, 80, 400, 250, f"{boss_mult}x BOSS")
-        boss_panel.draw(screen, fonts['small'], fonts['large'])
+    _draw_boss_panel(screen, fonts, state, boss)
+    _draw_history(screen, fonts, state, boss)
 
-        # Monster name
-        name_surf = fonts['large'].render(monster.name, True, COLORS['danger'])
-        name_rect = name_surf.get_rect(centerx=SCREEN_WIDTH // 2, y=120)
-        screen.blit(name_surf, name_rect)
+    available = state.boss_available_heroes()
+    is_relay_finisher = (len(available) == 1)
 
-        # Keywords (visible)
-        kw_x = SCREEN_WIDTH // 2 - 180
-        kw_y = 170
-        for kw_id in monster.keywords:
-            kw = state.keyword_registry.get(kw_id)
-            if kw:
-                pygame.draw.rect(screen, kw.color, (kw_x, kw_y, 80, 25), border_radius=4)
-                kw_text = fonts['small'].render(kw.name[:10], True, COLORS['bg'])
-                screen.blit(kw_text, (kw_x + 5, kw_y + 3))
-                kw_x += 88
-                if kw_x > SCREEN_WIDTH // 2 + 160:
-                    kw_x = SCREEN_WIDTH // 2 - 180
-                    kw_y += 30
+    if is_relay_finisher:
+        prompt = "FINISHER — no threshold. Click them to deliver the final blow:"
+        pcol = COLORS['gold']
+    else:
+        prompt = "Click a hero to send them at the boss next:"
+        pcol = COLORS['text']
+    screen.blit(fonts['medium'].render(prompt, True, pcol), (20, 470))
 
-        # Hidden score
-        hidden = fonts['large'].render(
-            f"Score: ??? x {boss_mult} = ???", True, COLORS['danger'],
-        )
-        hidden_rect = hidden.get_rect(centerx=SCREEN_WIDTH // 2, y=230)
-        screen.blit(hidden, hidden_rect)
-
-        # Bonus
-        bonus = boss['bonus']
-        if bonus['type'] != 'none':
-            if bonus['type'] == 'keyword_buff':
-                bonus_text = f"Square Bonus: +{bonus['keyword']}"
-            else:
-                bonus_text = f"Square Bonus: Resist {bonus['keyword']}"
-            bonus_surf = fonts['medium'].render(bonus_text, True, COLORS['accent'])
-            bonus_rect = bonus_surf.get_rect(centerx=SCREEN_WIDTH // 2, y=280)
-            screen.blit(bonus_surf, bonus_rect)
-
-        # Risk/reward info
-        info_lines = [
-            "Your adventurer keeps their earned multiplier from the last square they beat!",
-            "Boss rewards: 1/8 bonus slot, 1/8 keyword steal, else stat boost",
-            "If you lose, your adventurer dies!",
-        ]
-        y = 340
-        for line in info_lines:
-            color = COLORS['warning'] if "lose" in line.lower() else COLORS['text_dim']
-            info_surf = fonts['small'].render(line, True, color)
-            info_rect = info_surf.get_rect(centerx=SCREEN_WIDTH // 2, y=y)
-            screen.blit(info_surf, info_rect)
-            y += 25
-
-    # Party - drag onto boss
-    party_label = fonts['medium'].render(
-        "DRAG ADVENTURER ONTO BOSS (uses earned multiplier):",
-        True, COLORS['text'],
-    )
-    screen.blit(party_label, (20, 440))
+    bonus = boss['bonus']
+    threshold = combat.boss_threshold(boss.get('score', 0))
 
     x = 30
-    for i, adv in enumerate(state.party):
-        if adv.is_dead:
-            continue
-
-        is_selected = (i == state.boss_adventurer_index)
-        is_being_dragged = dragging and drag_adv_index == i
-
-        if is_being_dragged:
-            color = COLORS['panel_dark']
-        elif is_selected:
-            color = COLORS['accent']
-        else:
-            color = COLORS['panel_light']
-
-        card_rect = pygame.Rect(x, 480, 280, 200)
-        pygame.draw.rect(screen, color, card_rect, border_radius=8)
-
-        if is_selected:
-            border = COLORS['gold']
-        elif not is_being_dragged:
-            border = COLORS['accent']
-        else:
-            border = COLORS['text_dim']
+    for adv in available:
+        card_rect = pygame.Rect(x, 505, 280, 200)
+        pygame.draw.rect(screen, COLORS['panel_light'], card_rect, border_radius=8)
+        border = COLORS['gold'] if is_relay_finisher else COLORS['accent']
         pygame.draw.rect(screen, border, card_rect, 2, border_radius=8)
 
-        # Grab handle bars
-        if not is_selected and not is_being_dragged:
-            for bar_y in range(486, 500, 5):
-                pygame.draw.line(screen, COLORS['muted'],
-                                 (x + 55, bar_y), (x + 95, bar_y), 1)
+        # Click affordance bars
+        for bar_y in range(512, 526, 5):
+            pygame.draw.line(screen, COLORS['muted'],
+                             (x + 120, bar_y), (x + 160, bar_y), 1)
 
-        # Character sprite
         char_sprite = sprite_manager.get_character_sprite(adv.id, (48, 48))
         if char_sprite:
-            screen.blit(char_sprite, (x + 50, 488))
-            name_y = 540
+            screen.blit(char_sprite, (x + 116, 528))
+
+        screen.blit(fonts['small'].render(adv.name, True, COLORS['text']), (x + 14, 566))
+
+        ap = combat.adventurer_boss_power(
+            adv, boss.get('keywords', []), bonus, state.keyword_registry,
+        )
+        screen.blit(fonts['medium'].render(f"Power: {ap['power']}", True, COLORS['success']),
+                    (x + 14, 592))
+
+        # Pass/risk preview vs current threshold
+        if is_relay_finisher:
+            verdict = "Finisher (no threshold)"
+            vcol = COLORS['gold']
+        elif ap['power'] >= threshold:
+            verdict = f"Beats threshold ({threshold})"
+            vcol = COLORS['success']
         else:
-            name_y = 490
+            verdict = f"BELOW threshold ({threshold})!"
+            vcol = COLORS['danger']
+        screen.blit(fonts['small'].render(verdict, True, vcol), (x + 14, 624))
 
-        screen.blit(fonts['small'].render(adv.name, True, COLORS['text']),
-                    (x + 8, name_y))
-
-        # Earned multiplier
-        earned_m = state.get_adventurer_multiplier(adv)
-        em_color = COLORS['gold'] if earned_m > 1 else COLORS['text_dim']
-        screen.blit(fonts['small'].render(f"Earned: {earned_m}x", True, em_color),
-                    (x + 8, name_y + 22))
-
-        # Boosted power
-        base = adv.get_base_points()
-        boosted = base * earned_m
-        mult = adv.get_multiplier()
-        pwr_text = f"Pwr: {base}x{earned_m}x{mult}={boosted * mult}"
-        screen.blit(fonts['small'].render(pwr_text, True, COLORS['success']),
-                    (x + 8, name_y + 42))
-
-        equip_text = f"Items: {len(adv.equipped_items)}/{adv.slots}"
-        screen.blit(fonts['small'].render(equip_text, True, COLORS['text_dim']),
-                    (x + 8, name_y + 62))
+        detail = f"base {ap['base']} x{ap['mult']} / weak {ap['weakness']}"
+        screen.blit(fonts['small'].render(detail, True, COLORS['text_dim']), (x + 14, 650))
+        screen.blit(fonts['small'].render(
+            f"Items: {len(adv.equipped_items)}/{adv.slots}", True, COLORS['text_dim']),
+            (x + 14, 676))
 
         x += 300
 
 
 def draw_result(screen, fonts, state):
-    """Render the boss-fight result screen."""
+    """Render the result of the most recent single boss attack."""
     boss = state.boss_square
-    if not boss or not boss['result']:
+    if not boss or not boss.get('result'):
         return
 
-    result = boss['result']
-    victory = result['victory']
+    step = boss['result']
+    outcome = boss.get('outcome')
+    adv = step['adventurer']
+    monster = boss['monster']
 
-    # Title
-    if victory:
+    # ---- Title ----
+    if outcome == 'victory':
         title = fonts['title'].render("BOSS DEFEATED!", True, COLORS['gold'])
-    else:
+    elif outcome == 'defeat':
         title = fonts['title'].render("BOSS WINS!", True, COLORS['danger'])
-    title_rect = title.get_rect(centerx=SCREEN_WIDTH // 2, y=30)
-    screen.blit(title, title_rect)
-
-    adv = result['adventurer']
-    monster = result['monster']
-
-    # ---- Adventurer side ----
-    adv_panel = Panel(50, 100, 500, 300, adv.name)
-    adv_panel.draw(screen, fonts['small'], fonts['large'])
-
-    y = 140
-    calc_text = (
-        f"Base: {result['adv_base']} x Square: {result['adv_square_mult']}x = "
-        f"{result['adv_boosted_base']}"
-    )
-    screen.blit(fonts['small'].render(calc_text, True, COLORS['text']), (70, y))
-    y += 25
-    calc_text2 = (
-        f"x Keyword Mult: {result['adv_mult']} / "
-        f"(1 + {result['adv_weakness']} weakness)"
-    )
-    screen.blit(fonts['small'].render(calc_text2, True, COLORS['text']), (70, y))
-    y += 30
-
-    power_text = f"Final Power: {result['adv_power']}"
-    screen.blit(fonts['large'].render(power_text, True, COLORS['accent']), (70, y))
-    y += 50
-
-    screen.blit(fonts['medium'].render("Equipment:", True, COLORS['text']), (70, y))
-    y += 25
-    for item in adv.equipped_items:
-        screen.blit(
-            fonts['small'].render(f"* {item.name} (+{item.points})", True, COLORS['text_dim']),
-            (80, y),
-        )
-        y += 22
-
-    # ---- Monster side ----
-    mon_panel = Panel(630, 100, 500, 300, f"{monster.name} ({result['multiplier']}x BOSS)")
-    mon_panel.draw(screen, fonts['small'], fonts['large'])
-
-    y = 140
-    calc_text = (
-        f"Base: {result['monster_base']} x {result['multiplier']} = "
-        f"{result['monster_multiplied_base']}"
-    )
-    screen.blit(fonts['small'].render(calc_text, True, COLORS['text']), (650, y))
-    y += 25
-    calc_text2 = (
-        f"x Keyword Mult: {result['monster_mult']} / "
-        f"(1 + {result['monster_weakness']} weakness)"
-    )
-    screen.blit(fonts['small'].render(calc_text2, True, COLORS['text']), (650, y))
-    y += 30
-
-    power_text = f"Final Power: {result['monster_power']}"
-    screen.blit(fonts['large'].render(power_text, True, COLORS['danger']), (650, y))
-    y += 50
-
-    screen.blit(fonts['medium'].render("Keywords:", True, COLORS['text']), (650, y))
-    y += 25
-    for kw_id in monster.keywords:
-        kw = state.keyword_registry.get(kw_id)
-        if kw:
-            screen.blit(
-                fonts['small'].render(f"* {kw.name}", True, COLORS['text_dim']),
-                (660, y),
-            )
-            y += 22
-
-    # ---- Result details ----
-    y = 430
-    if victory:
-        boss_reward = result.get('boss_reward')
-        if boss_reward:
-            reward_color = (
-                COLORS['gold']
-                if boss_reward['type'] == 'bonus_slot'
-                else COLORS['success']
-            )
-            screen.blit(fonts['large'].render("BOSS REWARD:", True, COLORS['gold']),
-                        (50, y))
-            screen.blit(
-                fonts['medium'].render(boss_reward['desc'], True, reward_color),
-                (50, y + 45),
-            )
-
-        reward_item = result.get('reward_item')
-        if reward_item:
-            drop_text = (
-                f"Drop: {reward_item.name} (+{reward_item.points}) "
-                f"[{reward_item.rarity}]"
-            )
-            screen.blit(fonts['medium'].render(drop_text, True, COLORS['text']),
-                        (50, y + 80))
-
-        coins_text = f"+{result.get('reward_coins', 0)} coins"
-        screen.blit(fonts['medium'].render(coins_text, True, COLORS['gold']),
-                    (50, y + 110))
+    elif step['survived']:
+        title = fonts['title'].render(f"{adv.name} HOLDS!", True, COLORS['success'])
     else:
-        screen.blit(
-            fonts['large'].render(f"{adv.name} has fallen!", True, COLORS['danger']),
-            (50, y),
-        )
-        lost_items = result.get('lost_items', [])
-        if lost_items:
-            lost_text = "Lost items: " + ", ".join(i.name for i in lost_items)
-            screen.blit(fonts['small'].render(lost_text, True, COLORS['text_dim']),
-                        (50, y + 45))
+        title = fonts['title'].render(f"{adv.name} HAS FALLEN!", True, COLORS['danger'])
+    screen.blit(title, title.get_rect(centerx=SCREEN_WIDTH // 2, y=24))
+
+    # ---- This attack's breakdown ----
+    panel = Panel(SCREEN_WIDTH // 2 - 360, 100, 720, 250, f"{adv.name}'s attack")
+    panel.draw(screen, fonts['small'], fonts['large'])
+
+    x = SCREEN_WIDTH // 2 - 340
+    y = 150
+    if step['is_final']:
+        thr_line = "Finisher — no threshold"
+    else:
+        thr_line = f"Threshold: {step['threshold']}"
+    screen.blit(fonts['large'].render(f"Power {step['power']}   vs   {thr_line}",
+                                      True, COLORS['accent']), (x, y))
+    y += 50
+
+    screen.blit(fonts['small'].render(
+        f"base {step['adv_base']} x mult {step['adv_mult']} / "
+        f"(1 + {step['adv_weakness']} weakness)", True, COLORS['text_dim']), (x, y))
+    y += 34
+
+    if step['survived']:
+        if step['is_final']:
+            line = "Out-scored the boss — finishing blow!"
+        else:
+            line = f"Beat the threshold: dealt {step['damage']} damage."
+        screen.blit(fonts['medium'].render(line, True, COLORS['success']), (x, y))
+    else:
+        if step['is_final']:
+            line = "The finisher fell short — the battle is lost."
+        else:
+            line = "Missed the threshold and was slain."
+        screen.blit(fonts['medium'].render(line, True, COLORS['danger']), (x, y))
+    y += 34
+
+    if step['removed_keyword']:
+        screen.blit(fonts['medium'].render(
+            f"Stripped the boss's '{step['removed_keyword']}' keyword!",
+            True, COLORS['accent']), (x, y))
+        y += 34
+
+    score_line = (
+        f"Boss score: {step['boss_score_before']}  ->  {step['boss_score_after']}"
+    )
+    screen.blit(fonts['medium'].render(score_line, True, COLORS['danger']), (x, y))
+    y += 32
+    kw_after = step.get('boss_keywords_after', [])
+    kw_text = ", ".join(kw_after) if kw_after else "(none left)"
+    screen.blit(fonts['small'].render(f"Boss keywords now: {kw_text}",
+                                      True, COLORS['text_dim']), (x, y))
+
+    lost_items = step.get('lost_items')
+    if lost_items:
+        lost_text = "Dropped: " + ", ".join(i.name for i in lost_items)
+        screen.blit(fonts['small'].render(lost_text[:70], True, COLORS['text_dim']),
+                    (x, y + 26))
+
+    # ---- Outcome footer ----
+    fy = 380
+    if outcome == 'victory':
+        boss_reward = boss.get('boss_reward')
+        if boss_reward and boss_reward.get('type') != 'none':
+            screen.blit(fonts['large'].render("BOSS REWARD:", True, COLORS['gold']),
+                        (SCREEN_WIDTH // 2 - 360, fy))
+            screen.blit(fonts['medium'].render(boss_reward['desc'], True, COLORS['success']),
+                        (SCREEN_WIDTH // 2 - 360, fy + 42))
+            fy += 80
+
+        guaranteed_item = boss.get('guaranteed_item')
+        if guaranteed_item:
+            screen.blit(fonts['medium'].render(
+                f"Guaranteed drop: {guaranteed_item.name} "
+                f"(+{guaranteed_item.points}) [{guaranteed_item.rarity}]",
+                True, COLORS['gold']), (SCREEN_WIDTH // 2 - 360, fy))
+            fy += 32
+
+        reward_item = boss.get('reward_item')
+        if reward_item:
+            screen.blit(fonts['medium'].render(
+                f"Drop: {reward_item.name} (+{reward_item.points}) [{reward_item.rarity}]",
+                True, COLORS['text']), (SCREEN_WIDTH // 2 - 360, fy))
+            fy += 32
+
+        screen.blit(fonts['medium'].render(
+            f"+{boss.get('reward_coins', 0)} coins", True, COLORS['gold']),
+            (SCREEN_WIDTH // 2 - 360, fy))
+
+        unlocked_msg = boss.get('unlocked_classes_msg')
+        if unlocked_msg:
+            screen.blit(fonts['medium'].render(unlocked_msg, True, COLORS['accent']),
+                        (SCREEN_WIDTH // 2 - 360, fy + 32))
+    elif outcome == 'defeat':
+        screen.blit(fonts['medium'].render(
+            "The boss resets to full strength for your next attempt.",
+            True, COLORS['warning']), (SCREEN_WIDTH // 2 - 360, fy))
+    else:
+        # Relay continues.
+        remaining = len(state.boss_available_heroes())
+        msg = (f"{remaining} hero(es) left to send. "
+               "Click 'Next Hero' to choose who attacks next.")
+        screen.blit(fonts['medium'].render(msg, True, COLORS['text']),
+                    (SCREEN_WIDTH // 2 - 360, fy))

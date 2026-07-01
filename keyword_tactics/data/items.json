@@ -344,7 +344,7 @@
     ],
     "points": 18,
     "rarity": "common",
-    "slot": "hand"
+    "slot": "weapon"
   },
   "water_bucket": {
     "name": "Water Bucket",
@@ -363,7 +363,7 @@
     ],
     "points": 25,
     "rarity": "common",
-    "slot": "hand"
+    "slot": "weapon"
   },
   "farm_hoe": {
     "name": "Farm Hoe",
@@ -382,7 +382,7 @@
     ],
     "points": 12,
     "rarity": "common",
-    "slot": "chest"
+    "slot": "belt"
   },
   "fish_bones": {
     "name": "Fish Bones",
@@ -392,7 +392,7 @@
     ],
     "points": 28,
     "rarity": "common",
-    "slot": "hand"
+    "slot": "belt"
   },
   "lizard_tail": {
     "name": "Lizard Tail",

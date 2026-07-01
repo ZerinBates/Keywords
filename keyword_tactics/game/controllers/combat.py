@@ -273,6 +273,171 @@ def calculate_boss_combat(adv: Adventurer, monster: Monster, boss_square: dict,
 
 
 # ---------------------------------------------------------------------------
+# Sequential boss combat (4-hero relay)
+# ---------------------------------------------------------------------------
+#
+# Design:
+#   * The boss has a single "total score" (HP pool) and a list of keywords.
+#   * Heroes fight one at a time, in order.  The LAST hero in the list is the
+#     "final hero" and has no threshold.
+#   * Each non-final hero must beat a threshold = THRESHOLD_FRACTION of the
+#     boss's CURRENT remaining score.
+#       - Pass  -> hero survives; boss score -= (hero_power - threshold);
+#                  hero strips one keyword off the boss.  If the score hits 0
+#                  the boss dies early and the relay ends in victory.
+#       - Fail  -> that hero dies immediately (relay continues).
+#   * The final hero has no threshold: they win iff their power >= the boss's
+#     remaining score.  Win => boss defeated regardless of earlier deaths.
+#     Lose => battle lost; the boss is left at full strength (the monster
+#     object is never mutated, so returning it to the deck is a full reset).
+
+BOSS_THRESHOLD_FRACTION = 0.30
+
+
+def boss_keyword_multiplier(keywords: List[str]) -> int:
+    """Stack-of-2+ multiplier for a keyword list (min 1)."""
+    counts: Dict[str, int] = {}
+    for k in keywords:
+        counts[k] = counts.get(k, 0) + 1
+    return max(1, _count_keyword_matches(counts))
+
+
+def boss_total_score(base_points: int, keywords: List[str]) -> int:
+    """The boss's displayed total score / HP pool.
+
+    Hero-independent: base x keyword-multiplier x2 (the boss king bonus).
+    """
+    return int(base_points * boss_keyword_multiplier(keywords)) * 2
+
+
+def boss_threshold(score: int, fraction: float = BOSS_THRESHOLD_FRACTION) -> int:
+    """Threshold a hero must beat = `fraction` of the current boss score."""
+    return int(score * fraction)
+
+
+def adventurer_boss_power(adv: Adventurer, boss_keywords: List[str], bonus: dict,
+                          keyword_registry: KeywordRegistry) -> dict:
+    """A single hero's combat power against the boss's current keywords.
+
+    Mirrors the adventurer side of `calculate_boss_combat` (no square / earned
+    multiplier is applied — boss strength comes from base points).
+    """
+    adv_bonus_keywords: List[str] = []
+    if bonus.get('type') == 'keyword_buff':
+        adv_bonus_keywords.append(bonus['keyword'])
+
+    immune = _normalize_immunity_list(adv.ability_effect.get('immune_weakness', []))
+
+    adv_keywords = adv.get_all_keywords() + adv_bonus_keywords
+    adv_raw_base = adv.get_base_points()
+
+    counts: Dict[str, int] = {}
+    for k in adv_keywords:
+        counts[k] = counts.get(k, 0) + 1
+    adv_mult = max(1, _count_keyword_matches(counts))
+
+    adv_weakness = 0
+    for k in adv_keywords:
+        kw_obj = keyword_registry.get(k)
+        if not kw_obj:
+            continue
+        for ek in boss_keywords:
+            if ek in immune:
+                continue
+            if kw_obj.is_weak_against(ek):
+                adv_weakness += 1
+
+    power = int((adv_raw_base * adv_mult) / (1 + adv_weakness))
+    return {
+        'power': power,
+        'base': adv_raw_base,
+        'mult': adv_mult,
+        'weakness': adv_weakness,
+    }
+
+
+def _pick_keyword_to_remove(boss_keywords: List[str]) -> Optional[str]:
+    """Choose which keyword a surviving hero strips off the boss.
+
+    Prefer a keyword that is part of a stack (count >= 2) so removing it can
+    break the boss's multiplier; otherwise drop the first keyword.
+    """
+    if not boss_keywords:
+        return None
+    counts: Dict[str, int] = {}
+    for k in boss_keywords:
+        counts[k] = counts.get(k, 0) + 1
+    for k in boss_keywords:
+        if counts[k] >= 2:
+            return k
+    return boss_keywords[0]
+
+
+def resolve_boss_step(adv: Adventurer, boss_keywords: List[str], boss_score: int,
+                      bonus: dict, keyword_registry: KeywordRegistry,
+                      is_final: bool,
+                      threshold_fraction: float = BOSS_THRESHOLD_FRACTION):
+    """Resolve ONE hero's attack on the boss.
+
+    Pure: returns ``(step, new_score, new_keywords)``.  The caller owns the
+    running boss state and applies side effects (hero death, rewards, reset).
+
+    `is_final` marks the last hero of the relay — they face no threshold and
+    win simply by out-scoring whatever boss score remains.
+    """
+    ap = adventurer_boss_power(adv, boss_keywords, bonus, keyword_registry)
+    power = ap['power']
+
+    new_keywords: List[str] = list(boss_keywords)
+    score = boss_score
+
+    step = {
+        'adventurer': adv,
+        'is_final': is_final,
+        'power': power,
+        'adv_base': ap['base'],
+        'adv_mult': ap['mult'],
+        'adv_weakness': ap['weakness'],
+        'boss_score_before': boss_score,
+        'boss_keywords_before': list(boss_keywords),
+        'threshold': 0,
+        'damage': 0,
+        'removed_keyword': None,
+        'survived': False,
+        'killed_boss': False,
+    }
+
+    if is_final:
+        # No threshold: out-score whatever remains.
+        if power >= score:
+            step['survived'] = True
+            step['killed_boss'] = True
+            step['damage'] = score
+            score = 0
+        # else: final hero loses -> battle lost (handled by caller).
+    else:
+        threshold = boss_threshold(score, threshold_fraction)
+        step['threshold'] = threshold
+        if power >= threshold:
+            step['survived'] = True
+            damage = power - threshold
+            step['damage'] = damage
+            score = max(0, score - damage)
+            removed = _pick_keyword_to_remove(new_keywords)
+            if removed is not None:
+                new_keywords.remove(removed)
+                step['removed_keyword'] = removed
+            if score <= 0:
+                score = 0
+                step['killed_boss'] = True
+        # else: hero fails the threshold and dies (caller applies death).
+
+    step['boss_score_after'] = score
+    step['boss_keywords_after'] = list(new_keywords)
+    return step, score, new_keywords
+
+
+# ---------------------------------------------------------------------------
 # Square bonus generation
 # ---------------------------------------------------------------------------
 

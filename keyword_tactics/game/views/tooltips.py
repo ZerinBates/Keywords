@@ -362,7 +362,7 @@ def draw_combat_tooltip(screen, fonts, state, hover_pos: Tuple[int, int]):
 
     # --- Boss square in BOSS_CHOICE ---
     if state.phase == GamePhase.BOSS_CHOICE and state.boss_square:
-        boss_rect = pygame.Rect(SCREEN_WIDTH // 2 - 200, 80, 400, 250)
+        boss_rect = pygame.Rect(SCREEN_WIDTH // 2 - 220, 80, 440, 280)
         if boss_rect.collidepoint(mx, my):
             monster = state.boss_square['monster']
             info = get_weakness_info_for_monster(state, monster)
@@ -554,7 +554,7 @@ def draw_preparation_tooltip(screen, fonts, state, hover_pos: Tuple[int, int]):
     and the paper-doll card's item chips.
     """
     from .screens.preparation import (
-        ROSTER_RECT, PARTY_RECT, INV_PANEL_RECT, SHOP_RECT, CARD_RECT,
+        ROSTER_RECT, INV_PANEL_RECT, SHOP_RECT, CARD_RECT,
         SHOP_ITEM_ROW_H,
     )
     from . import paper_doll
@@ -570,19 +570,10 @@ def draw_preparation_tooltip(screen, fonts, state, hover_pos: Tuple[int, int]):
                 draw_adventurer_tooltip(screen, fonts, state, state.roster[idx], hover_pos)
                 return
 
-    # --- Party rows ---
-    if PARTY_RECT.collidepoint(hover_pos):
-        y_off = my - (PARTY_RECT.y + 30)
-        if y_off >= 0:
-            idx = y_off // 52
-            if 0 <= idx < len(state.party):
-                draw_adventurer_tooltip(screen, fonts, state, state.party[idx], hover_pos)
-                return
-
-    # --- Paper-doll item chips (selected party member) ---
+    # --- Paper-doll item chips (selected roster member) ---
     if (CARD_RECT.collidepoint(hover_pos)
-            and 0 <= state.selected_party_index < len(state.party)):
-        adv = state.party[state.selected_party_index]
+            and 0 <= state.selected_party_index < len(state.roster)):
+        adv = state.roster[state.selected_party_index]
         chip_idx = paper_doll.hit_test_chip(CARD_RECT.x, CARD_RECT.y, hover_pos, adv)
         if chip_idx is not None and 0 <= chip_idx < len(adv.equipped_items):
             draw_item_tooltip(screen, fonts, state, adv.equipped_items[chip_idx], hover_pos)
@@ -591,8 +582,8 @@ def draw_preparation_tooltip(screen, fonts, state, hover_pos: Tuple[int, int]):
     # --- Equipped items side panel (shared widget) ---
     from .screens.preparation import STATS_RECT as _STATS_RECT
     if (_STATS_RECT.collidepoint(hover_pos)
-            and 0 <= state.selected_party_index < len(state.party)):
-        adv = state.party[state.selected_party_index]
+            and 0 <= state.selected_party_index < len(state.roster)):
+        adv = state.roster[state.selected_party_index]
         row_rects = getattr(state, '_prep_equipped_rows', []) or []
         for item, rr in row_rects:
             if rr.collidepoint(hover_pos):

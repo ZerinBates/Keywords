@@ -9,6 +9,19 @@ from .. import widgets
 
 
 # ---------------------------------------------------------------------------
+# Shared delve layout geometry. Drag-and-drop hit-testing in input_handler
+# reads these, so the squares/party cards the player clicks line up exactly
+# with what's drawn. Change spacing here and both views + input stay in sync.
+# ---------------------------------------------------------------------------
+DELVE_CARD_W  = 300
+DELVE_CARD_XS = (20, 330, 640, 950)
+FRONT_ROW_Y   = 120
+FRONT_ROW_H   = 212
+PARTY_TRAY_Y  = 380
+PARTY_TRAY_H  = 212
+
+
+# ---------------------------------------------------------------------------
 # Square card (used by both setup and results)
 # ---------------------------------------------------------------------------
 
@@ -26,7 +39,7 @@ def draw_square_card(screen, fonts, state, x: int, y: int, w: int, h: int,
     result = sq.get('result')
     is_king  = bool(sq.get('is_king'))
     is_dunce = bool(sq.get('is_dunce'))
-    pad = 10
+    pad = theme.M  # 16px edge padding
 
     # Background color
     if show_result and result:
@@ -78,32 +91,32 @@ def draw_square_card(screen, fonts, state, x: int, y: int, w: int, h: int,
             pw_color = COLORS['danger']
         pwr_banner = f"ATK {adv_total}  vs  DEF {mon_total}"
         pb_surf = fonts['small'].render(pwr_banner, True, pw_color)
-        screen.blit(pb_surf, pb_surf.get_rect(centerx=x + w // 2, y=y + 2))
+        screen.blit(pb_surf, pb_surf.get_rect(centerx=x + w // 2, y=y + 4))
     elif not adv and not show_result:
         mon_pwr_surf = fonts['small'].render(
             f"DEF {mon_total}", True, COLORS['text_dim'])
         screen.blit(mon_pwr_surf, mon_pwr_surf.get_rect(
-            centerx=x + w // 2, y=y + 2))
+            centerx=x + w // 2, y=y + 4))
 
     # Row 1: monster name + role badge
     mon_name = monster.name
     max_name = (w - 80) // 10
     if len(mon_name) > max_name:
         mon_name = mon_name[:max_name - 1] + "..."
-    screen.blit(fonts['medium'].render(mon_name, True, COLORS['text']), (x + pad, y + 18))
+    screen.blit(fonts['medium'].render(mon_name, True, COLORS['text']), (x + pad, y + 26))
 
     # Role badge in place of the old multiplier
     if is_king:
         badge_surf = fonts['medium'].render("KING", True, COLORS['gold'])
-        screen.blit(badge_surf, (x + w - badge_surf.get_width() - 8, y + 16))
+        screen.blit(badge_surf, (x + w - badge_surf.get_width() - pad, y + 24))
     elif is_dunce:
         badge_surf = fonts['medium'].render("DUNCE", True, COLORS['text_dim'])
-        screen.blit(badge_surf, (x + w - badge_surf.get_width() - 8, y + 16))
+        screen.blit(badge_surf, (x + w - badge_surf.get_width() - pad, y + 24))
 
     # Row 2: keywords as colored tags
     kw_x = x + pad
-    kw_y = y + 48
-    tag_h = 20
+    kw_y = y + 58
+    tag_h = 22
     for kw_id in monster.keywords[:4]:
         kw = state.keyword_registry.get(kw_id)
         if kw:
@@ -116,23 +129,23 @@ def draw_square_card(screen, fonts, state, x: int, y: int, w: int, h: int,
             kw_x += tw + 5
 
     # Row 3: monster stats + bonus
-    info_y = y + 76
+    info_y = y + 88
     pts_text = f"Enemy: {monster.base_points} pts"
     screen.blit(fonts['small'].render(pts_text, True, COLORS['text_dim']), (x + pad, info_y))
 
     if bonus['type'] == 'keyword_buff':
         screen.blit(
             fonts['small'].render(f"Buff: +{bonus['keyword']}", True, COLORS['success']),
-            (x + pad, info_y + 16),
+            (x + pad, info_y + 22),
         )
     elif bonus['type'] == 'keyword_resist':
         screen.blit(
             fonts['small'].render(f"Resist: {bonus['keyword']}", True, COLORS['accent']),
-            (x + pad, info_y + 16),
+            (x + pad, info_y + 22),
         )
 
     # Row 4: adventurer slot (or drop zone, or result)
-    slot_y = y + 118
+    slot_y = y + 132
     if adv:
         pygame.draw.line(screen, COLORS['divider'],
                          (x + pad, slot_y - 3), (x + w - pad, slot_y - 3), 1)
@@ -161,20 +174,21 @@ def draw_square_card(screen, fonts, state, x: int, y: int, w: int, h: int,
             calc = f"{raw} x {km} = {pwr}{role}"
             screen.blit(
                 fonts['small'].render(calc, True, COLORS['success']),
-                (x + pad, slot_y + 22),
+                (x + pad, slot_y + 28),
             )
     elif not show_result:
-        drop_rect = pygame.Rect(x + pad, slot_y, w - pad * 2, 40)
+        drop_rect = pygame.Rect(x + pad, slot_y, w - pad * 2, 44)
         pygame.draw.rect(screen, COLORS['well'], drop_rect, border_radius=6)
         pygame.draw.rect(screen, COLORS['text_dim'], drop_rect, 1, border_radius=6)
         drop_text = fonts['medium'].render("Drop Here", True, COLORS['text_dim'])
-        drop_rect_c = drop_text.get_rect(center=(x + w // 2, slot_y + 20))
+        drop_rect_c = drop_text.get_rect(center=(x + w // 2, slot_y + 22))
         screen.blit(drop_text, drop_rect_c)
 
     # ---- ADVENTURER PORTRAIT + EQUIPPED ITEMS (feature #2) ----
     # Larger portrait (80 px) centred at the bottom of the card,
-    # with equipped item chips in a row beneath it.
-    if adv:
+    # with equipped item chips in a row beneath it. Suppressed during
+    # show_result so the WIN/LOSS readout has the full bottom area.
+    if adv and not show_result:
         adv_id = getattr(adv, 'id', adv.name)
         port_size = 72
         px = x + w - port_size - 6
@@ -192,35 +206,45 @@ def draw_square_card(screen, fonts, state, x: int, y: int, w: int, h: int,
 
     # Result overlay
     if show_result and result:
-        ry = y + 118
+        ry = y + 130
         pygame.draw.line(screen, COLORS['divider'],
-                         (x + pad, ry - 3), (x + w - pad, ry - 3), 1)
+                         (x + pad, ry - 6), (x + w - pad, ry - 6), 1)
 
         if result['victory']:
-            screen.blit(fonts['medium'].render("WIN", True, COLORS['success']),
-                        (x + pad, ry))
+            verdict_surf = fonts['medium'].render("WIN", True, COLORS['success'])
+            screen.blit(verdict_surf, (x + pad, ry))
+            if adv:
+                name_surf = fonts['small'].render(
+                    adv.name, True, COLORS['success'])
+                screen.blit(name_surf,
+                            (x + pad + verdict_surf.get_width() + 8, ry + 10))
             score = f"{result['adv_power']}  vs  {result['monster_power']}"
             screen.blit(fonts['small'].render(score, True, COLORS['text']),
-                        (x + pad, ry + 24))
+                        (x + pad, ry + 36))
             if result.get('reward_item'):
                 rn = result['reward_item'].name
-                if len(rn) > 20:
-                    rn = rn[:19] + "..."
+                if len(rn) > 26:
+                    rn = rn[:25] + "..."
                 screen.blit(fonts['small'].render(f"+ {rn}", True, COLORS['gold']),
-                            (x + pad, ry + 44))
+                            (x + pad, ry + 62))
         else:
-            screen.blit(fonts['medium'].render("LOSS", True, COLORS['danger']),
-                        (x + pad, ry))
+            verdict_surf = fonts['medium'].render("LOSS", True, COLORS['danger'])
+            screen.blit(verdict_surf, (x + pad, ry))
+            if adv:
+                name_surf = fonts['small'].render(
+                    adv.name, True, COLORS['danger'])
+                screen.blit(name_surf,
+                            (x + pad + verdict_surf.get_width() + 8, ry + 10))
             score = f"{result['adv_power']}  vs  {result['monster_power']}"
             screen.blit(fonts['small'].render(score, True, COLORS['text']),
-                        (x + pad, ry + 24))
+                        (x + pad, ry + 36))
             if adv:
                 screen.blit(
                     fonts['small'].render(f"{adv.name} died", True, COLORS['danger']),
-                    (x + pad, ry + 44),
+                    (x + pad, ry + 62),
                 )
     elif show_result and not adv:
-        ry = y + 130
+        ry = y + 138
         screen.blit(fonts['medium'].render("- Skipped -", True, COLORS['text_dim']),
                     (x + pad, ry))
 
@@ -231,8 +255,8 @@ def draw_square_card(screen, fonts, state, x: int, y: int, w: int, h: int,
 
 def draw_setup(screen, fonts, state, dragging: bool, drag_adv_index: int):
     """Render the seamless delve setup screen."""
-    CW = 300
-    CXS = [20, 330, 640, 950]
+    CW = DELVE_CARD_W
+    CXS = DELVE_CARD_XS
 
     deck_name = state.current_deck.name if state.current_deck else "Unknown"
 
@@ -281,68 +305,37 @@ def draw_setup(screen, fonts, state, dragging: bool, drag_adv_index: int):
     )
     screen.blit(fonts['medium'].render(status, True, status_color), (750, 18))
 
-    # Back row preview (dimmed)
+    # Back-row preview removed per design — show only a terse "what's beyond"
+    # hint where the cards used to sit.
     by = 52
-    if state.back_row:
-        screen.blit(fonts['small'].render("NEXT ROW:", True, COLORS['text_dim']), (20, by))
-        for i, sq in enumerate(state.back_row):
-            bx = CXS[i] if i < 4 else 20
-            rect = pygame.Rect(bx, by + 18, CW, 50)
-            pygame.draw.rect(screen, COLORS['well'], rect, border_radius=6)
-            pygame.draw.rect(screen, COLORS['border'], rect, 1, border_radius=6)
-
-            # role badge (or blank) for back row preview
-            back_badge = ""
-            if sq.get('is_king'):  back_badge = "K"
-            elif sq.get('is_dunce'): back_badge = "D"
-            if back_badge:
-                bc = COLORS['gold'] if back_badge == 'K' else COLORS['text_dim']
-                screen.blit(fonts['medium'].render(back_badge, True, bc),
-                            (bx + CW - 22, by + 22))
-            name = sq['monster'].name
-            if len(name) > 22:
-                name = name[:21] + "..."
-            screen.blit(
-                fonts['small'].render(name, True, COLORS['text_dim']),
-                (bx + 10, by + 22),
-            )
-            kws = ", ".join(sq['monster'].keywords[:3])
-            if len(kws) > 28:
-                kws = kws[:27] + "..."
-            screen.blit(
-                fonts['small'].render(
-                    f"{sq['monster'].base_points}pts  {kws}", True, COLORS['text_dim'],
-                ),
-                (bx + 10, by + 44),
-            )
-    else:
+    if not state.back_row:
         label = "BOSS waits beyond!" if state.boss_square else "Final row!"
         color = COLORS['danger'] if state.boss_square else COLORS['warning']
         screen.blit(fonts['medium'].render(label, True, color), (20, by + 10))
 
     # Front row
-    front_y = 128
-    front_h = 200
+    front_y = FRONT_ROW_Y
+    front_h = FRONT_ROW_H
     screen.blit(
         fonts['medium'].render(
             ">  FRONT ROW  -  drag adventurers onto squares",
             True, COLORS['accent'],
         ),
-        (20, front_y - 18),
+        (20, front_y - 26),
     )
     for i in range(len(state.front_row)):
         draw_square_card(screen, fonts, state, CXS[i], front_y, CW, front_h,
                          state.front_row[i], i)
 
     # Party tray
-    party_y = 345
-    party_h = 160
+    party_y = PARTY_TRAY_Y
+    party_h = PARTY_TRAY_H
     screen.blit(
         fonts['medium'].render(
             "YOUR PARTY  -  must place all living adventurers",
             True, COLORS['text'],
         ),
-        (20, party_y - 18),
+        (20, party_y - 26),
     )
 
     for i, adv in enumerate(state.party):
@@ -361,23 +354,23 @@ def draw_setup(screen, fonts, state, dragging: bool, drag_adv_index: int):
         border = COLORS['accent'] if (not adv.is_dead and not is_dragging) else COLORS['text_dim']
         pygame.draw.rect(screen, border, rect, 2, border_radius=10)
 
-        pad = 10
+        pad = theme.M  # 16px edge padding
         # Name + KING/DUNCE badge
         screen.blit(fonts['medium'].render(adv.name, True, COLORS['text']),
-                    (cx + pad, party_y + 8))
+                    (cx + pad, party_y + 10))
         if adv is state.hero_king and not adv.is_dead:
             badge = fonts['medium'].render("KING", True, COLORS['gold'])
-            screen.blit(badge, (cx + CW - badge.get_width() - pad, party_y + 8))
+            screen.blit(badge, (cx + CW - badge.get_width() - pad, party_y + 10))
         elif adv is state.hero_dunce and not adv.is_dead:
             badge = fonts['medium'].render("DUNCE", True, COLORS['text_dim'])
-            screen.blit(badge, (cx + CW - badge.get_width() - pad, party_y + 8))
+            screen.blit(badge, (cx + CW - badge.get_width() - pad, party_y + 10))
 
         # Portrait + item chips — right side of the tray card
         paper_doll.draw_adventurer_thumbnail(screen, adv,
-                                             cx + CW - 68, party_y + 4, 60)
+                                             cx + CW - 70, party_y + 6, 60)
 
         # Status
-        line_y = party_y + 38
+        line_y = party_y + 50
         if adv.is_dead:
             screen.blit(fonts['medium'].render("DEAD", True, COLORS['danger']),
                         (cx + pad, line_y))
@@ -406,7 +399,7 @@ def draw_setup(screen, fonts, state, dragging: bool, drag_adv_index: int):
                     f"Power: {rb} x {km} = {pwr}{role_tag}",
                     True, COLORS['success'],
                 ),
-                (cx + pad, line_y + 22),
+                (cx + pad, line_y + 28),
             )
         else:
             rb = adv.get_base_points()
@@ -423,7 +416,7 @@ def draw_setup(screen, fonts, state, dragging: bool, drag_adv_index: int):
                     f"Items: {len(adv.equipped_items)}/{adv.slots}",
                     True, COLORS['text_dim'],
                 ),
-                (cx + pad, line_y + 22),
+                (cx + pad, line_y + 28),
             )
 
         # Keywords
@@ -432,17 +425,17 @@ def draw_setup(screen, fonts, state, dragging: bool, drag_adv_index: int):
         if len(kw_str) > 35:
             kw_str = kw_str[:34] + "..."
         screen.blit(fonts['small'].render(kw_str, True, COLORS['text_dim']),
-                    (cx + pad, line_y + 46))
+                    (cx + pad, line_y + 58))
 
         # Items
-        ey = line_y + 66
+        ey = line_y + 84
         for item in adv.equipped_items[:3]:
             iname = item.name if len(item.name) <= 20 else item.name[:19] + "..."
             screen.blit(
                 fonts['small'].render(f"* {iname} +{item.points}", True, COLORS['text_dim']),
                 (cx + pad, ey),
             )
-            ey += 18
+            ey += 24
 
     # Overlays
     if state.delve_inv_open:
@@ -457,8 +450,8 @@ def draw_setup(screen, fonts, state, dragging: bool, drag_adv_index: int):
 
 def draw_results(screen, fonts, state):
     """Render the post-row results screen."""
-    CXS = [20, 330, 640, 950]
-    CW = 300
+    CXS = DELVE_CARD_XS
+    CW = DELVE_CARD_W
 
     summary = state.get_front_row_summary()
     hc = COLORS['success'] if summary['wins'] >= summary['losses'] else COLORS['danger']
@@ -489,15 +482,16 @@ def draw_results(screen, fonts, state):
                          state.front_row[i], i, show_result=True)
 
     # Loot list
-    ly = 310
+    ly = 312
     screen.blit(
         fonts['medium'].render(
             f"Delve Loot  ({len(state.delve_loot)} items)", True, COLORS['gold'],
         ),
         (20, ly),
     )
+    ly += 8
     for item in state.delve_loot[-8:]:
-        ly += 24
+        ly += 28
         rc = {
             'scrap':    (120, 120, 120),
             'common':   COLORS['text_dim'],
@@ -513,7 +507,7 @@ def draw_results(screen, fonts, state):
 
     # Party status row
     alive = [a for a in state.party if not a.is_dead]
-    py = 570
+    py = 580
     screen.blit(
         fonts['medium'].render(
             f"Party: {len(alive)} alive   |   Coins: {state.coins}",
@@ -531,7 +525,7 @@ def draw_results(screen, fonts, state):
             role = " (DUNCE)"; ec = COLORS['text_dim']
         screen.blit(
             fonts['small'].render(f"{adv.name}{role}", True, ec),
-            (ex, py + 30),
+            (ex, py + 36),
         )
         ex += 220
 
@@ -570,10 +564,10 @@ def draw_inventory_panel(screen, fonts, state):
     screen.blit(fonts['medium'].render("Party", True, COLORS['text']),
                 (left_x + 8, col_top))
 
-    adv_card_h = 80
-    adv_gap = 6
+    adv_card_h = 94
+    adv_gap = 8
     for i, adv in enumerate(state.party):
-        cy = col_top + 32 + i * (adv_card_h + adv_gap)
+        cy = col_top + 36 + i * (adv_card_h + adv_gap)
         is_sel = (i == state.delve_selected_adv_idx)
         is_dead = adv.is_dead
 
@@ -593,12 +587,12 @@ def draw_inventory_panel(screen, fonts, state):
             COLORS['accent'] if is_sel else COLORS['text']
         )
         screen.blit(fonts['medium'].render(adv.name, True, name_color),
-                    (left_x + 10, cy + 6))
+                    (left_x + 10, cy + 8))
 
         # Portrait thumbnail — right side of card
         adv_id = getattr(adv, 'id', adv.name)
         paper_doll.draw_portrait_thumbnail(screen, adv_id,
-                                           left_x + left_w - 52, cy + 4, 46)
+                                           left_x + left_w - 52, cy + 6, 46)
 
         # Slots
         slots_text = f"{len(adv.equipped_items)}/{adv.slots} slots"
@@ -608,18 +602,18 @@ def draw_inventory_panel(screen, fonts, state):
             else COLORS['text_dim']
         )
         slots_surf = fonts['small'].render(slots_text, True, slots_color)
-        screen.blit(slots_surf, (left_x + left_w - slots_surf.get_width() - 10, cy + 10))
+        screen.blit(slots_surf, (left_x + left_w - slots_surf.get_width() - 10, cy + 12))
 
         if is_dead:
             screen.blit(fonts['small'].render("DEAD", True, COLORS['danger']),
-                        (left_x + 10, cy + 32))
+                        (left_x + 10, cy + 40))
         else:
             if adv.ability_name:
                 ab_text = adv.ability_name
                 if len(ab_text) > 25:
                     ab_text = ab_text[:24] + ".."
                 screen.blit(fonts['small'].render(ab_text, True, COLORS['text_dim']),
-                            (left_x + 10, cy + 32))
+                            (left_x + 10, cy + 40))
 
             # Keyword preview
             kws = adv.get_all_keywords()[:4]
@@ -627,7 +621,7 @@ def draw_inventory_panel(screen, fonts, state):
             if len(kw_str) > 28:
                 kw_str = kw_str[:27] + ".."
             screen.blit(fonts['small'].render(kw_str, True, COLORS['text_dim']),
-                        (left_x + 10, cy + 52))
+                        (left_x + 10, cy + 66))
 
     # ----- MIDDLE-LEFT COLUMN: Equipped items side panel (shared widget; #2) -----
     equip_x = left_x + left_w + 15
@@ -640,6 +634,7 @@ def draw_inventory_panel(screen, fonts, state):
         state._delve_equipped_rows = widgets.draw_equipped_items_panel(
             screen, fonts, state, equip_rect, adv,
             paper_doll_module=paper_doll,
+            scroll=state.delve_equipped_scroll,
         )
     else:
         # Stub panel when no adventurer is selected
@@ -706,6 +701,7 @@ def draw_inventory_panel(screen, fonts, state):
                      f"{len(state.inventory)} inventory"),
         is_new_func=lambda it: it in state.delve_loot,
         paper_doll_module=paper_doll,
+        hover_pos=state.hover_pos,
     )
 
     # Instructions
@@ -762,30 +758,30 @@ def draw_recruit_panel(screen, fonts, state):
         )
     else:
         for j, adv in enumerate(available):
-            y = 140 + j * 65
+            y = 142 + j * 74
             if y > 620:
                 break
 
-            rect = pygame.Rect(660, y, 560, 58)
+            rect = pygame.Rect(660, y, 560, 64)
             pygame.draw.rect(screen, COLORS['panel_light'], rect, border_radius=6)
             pygame.draw.rect(screen, COLORS['accent'], rect, 1, border_radius=6)
 
             # Portrait thumbnail — right side
             adv_id = getattr(adv, 'id', adv.name)
             paper_doll.draw_portrait_thumbnail(screen, adv_id,
-                                               660 + 560 - 52, y + 6, 46)
+                                               660 + 560 - 54, y + 8, 48)
 
             screen.blit(fonts['medium'].render(adv.name, True, COLORS['text']),
-                        (672, y + 4))
+                        (676, y + 8))
             slots_text = f"[{adv.slots} slots]"
             screen.blit(fonts['small'].render(slots_text, True, COLORS['text_dim']),
-                        (672 + 180, y + 8))
+                        (676 + 180, y + 12))
 
             ability = f"{adv.ability_name}: {adv.ability_desc}"
             if len(ability) > 65:
                 ability = ability[:64] + "..."
             screen.blit(fonts['small'].render(ability, True, COLORS['text_dim']),
-                        (672, y + 32))
+                        (676, y + 38))
 
             eq_count = len(adv.equipped_items)
             if eq_count > 0:
@@ -793,7 +789,7 @@ def draw_recruit_panel(screen, fonts, state):
                     fonts['small'].render(
                         f"{eq_count} items equipped", True, COLORS['warning'],
                     ),
-                    (1100, y + 8),
+                    (1100, y + 12),
                 )
 
     screen.blit(
