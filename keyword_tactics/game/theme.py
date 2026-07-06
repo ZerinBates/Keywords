@@ -37,7 +37,8 @@ PADDING = {
 XS, S, M, L, XL = PADDING['XS'], PADDING['S'], PADDING['M'], PADDING['L'], PADDING['XL']
 
 # Corner radii + standard border thickness, also standardized.
-RADIUS = {'S': 4, 'M': 8, 'L': 12, 'PILL': 999}
+# Kept tight/square for the chunky pixel-art aesthetic.
+RADIUS = {'S': 2, 'M': 3, 'L': 4, 'PILL': 999}
 BORDER_W = 2
 
 
@@ -45,6 +46,15 @@ BORDER_W = 2
 # 6-colour palettes. Active one drives the whole game.
 # ---------------------------------------------------------------------------
 PALETTES = {
+    # Double Edged: dark plum/purple pixel-art look (mockup palette).
+    'double_edged': {
+        'bg':      (17, 12, 23),     # #110C17  near-black plum
+        'surface': (40, 30, 54),     # #281E36  purple panel
+        'primary': (183, 162, 222),  # #B7A2DE  lavender
+        'text':    (240, 234, 248),  # #F0EAF8  pale lavender-white
+        'muted':   (142, 128, 168),  # #8E80A8  dusty violet
+        'accent':  (242, 198, 92),   # #F2C65C  coin gold
+    },
     # Cool, modern. Dark slate + teal primary + warm amber accent.
     'slate_teal': {
         'bg':      (15, 20, 25),     # #0F1419  ink slate
@@ -75,7 +85,7 @@ PALETTES = {
 }
 
 # >>> Change this line to re-theme the whole game. <<<
-ACTIVE_PALETTE = 'slate_teal'
+ACTIVE_PALETTE = 'double_edged'
 
 
 # ---------------------------------------------------------------------------

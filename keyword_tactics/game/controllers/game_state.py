@@ -117,10 +117,14 @@ class GameState:
         self.rows_completed: int = 0
         self.boss_square: Optional[dict] = None
         self.boss_adventurer_index: int = -1
+        # Hero picked on the boss screen, waiting for a target (-1 = none).
+        self.boss_selected_hero: int = -1
         self.delve_inv_open: bool = False
         self.delve_inv_scroll: int = 0
         self.delve_inv_source: str = 'loot'
         self.delve_selected_adv_idx: int = -1
+        # Party-strip hero whose info dropdown is open (-1 = none).
+        self.delve_hero_info_idx: int = -1
         self.earned_multipliers: Dict[Adventurer, int] = {}
         self.delve_recruit_open: bool = False
 
@@ -140,6 +144,7 @@ class GameState:
         self.message_timer: int = 0
         self.inventory_scroll: int = 0
         self.roster_scroll: int = 0
+        self.shop_scroll: int = 0
         self.deck_select_scroll: int = 0
         self.prep_equipped_scroll: int = 0
         self.delve_equipped_scroll: int = 0
@@ -159,6 +164,13 @@ class GameState:
         # ---- Preparation inventory search ----
         self.prep_inv_search: str = ""
         self.prep_inv_search_active: bool = False
+        # Right-column view on the Shop screen: 'inventory' or 'shop'.
+        self.prep_view: str = 'inventory'
+        # Keyword filters (empty set = show everything) + dropdown-open flags.
+        self.prep_kw_filter: set = set()
+        self.prep_filter_open: bool = False
+        self.delve_kw_filter: set = set()
+        self.delve_filter_open: bool = False
 
         # ---- Delve inventory search ----
         self.delve_item_search: str = ""
@@ -813,6 +825,19 @@ class GameState:
         self.inventory.append(item)
         return True
 
+    def unequip_all_from(self, adv: Adventurer) -> int:
+        """Strip every item from a roster hero back into inventory (Shop)."""
+        n = 0
+        while adv.equipped_items:
+            if not self.unequip_item(adv, 0):
+                break
+            n += 1
+        return n
+
+    def unequip_all_roster(self) -> int:
+        """Strip every hero on the roster; returns items returned."""
+        return sum(self.unequip_all_from(a) for a in self.roster)
+
     def sell_item(self, inventory_index: int) -> bool:
         if not (0 <= inventory_index < len(self.inventory)):
             return False
@@ -834,24 +859,17 @@ class GameState:
         sell_prices = {'scrap': 1, 'common': 1, 'uncommon': 3, 'rare': 5}
         return sell_prices.get(item.rarity, 1)
 
+    @staticmethod
+    def _apply_kw_filter(items: List[Item], selected: set) -> List[Item]:
+        """Keep items carrying ANY of the selected keywords (empty = all)."""
+        if not selected:
+            return items
+        return [it for it in items if any(k in selected for k in it.keywords)]
+
     def get_filtered_inventory(self) -> List[Item]:
-        if not self.prep_inv_search:
-            return list(self.inventory)
-        s = self.prep_inv_search.lower()
-        result = []
-        for item in self.inventory:
-            if s in item.name.lower():
-                result.append(item)
-                continue
-            matched = False
-            for kw_id in item.keywords:
-                kw = self.keyword_registry.get(kw_id)
-                if kw and s in kw.name.lower():
-                    matched = True
-                    break
-            if matched:
-                result.append(item)
-        return result
+        result = [it for it in self.inventory
+                  if self._matches_search(it, self.prep_inv_search)]
+        return self._apply_kw_filter(result, self.prep_kw_filter)
 
     def _matches_search(self, item: Item, search: str) -> bool:
         if not search:
@@ -867,9 +885,9 @@ class GameState:
 
     def get_filtered_delve_items(self) -> List[Item]:
         merged = list(self.delve_loot) + list(self.inventory)
-        if not self.delve_item_search:
-            return merged
-        return [it for it in merged if self._matches_search(it, self.delve_item_search)]
+        merged = [it for it in merged
+                  if self._matches_search(it, self.delve_item_search)]
+        return self._apply_kw_filter(merged, self.delve_kw_filter)
 
     # ---------------------------------------------------------------------
     # Shop — dead-adventurer loot
@@ -1126,6 +1144,21 @@ class GameState:
         self.delve_loot.append(item)
         return True
 
+    def delve_unequip_all_from(self, party_index: int) -> int:
+        """Strip a party hero mid-delve; items go to the delve loot pool."""
+        if not (0 <= party_index < len(self.party)):
+            return 0
+        adv = self.party[party_index]
+        n = 0
+        while adv.equipped_items:
+            self.delve_loot.append(adv.equipped_items.pop(0))
+            n += 1
+        return n
+
+    def delve_unequip_all_party(self) -> int:
+        return sum(self.delve_unequip_all_from(i)
+                   for i in range(len(self.party)))
+
     # ---------------------------------------------------------------------
     # Mid-delve recruitment
     # ---------------------------------------------------------------------
@@ -1300,83 +1333,158 @@ class GameState:
             'revealed': False,
         }
 
+    def _boss_recompute(self, bs):
+        """Recompute the boss's keywords + total score from its intact items."""
+        monster = bs['monster']
+        items = bs.get('items', [])
+        base = monster.base_points + sum(it.points for it in items)
+        kws = list(monster.keywords)
+        for it in items:
+            kws.extend(it.keywords)
+        bs['keywords'] = kws
+        bs['score'] = combat.boss_total_score(base, kws)
+
     def _init_boss_fight(self):
-        """Set up the interactive relay state on boss_square (called once,
-        when entering BOSS_CHOICE from the delve results)."""
+        """Set up the interactive boss state (called once, when entering
+        BOSS_CHOICE from the delve results)."""
         bs = self.boss_square
         if not bs:
             return
-        monster = bs['monster']
-        bs['total'] = combat.boss_total_score(monster.base_points, monster.keywords)
-        bs['score'] = bs['total']            # current remaining boss score (HP)
-        bs['keywords'] = list(monster.keywords)  # current boss keywords
-        bs['fought'] = []                    # adventurers who already attacked
+        # Fresh copies each attempt: a lost fight resets the boss's gear too.
+        bs['items'] = [it for it in (
+            self.item_registry.create_copy(iid)
+            for iid in getattr(self.current_deck, 'boss_item_ids', [])
+        ) if it is not None]
+        bs['destroyed_items'] = []
+        self._boss_recompute(bs)
+        bs['total'] = bs['score']            # full-strength score for display
+        bs['fought'] = []                    # adventurers who already acted
         bs['log'] = []                       # resolved step dicts (history)
         bs['outcome'] = None                 # None | 'victory' | 'defeat'
         bs['result'] = None                  # the most recent step (BOSS_RESULT)
         bs['revealed'] = True
         self.boss_adventurer_index = -1
+        self.boss_selected_hero = -1
 
     def boss_available_heroes(self) -> List[Adventurer]:
-        """Living party heroes who haven't attacked the boss yet (party order)."""
+        """Living party heroes who haven't acted against the boss yet."""
         if not self.boss_square:
             return []
         fought = self.boss_square.get('fought', [])
         return [a for a in self.party if not a.is_dead and a not in fought]
 
-    def fight_boss_hero(self, party_index: int):
-        """Resolve ONE hero's attack on the boss, then show the step result."""
+    def _kill_hero_in_boss(self, adv: Adventurer, step: dict):
+        """A hero who failed their strike dies and drops their gear."""
+        adv.is_dead = True
+        lost = adv.equipped_items.copy()
+        step['lost_items'] = lost
+        self.dead_adv_loot.extend(lost)
+        adv.equipped_items.clear()
+        if self.last_king_slayer is adv:
+            self.last_king_slayer = None
+
+    def boss_attack_item(self, party_index: int, item_index: int):
+        """One hero strikes at one of the boss's equipped items.
+
+        Destroyed -> the boss loses that item's points and keywords, and its
+        total drops. Failed -> the hero falls. Either way the hero is spent.
+        """
         bs = self.boss_square
         if not bs or bs.get('outcome'):
             return
         if not (0 <= party_index < len(self.party)):
             return
-
         adv = self.party[party_index]
-        available = self.boss_available_heroes()
-        if adv not in available:
+        if adv not in self.boss_available_heroes():
             self.set_message("That hero can't attack right now.")
             return
+        items = bs.get('items', [])
+        if not (0 <= item_index < len(items)):
+            return
 
-        # The last available hero is the finisher: no threshold.
-        is_final = (len(available) == 1)
-        monster = bs['monster']
-
-        step, new_score, new_keywords = combat.resolve_boss_step(
-            adv, bs['keywords'], bs['score'], bs['bonus'],
-            self.keyword_registry, is_final,
-        )
-        bs['score'] = new_score
-        bs['keywords'] = new_keywords
+        item = items[item_index]
+        step = combat.resolve_boss_item_attack(
+            adv, item, bs['keywords'], bs['bonus'], self.keyword_registry)
+        step['boss_score_before'] = bs['score']
         bs['fought'].append(adv)
+
+        if step['destroyed']:
+            items.pop(item_index)
+            bs['destroyed_items'].append(item)
+            self._boss_recompute(bs)
+        else:
+            self._kill_hero_in_boss(adv, step)
+
+        step['boss_score_after'] = bs['score']
+        step['boss_keywords_after'] = list(bs['keywords'])
         bs['log'].append(step)
         bs['result'] = step
 
-        # A hero who did not survive their step dies and drops their gear.
-        if not step['survived']:
-            adv.is_dead = True
-            lost = adv.equipped_items.copy()
-            step['lost_items'] = lost
-            self.dead_adv_loot.extend(lost)
-            adv.equipped_items.clear()
-            if self.last_king_slayer is adv:
-                self.last_king_slayer = None
-
-        # Decide whether the relay is over.
-        if step['killed_boss']:
-            bs['outcome'] = 'victory'
-            self._on_boss_defeated(adv)
-        elif is_final:
-            # Final hero fought but didn't bring the score to 0 -> battle lost.
+        # Out of heroes without ever challenging the boss -> battle lost.
+        if not self.boss_available_heroes() and not bs.get('outcome'):
             bs['outcome'] = 'defeat'
             self._on_boss_lost()
-        # else: fight continues; the player selects the next hero.
 
+        self.boss_selected_hero = -1
         self.phase = GamePhase.BOSS_RESULT
+
+    def boss_challenge(self, party_index: int):
+        """One hero challenges the boss itself — this ends the fight.
+
+        Win with boss items still intact and every surviving item is claimed
+        as bonus loot (the reward for taking the harder fight).
+        """
+        bs = self.boss_square
+        if not bs or bs.get('outcome'):
+            return
+        if not (0 <= party_index < len(self.party)):
+            return
+        adv = self.party[party_index]
+        if adv not in self.boss_available_heroes():
+            self.set_message("That hero can't attack right now.")
+            return
+
+        step = combat.resolve_boss_challenge(
+            adv, bs['keywords'], bs['score'], bs['bonus'], self.keyword_registry)
+        step['boss_score_before'] = bs['score']
+        bs['fought'].append(adv)
+
+        if step['killed_boss']:
+            bs['score'] = 0
+            bs['outcome'] = 'victory'
+            # Bonus rewards: every item the boss still has equipped.
+            if bs.get('items'):
+                bs['bonus_items'] = list(bs['items'])
+                self.delve_loot.extend(bs['items'])
+                bs['items'] = []
+            self._on_boss_defeated(adv)
+        else:
+            self._kill_hero_in_boss(adv, step)
+            bs['outcome'] = 'defeat'
+            self._on_boss_lost()
+
+        step['boss_score_after'] = bs['score']
+        step['boss_keywords_after'] = list(bs['keywords'])
+        bs['log'].append(step)
+        bs['result'] = step
+        self.boss_selected_hero = -1
+        self.phase = GamePhase.BOSS_RESULT
+
+    def rows_until_boss(self) -> int:
+        """Monster rows left (including the current one) before the boss."""
+        if self.boss_square:
+            return 0
+        d = self.current_deck
+        rows = 1 if self.front_row else 0
+        if self.back_row:
+            rows += 1
+        undealt = len(d.round_monsters) if d else 0
+        rows += (undealt + 3) // 4
+        return rows
 
     def acknowledge_boss_step(self):
         """'Continue' on the step-result screen: either advance to the next
-        hero's selection, or finish the boss flow when the relay is over."""
+        hero's selection, or finish the boss flow when the fight is over."""
         bs = self.boss_square
         if not bs or bs.get('outcome'):
             self.continue_after_boss()
@@ -1652,6 +1760,14 @@ class GameState:
         self.inventory.append(item)
         self.shop_items.pop(index)
         return True
+
+    def buy_shop_item_obj(self, item: Item) -> bool:
+        """Buy by object from either the shop stock or the fallen-hero loot."""
+        if item in self.shop_items:
+            return self.buy_shop_item(self.shop_items.index(item))
+        if item in self.dead_adv_loot:
+            return self.buy_dead_adv_loot(self.dead_adv_loot.index(item))
+        return False
 
     def buy_shop_adventurer(self, index: int) -> bool:
         if not (0 <= index < len(self.shop_adventurers)):

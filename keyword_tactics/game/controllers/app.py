@@ -44,7 +44,7 @@ class Game:
         self.screen = pygame.display.set_mode(
             (self.logical_width, self.logical_height), pygame.RESIZABLE,
         )
-        pygame.display.set_caption("Keyword Tactics")
+        pygame.display.set_caption("Double Edged")
 
         # All game rendering happens here at base resolution, then scaled
         self.logical_surface = pygame.Surface((self.logical_width, self.logical_height))
@@ -58,12 +58,14 @@ class Game:
         self.running = True
 
         # --- Fonts (bundled into a dict and shared everywhere) ---
+        # Clean default font ('huge' is for the big DEF/power numbers).
         self.fonts: Dict[str, pygame.font.Font] = {
-            'tiny':   pygame.font.Font(None, 20),
-            'small':  pygame.font.Font(None, 24),
-            'medium': pygame.font.Font(None, 32),
-            'large':  pygame.font.Font(None, 48),
-            'title':  pygame.font.Font(None, 64),
+            'tiny':   pygame.font.Font(None, 16),
+            'small':  pygame.font.Font(None, 20),
+            'medium': pygame.font.Font(None, 26),
+            'large':  pygame.font.Font(None, 40),
+            'title':  pygame.font.Font(None, 56),
+            'huge':   pygame.font.Font(None, 84),
         }
 
         # --- Subsystems ---
@@ -198,7 +200,9 @@ class Game:
         elif phase == GamePhase.PREPARATION:
             # Team is now picked at the start of each delve (via the recruit
             # overlay) — Shop only requires a non-empty roster to enter delve.
-            btn = Button(SCREEN_WIDTH - 180, 20, 160, 40, "To Delve")
+            # Bottom-centred so it clears the three-column layout.
+            btn = Button(SCREEN_WIDTH // 2 - 105, 750, 210, 44, "To Delve",
+                         color=COLORS['success'])
             btn.enabled = any(not a.is_dead for a in self.state.roster)
             self.buttons.append(btn)
 
@@ -232,28 +236,31 @@ class Game:
            
             #the +150 was a quick spacing fix because I plan on redoing the ui soon
         elif phase == GamePhase.DELVE_SETUP:
-            from ..views.screens.delve import PARTY_TRAY_Y, PARTY_TRAY_H
+            from ..views.screens.delve import PARTY_STRIP
             inv_open = self.state.delve_inv_open
-            # Sit the action row just below the party tray so it never overlaps
-            # the character cards (tracks the tray geometry automatically).
-            btn_y = PARTY_TRAY_Y + PARTY_TRAY_H + 12
+            # Action row sits just below the party strip, mockup-style:
+            # [ Retreat ]  [ FIGHT! ]  [ Items ]  ([ Recruit ])
+            btn_y = PARTY_STRIP.bottom + 14
             items_label = "Back" if inv_open else "Items"
 
             fight_btn = Button(
-                SCREEN_WIDTH // 2 - 80, btn_y, 160, 45, "FIGHT!",
-                color=COLORS['danger'], hover_color=(255, 150, 100),
+                SCREEN_WIDTH // 2 - 105, btn_y, 210, 48, "FIGHT!",
+                color=COLORS['success'], text_color=COLORS['gold'],
             )
             fight_btn.enabled = (
                 self.state.all_alive_placed() and not inv_open
             )
             self.buttons.append(fight_btn)
-            self.buttons.append(Button(SCREEN_WIDTH // 2 + 100, btn_y, 140, 45, items_label))
+            self.buttons.append(Button(
+                SCREEN_WIDTH // 2 + 125, btn_y, 150, 48, items_label,
+                color=COLORS['danger'],
+            ))
             if self.state.party_needs_recruits() and not inv_open:
                 self.buttons.append(Button(
-                    SCREEN_WIDTH // 2 + 260, btn_y, 140, 45, "Recruit",
-                    color=COLORS['success'], hover_color=(130, 255, 150),
+                    SCREEN_WIDTH // 2 + 295, btn_y, 150, 48, "Recruit",
+                    color=COLORS['success'],
                 ))
-            retreat_btn = Button(SCREEN_WIDTH // 2 - 240, btn_y, 140, 45, "Retreat")
+            retreat_btn = Button(SCREEN_WIDTH // 2 - 275, btn_y, 150, 48, "Retreat")
             retreat_btn.enabled = not inv_open
             self.buttons.append(retreat_btn)
 

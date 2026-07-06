@@ -68,12 +68,13 @@ class Renderer:
             deck_select_screen.draw(screen, self.fonts, self.state)
         elif phase == GamePhase.DELVE_SETUP:
             delve_screen.draw_setup(
-                screen, self.fonts, self.state,
+                screen, self.fonts, self.state, self.game.sprite_manager,
                 self.game.input_handler.dragging,
                 self.game.input_handler.drag_adv_index,
             )
         elif phase == GamePhase.DELVE_RESULTS:
-            delve_screen.draw_results(screen, self.fonts, self.state)
+            delve_screen.draw_results(screen, self.fonts, self.state,
+                                      self.game.sprite_manager)
         elif phase == GamePhase.BOSS_CHOICE:
             boss_screen.draw_choice(
                 screen, self.fonts, self.state, self.game.sprite_manager,
@@ -159,7 +160,8 @@ class Renderer:
         scaled_w = int(self.game.logical_width * self.game.render_scale)
         scaled_h = int(self.game.logical_height * self.game.render_scale)
         if scaled_w > 0 and scaled_h > 0:
-            scaled = pygame.transform.smoothscale(
+            # Nearest-neighbour scale keeps the pixel art crisp (no smoothing).
+            scaled = pygame.transform.scale(
                 self.game.logical_surface, (scaled_w, scaled_h),
             )
             real_screen.blit(scaled, (self.game.render_offset_x, self.game.render_offset_y))

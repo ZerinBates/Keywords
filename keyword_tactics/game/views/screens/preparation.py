@@ -1,46 +1,39 @@
-"""Shop phase: manage roster, equip items, and buy/sell at the shop.
+"""Shop phase: three-column loadout layout — roster / hero loadout / armory.
 
-Team selection no longer happens here — the player picks their delve team
-inside the delve via the recruit overlay.  This screen now exists purely
-for roster management, equipment, and shopping between delves.
+Mirrors the delve Items screen: PARTY ROSTER on the left (with per-hero
+Unequip + Unequip All), the merged HERO LOADOUT column in the middle, and a
+right column that toggles between your Inventory and the Shop stock, with
+search + keyword filter.
+
+Every interactive rect is stashed in ``state._prep_ui`` each frame so the
+input handler hit-tests exactly what was drawn.
 """
 
 import pygame
 
-from ..widgets import Panel
-from .. import widgets
 from ... import theme
 from ...config import COLORS, SCREEN_WIDTH, SCREEN_HEIGHT
 from .. import paper_doll
+from .. import widgets
 
 # ---------------------------------------------------------------------------
 # Layout constants (kept in one place so renderer + input_handler agree)
 # ---------------------------------------------------------------------------
-# Roster spans the full top-left area; the old separate "Party" panel was
-# removed when team-selection moved into the delve.
-ROSTER_RECT  = pygame.Rect(20,  100, 780, 340)
-# Roster row geometry — shared with input_handler so click/scroll hit-testing
-# matches what's drawn. ROSTER_LIST_TOP is the gap below the panel title.
-ROSTER_ROW_H    = 58
-ROSTER_LIST_TOP = 34
+PREP_LEFT_RECT  = pygame.Rect(20, 68, 300, 676)
+PREP_MID_RECT   = pygame.Rect(340, 68, 420, 676)
+PREP_RIGHT_RECT = pygame.Rect(780, 68, 480, 676)
+PREP_CARD_H     = 84
+PREP_CARD_GAP   = 10
+# Space reserved at the bottom of the roster column for [Unequip All].
+PREP_ROSTER_FOOTER = 48
 
-# Inventory: one unified rect — widgets.draw_item_list_panel subdivides it
-# into header / search / list sections internally.
-INV_PANEL_RECT  = pygame.Rect(820, 100, 440, 340)
+_pixel_box = widgets.draw_pixel_box
 
-# Stats / paper-doll (lower area) - Expanded to match the top row's columns
-STATS_RECT   = pygame.Rect(20, 460, 380, 320)
 
-# Centered under the Party Rect (Party is x=420 to 800, center is 610. Card is 280 wide, so 610 - 140 = 470)
-CARD_RECT    = pygame.Rect(470, 460, paper_doll.CARD_W, paper_doll.CARD_H)
-
-# Shop panel (lower-right, aligned perfectly under the inventory)
-SHOP_X       = 820
-SHOP_Y       = 460
-SHOP_W       = 440
-SHOP_H       = 320
-SHOP_RECT    = pygame.Rect(SHOP_X, SHOP_Y, SHOP_W, SHOP_H)
-SHOP_ITEM_ROW_H = 36    # px per item row inside the shop panel
+def prep_roster_visible_count() -> int:
+    """How many roster cards fit above the Unequip All footer."""
+    return max(1, (PREP_LEFT_RECT.h - PREP_ROSTER_FOOTER - 20)
+               // (PREP_CARD_H + PREP_CARD_GAP))
 
 
 def draw(screen, fonts, state):
@@ -49,276 +42,197 @@ def draw(screen, fonts, state):
     for adv in state.roster:
         setattr(adv, '_role_badge', None)
 
-    # Header
-    header = fonts['large'].render("SHOP", True, COLORS['accent'])
-    screen.blit(header, (20, 20))
+    ui = {'roster_cards': [], 'unequip_btns': [], 'unequip_all': None,
+          'toggle_rects': {}, 'filter_btn': None, 'filter_chips': [],
+          'filter_clear': None, 'filter_panel': None, 'search_rect': None,
+          'item_rows': [], 'hire_rows': []}
+    state._prep_ui = ui
 
-    # Coins
-    coins_text = fonts['medium'].render(f"Coins: {state.coins}", True, COLORS['gold'])
-    screen.blit(coins_text, (20, 60))
-
-    # Decks cleared status
+    # ---- Top bar: title + coins + progress ----
+    screen.blit(fonts['medium'].render("SHOP", True, COLORS['accent']), (20, 12))
+    screen.blit(fonts['medium'].render(f"Coins: {state.coins}", True,
+                                       COLORS['gold']), (130, 12))
     cleared = len(state.completed_decks)
     total = len(state.active_decks)
-    cleared_text = fonts['medium'].render(
-        f"Dungeons Cleared: {cleared}/{total}", True, COLORS['success'],
-    )
-    screen.blit(cleared_text, (200, 60))
+    screen.blit(fonts['medium'].render(
+        f"Dungeons Cleared: {cleared}/{total}", True, COLORS['success']),
+        (320, 12))
 
-    # ---- Roster panel (full-width; replaces old Party panel too) ----
-    panel = Panel(ROSTER_RECT.x, ROSTER_RECT.y, ROSTER_RECT.w, ROSTER_RECT.h,
-                  "Roster — click to edit loadout (team picked at delve start)")
-    panel.draw(screen, fonts['small'], fonts['medium'])
+    # ---- Column headers ----
+    sel_ok = 0 <= state.selected_party_index < len(state.roster)
+    sel_adv = state.roster[state.selected_party_index] if sel_ok else None
+    mid_title = f"HERO LOADOUT - {sel_adv.name}" if sel_adv else "HERO LOADOUT"
+    right_title = ("ARMORY & INVENTORY" if state.prep_view == 'inventory'
+                   else "SHOP STOCK")
+    for text, rect in (("PARTY ROSTER", PREP_LEFT_RECT),
+                       (mid_title, PREP_MID_RECT),
+                       (right_title, PREP_RIGHT_RECT)):
+        hs = fonts['medium'].render(text, True, COLORS['text'])
+        screen.blit(hs, hs.get_rect(centerx=rect.centerx, y=42))
 
+    # ---- LEFT: roster (scrollable) + unequip controls ----
+    _pixel_box(screen, PREP_LEFT_RECT)
+    visible_n = prep_roster_visible_count()
+    max_scroll = max(0, len(state.roster) - visible_n)
+    state.roster_scroll = max(0, min(state.roster_scroll, max_scroll))
     if state.roster_scroll > 0:
-        screen.blit(fonts['small'].render("^ scroll up", True, COLORS['text_dim']),
-                    (ROSTER_RECT.right - 100, ROSTER_RECT.y + 5))
+        screen.blit(fonts['tiny'].render("^ scroll up", True, COLORS['text_dim']),
+                    (PREP_LEFT_RECT.right - 84, PREP_LEFT_RECT.y + 4))
 
-    y = ROSTER_RECT.y + ROSTER_LIST_TOP
-    row_h = ROSTER_ROW_H
-    visible_count = max(1, (ROSTER_RECT.h - ROSTER_LIST_TOP - 10) // row_h)
-    visible_roster = state.roster[state.roster_scroll:state.roster_scroll + visible_count]
-    for i, adv in enumerate(visible_roster):
-        roster_idx = state.roster_scroll + i
+    end = min(len(state.roster), state.roster_scroll + visible_n)
+    for row, roster_idx in enumerate(range(state.roster_scroll, end)):
+        adv = state.roster[roster_idx]
+        cy = PREP_LEFT_RECT.y + 14 + row * (PREP_CARD_H + PREP_CARD_GAP)
+        card = pygame.Rect(PREP_LEFT_RECT.x + 8, cy,
+                           PREP_LEFT_RECT.w - 16, PREP_CARD_H)
         is_sel = (roster_idx == state.selected_party_index)
+        fill = (theme.mix(COLORS['bg'], COLORS['success'], 0.12)
+                if is_sel else COLORS['panel_dark'])
+        pygame.draw.rect(screen, fill, card, border_radius=3)
+        pygame.draw.rect(screen,
+                         COLORS['success'] if is_sel else COLORS['border'],
+                         card, 2, border_radius=3)
 
-        # Selection highlight
-        if is_sel:
-            sel_rect = pygame.Rect(ROSTER_RECT.x + 4, y - 2,
-                                   ROSTER_RECT.w - 8, row_h - 4)
-            pygame.draw.rect(screen, theme.mix(COLORS['panel'], COLORS['accent'], 0.22),
-                             sel_rect, border_radius=4)
-            pygame.draw.rect(screen, COLORS['accent'], sel_rect, 1, border_radius=4)
-
-        color = COLORS['text_dim'] if adv.is_dead else (
-            COLORS['accent'] if is_sel else COLORS['text']
-        )
-
-        paper_doll.draw_adventurer_thumbnail(screen, adv, ROSTER_RECT.x + 10, y + 4, 36)
-
-        text = f"{adv.name} [{len(adv.equipped_items)}/{adv.slots}] - {adv.ability_name}"
-        screen.blit(fonts['small'].render(text, True, color), (ROSTER_RECT.x + 52, y + 6))
-
-        # Keyword strip — one line, show all that fit (truncated naturally).
-        kws = adv.get_all_keywords()
-        if kws:
-            kw_text = ", ".join(kws[:8])
-            if len(kws) > 8:
-                kw_text += "..."
-            screen.blit(fonts['small'].render(kw_text, True, COLORS['text_dim']),
-                        (ROSTER_RECT.x + 52, y + 32))
-
+        paper_doll.draw_adventurer_thumbnail(screen, adv,
+                                             card.x + 8, card.y + 10, 64)
+        name_c = COLORS['danger'] if adv.is_dead else COLORS['text']
+        screen.blit(fonts['medium'].render(adv.name, True, name_c),
+                    (card.x + 84, card.y + 12))
         if adv.is_dead:
-            screen.blit(fonts['small'].render("DEAD", True, COLORS['danger']),
-                        (ROSTER_RECT.x + ROSTER_RECT.w - 60, y + 6))
-        y += row_h
+            sub, sub_c = "DEAD", COLORS['danger']
+        else:
+            sub = f"Slots: {len(adv.equipped_items)}/{adv.slots}"
+            sub_c = (COLORS['warning']
+                     if len(adv.equipped_items) >= adv.slots
+                     else COLORS['text_dim'])
+        screen.blit(fonts['small'].render(sub, True, sub_c),
+                    (card.x + 84, card.y + 44))
+        ui['roster_cards'].append((roster_idx, card))
 
-    if state.roster_scroll + visible_count < len(state.roster):
-        screen.blit(
-            fonts['small'].render("v scroll down", True, COLORS['text_dim']),
-            (ROSTER_RECT.x + 10, ROSTER_RECT.bottom - 20),
-        )
+        if adv.equipped_items:
+            ub = pygame.Rect(card.right - 76, card.bottom - 28, 68, 22)
+            pygame.draw.rect(screen, COLORS['panel_dark'], ub, border_radius=2)
+            pygame.draw.rect(screen, COLORS['danger'], ub, 1, border_radius=2)
+            us = fonts['tiny'].render("Unequip", True, COLORS['text'])
+            screen.blit(us, us.get_rect(center=ub.center))
+            ui['unequip_btns'].append((roster_idx, ub))
 
-    # ---- Inventory: search + scrollable list (shared widget; #2) ----
-    filtered_inv = state.get_filtered_inventory()
-    widgets.draw_item_list_panel(
-        screen, fonts, state, INV_PANEL_RECT,
-        items=filtered_inv,
-        scroll=state.inventory_scroll,
-        search_text=state.prep_inv_search,
-        search_active=state.prep_inv_search_active,
-        header_text=f"Inventory ({len(state.inventory)}) — click: equip | Ctrl+click: sell",
-        sell_price_func=lambda it: state.get_item_sell_price(it),
-        paper_doll_module=paper_doll,
-        hover_pos=state.hover_pos,
-    )
+    if end < len(state.roster):
+        screen.blit(fonts['tiny'].render("v scroll down", True, COLORS['text_dim']),
+                    (PREP_LEFT_RECT.right - 94,
+                     PREP_LEFT_RECT.bottom - PREP_ROSTER_FOOTER - 12))
 
-    # ---- Left stats/items panel — shared widget (#2) ----
-    state._prep_equipped_rows = []  # transient: stores [(item, rect)] for clicks
-    if 0 <= state.selected_party_index < len(state.roster):
-        adv = state.roster[state.selected_party_index]
-        state._prep_equipped_rows = widgets.draw_equipped_items_panel(
-            screen, fonts, state, STATS_RECT, adv,
+    ua = pygame.Rect(PREP_LEFT_RECT.x + 8, PREP_LEFT_RECT.bottom - 42,
+                     PREP_LEFT_RECT.w - 16, 32)
+    pygame.draw.rect(screen, COLORS['panel_dark'], ua, border_radius=3)
+    pygame.draw.rect(screen, COLORS['danger'], ua, 2, border_radius=3)
+    uas = fonts['small'].render("[ Unequip All ]", True, COLORS['text'])
+    screen.blit(uas, uas.get_rect(center=ua.center))
+    ui['unequip_all'] = ua
+
+    # ---- MIDDLE: hero loadout (shared widget) ----
+    state._prep_equipped_rows = widgets.draw_hero_loadout_column(
+        screen, fonts, state, PREP_MID_RECT, sel_adv,
+        state.prep_equipped_scroll, paper_doll)
+
+    # ---- RIGHT: Inventory / Shop toggle ----
+    if state.prep_view == 'inventory':
+        items = state.get_filtered_inventory()
+        res = widgets.draw_item_list_panel(
+            screen, fonts, state, PREP_RIGHT_RECT,
+            items=items,
+            scroll=state.inventory_scroll,
+            search_text=state.prep_inv_search,
+            search_active=state.prep_inv_search_active,
+            header_text=(f"Inventory ({len(state.inventory)}) — "
+                         "click: equip | Ctrl+click: sell"),
+            sell_price_func=lambda it: state.get_item_sell_price(it),
             paper_doll_module=paper_doll,
-            scroll=state.prep_equipped_scroll,
+            hover_pos=state.hover_pos,
+            toggle_labels=("Inventory", "Shop"),
+            toggle_active=0,
+            filter_selected=state.prep_kw_filter,
+            filter_open=state.prep_filter_open,
         )
-
-    # ---- Selected adventurer paper-doll card ----
-    if 0 <= state.selected_party_index < len(state.roster):
-        adv = state.roster[state.selected_party_index]
-        paper_doll.draw_character_card(
-            screen, fonts, state, CARD_RECT.x, CARD_RECT.y, adv, selected=True,
+        pool = list(state.inventory)
+    else:
+        stock = list(state.shop_items) + list(state.dead_adv_loot)
+        stock = widgets.filter_items(stock, state.prep_inv_search,
+                                     state.keyword_registry)
+        stock = state._apply_kw_filter(stock, state.prep_kw_filter)
+        hire_h = 170
+        items_rect = pygame.Rect(PREP_RIGHT_RECT.x, PREP_RIGHT_RECT.y,
+                                 PREP_RIGHT_RECT.w, PREP_RIGHT_RECT.h - hire_h)
+        kills = state.get_total_monsters_defeated()
+        res = widgets.draw_item_list_panel(
+            screen, fonts, state, items_rect,
+            items=stock,
+            scroll=state.shop_scroll,
+            search_text=state.prep_inv_search,
+            search_active=state.prep_inv_search_active,
+            header_text=f"Shop — click to buy  |  Slain: {kills}",
+            is_fallen_func=lambda it: it in state.dead_adv_loot,
+            buy_price_func=lambda it: state.get_item_price(it),
+            paper_doll_module=paper_doll,
+            hover_pos=state.hover_pos,
+            toggle_labels=("Inventory", "Shop"),
+            toggle_active=1,
+            filter_selected=state.prep_kw_filter,
+            filter_open=state.prep_filter_open,
         )
-        hint = fonts['small'].render(
-            "Click an item chip to unequip", True, COLORS['text_dim'],
-        )
-        screen.blit(hint, (CARD_RECT.x, CARD_RECT.y - 20))
+        pool = list(state.shop_items) + list(state.dead_adv_loot)
+        _draw_hire_strip(screen, fonts, state, ui, pygame.Rect(
+            PREP_RIGHT_RECT.x, PREP_RIGHT_RECT.bottom - hire_h + 6,
+            PREP_RIGHT_RECT.w, hire_h - 6))
 
-    # ---- Shop panel (#5) ----
-    _draw_shop_panel(screen, fonts, state)
+    ui['toggle_rects'] = res['toggle_rects']
+    ui['filter_btn'] = res['filter_btn_rect']
+    ui['search_rect'] = res['search_rect']
+    ui['item_rows'] = res['visible']
 
-    # Instructions
-    inst = fonts['small'].render(
-        "Hover any card/item for details  |  Click roster → select for equip  |  "
-        "Click inventory → equip  |  Ctrl+click inventory → sell  |  "
-        "Click 'To Delve' to start a delve (team picked there)",
-        True, COLORS['text_dim'],
-    )
-    screen.blit(inst, (20, SCREEN_HEIGHT - 28))
+    # Keyword-filter dropdown drawn last so it overlays the list.
+    if state.prep_filter_open:
+        dd = widgets.draw_kw_filter_dropdown(
+            screen, fonts, state, res['search_rect'], pool,
+            state.prep_kw_filter)
+        ui['filter_chips'] = dd['chips']
+        ui['filter_clear'] = dd['clear_rect']
+        ui['filter_panel'] = dd['panel_rect']
 
 
-def _draw_shop_panel(screen, fonts, state):
-    """Embedded shop panel in the preparation screen (feature #5)."""
-    sx, sy, sw, sh = SHOP_RECT.x, SHOP_RECT.y, SHOP_RECT.w, SHOP_RECT.h
-
-    # Panel background
-    pygame.draw.rect(screen, COLORS['panel'], SHOP_RECT, border_radius=8)
-    pygame.draw.rect(screen, COLORS['gold'], SHOP_RECT, 2, border_radius=8)
-
-    # Title
-    title_surf = fonts['medium'].render("Shop", True, COLORS['gold'])
-    screen.blit(title_surf, (sx + 10, sy + 8))
-
-    kills = state.get_total_monsters_defeated()
-    kills_surf = fonts['tiny'].render(
-        f"Refreshes after kills  |  Slain: {kills}", True, COLORS['text_dim'])
-    screen.blit(kills_surf, (sx + sw - kills_surf.get_width() - 8, sy + 12))
-
-    has_anything = (state.shop_items or state.shop_adventurers
-                    or state.dead_adv_loot)
-    if not has_anything:
-        msg = fonts['small'].render("No stock — defeat monsters to refresh",
-                                    True, COLORS['text_dim'])
-        screen.blit(msg, (sx + sw // 2 - msg.get_width() // 2, sy + sh // 2 - 10))
+def _draw_hire_strip(screen, fonts, state, ui, rect):
+    """Adventurers for hire — pinned under the shop stock list."""
+    _pixel_box(screen, rect, border=COLORS['gold'])
+    title = fonts['small'].render("Adventurers for Hire (click to buy):", True,
+                                  COLORS['gold'])
+    screen.blit(title, (rect.x + 10, rect.y + 8))
+    if not state.shop_adventurers:
+        screen.blit(fonts['small'].render(
+            "No one for hire — defeat monsters to refresh", True,
+            COLORS['text_dim']), (rect.x + 10, rect.y + 40))
         return
 
-    # Ensure scroll state exists
-    if not hasattr(state, 'shop_scroll'):
-        state.shop_scroll = 0
-
-    # Build a unified list of renderable rows
-    rows = []
-    
-    # 1. Items
-    all_items = [(it, False) for it in state.shop_items] + \
-                [(it, True)  for it in state.dead_adv_loot]
-    if all_items:
-        rows.append(('header', "Items for Sale  (click to buy):"))
-        for item, is_fallen in all_items:
-            rows.append(('item', item, is_fallen))
-            
-    # 2. Adventurers
-    if state.shop_adventurers:
-        rows.append(('header', "Adventurers for Hire  (click to buy):"))
-        for i, adv in enumerate(state.shop_adventurers):
-            rows.append(('adv', adv, i))
-
-    # Scroll indicators (Up)
-    if state.shop_scroll > 0:
-        screen.blit(fonts['small'].render("^ scroll up", True, COLORS['text_dim']), 
-                    (sx + sw - 100, sy + 8))
-
-    y = sy + 34
-    row_h = SHOP_ITEM_ROW_H
-
-    rarity_color_map = {
-        'scrap':    (120, 120, 120),
-        'common':   COLORS['text_dim'],
-        'uncommon': COLORS['success'],
-        'rare':     COLORS['accent'],
-    }
-    rarity_bg = {
-        'scrap':    (42, 38, 38),
-        'common':   (40, 42, 50),
-        'uncommon': (32, 50, 36),
-        'rare':     (36, 40, 58),
-    }
-
-    # Slice the rows based on current scroll position (Max 7 visible rows)
-    visible_rows = rows[state.shop_scroll : state.shop_scroll + 7]
-
-    for row in visible_rows:
-        row_type = row[0]
-        
-        if row_type == 'header':
-            hdr = fonts['small'].render(row[1], True, COLORS['warning'])
-            screen.blit(hdr, (sx + 8, y + 8))
-            y += row_h
-
-        elif row_type == 'item':
-            item, is_fallen = row[1], row[2]
-            price = state.get_item_price(item)
-            can_afford = state.coins >= price
-            bg = rarity_bg.get(item.rarity, (40, 42, 50))
-            rc = rarity_color_map.get(item.rarity, COLORS['text'])
-
-            row_rect = pygame.Rect(sx + 4, y, sw - 8, row_h - 4)
-            pygame.draw.rect(screen, bg, row_rect, border_radius=5)
-            border_c = rc if can_afford else COLORS['border']
-            pygame.draw.rect(screen, border_c, row_rect, 1, border_radius=5)
-
-            paper_doll.draw_item_thumbnail(screen, item, sx + 8, y + 4, 26)
-
-            iname = item.name[:20] if len(item.name) > 20 else item.name
-            name_c = COLORS['text'] if can_afford else COLORS['text_dim']
-            screen.blit(fonts['small'].render(iname, True, name_c), (sx + 38, y + 2))
-
-            if is_fallen:
-                fallen = fonts['tiny'].render("FALLEN", True, COLORS['danger'])
-                screen.blit(fallen, (sx + 38 + fonts['small'].render(
-                    iname, True, name_c).get_width() + 4, y + 4))
-
-            price_surf = fonts['small'].render(
-                f"{price}¢", True, COLORS['gold'] if can_afford else COLORS['text_dim'])
-            screen.blit(price_surf, (sx + sw - price_surf.get_width() - 10, y + 2))
-
-            pts_surf = fonts['tiny'].render(f"+{item.points}", True, COLORS['success'])
-            screen.blit(pts_surf, (sx + sw - pts_surf.get_width() - 10, y + 20))
-
-            # Keyword tags — show all that fit; break on overflow.
-            kw_x = sx + 38
-            for kw_id in item.keywords:
-                kw = state.keyword_registry.get(kw_id)
-                if kw:
-                    label = kw.name[:7]
-                    tw = fonts['tiny'].render(label, True, COLORS['bg']).get_width() + 6
-                    if kw_x + tw > sx + sw - 50:
-                        break
-                    pygame.draw.rect(screen, kw.color, (kw_x, y + 20, tw, 10), border_radius=2)
-                    screen.blit(fonts['tiny'].render(label, True, COLORS['bg']),
-                                (kw_x + 3, y + 20))
-                    kw_x += tw + 3
-            y += row_h
-
-        elif row_type == 'adv':
-            adv, idx = row[1], row[2]
-            price = state.get_adventurer_price(adv)
-            can_afford = state.coins >= price
-
-            row_rect = pygame.Rect(sx + 4, y, sw - 8, row_h - 4)
-            bg_c = COLORS['panel_light'] if can_afford else COLORS['panel']
-            pygame.draw.rect(screen, bg_c, row_rect, border_radius=5)
-            pygame.draw.rect(screen, COLORS['accent'] if can_afford else COLORS['border'],
-                             row_rect, 1, border_radius=5)
-
-            paper_doll.draw_adventurer_thumbnail(screen, adv, sx + 8, y + 3, 28)
-
-            name_c = COLORS['text'] if can_afford else COLORS['text_dim']
-            screen.blit(fonts['small'].render(adv.name, True, name_c), (sx + 40, y + 2))
-
-            ab_text = f"{adv.ability_name}" if adv.ability_name else f"[{adv.slots} slots]"
-            if len(ab_text) > 28:
-                ab_text = ab_text[:27] + ".."
-            screen.blit(fonts['tiny'].render(ab_text, True, COLORS['text_dim']),
-                        (sx + 40, y + 20))
-
-            price_surf = fonts['small'].render(
-                f"{price}¢", True, COLORS['gold'] if can_afford else COLORS['text_dim'])
-            screen.blit(price_surf, (sx + sw - price_surf.get_width() - 10, y + 8))
-
-            y += row_h
-
-    # Scroll indicators (Down)
-    if state.shop_scroll + 7 < len(rows):
-        screen.blit(fonts['small'].render("v scroll down", True, COLORS['text_dim']), 
-                    (sx + sw - 100, sy + sh - 20))
+    y = rect.y + 34
+    row_h = 42
+    for i, adv in enumerate(state.shop_adventurers):
+        if y + row_h > rect.bottom - 6:
+            break
+        r = pygame.Rect(rect.x + 8, y, rect.w - 16, row_h - 4)
+        price = state.get_adventurer_price(adv)
+        can = state.coins >= price
+        pygame.draw.rect(screen, COLORS['panel_dark'], r, border_radius=3)
+        pygame.draw.rect(screen, COLORS['success'] if can else COLORS['border'],
+                         r, 1, border_radius=3)
+        paper_doll.draw_adventurer_thumbnail(screen, adv, r.x + 4, r.y + 3, 32)
+        nc = COLORS['text'] if can else COLORS['text_dim']
+        screen.blit(fonts['small'].render(adv.name, True, nc), (r.x + 44, r.y + 2))
+        ab = adv.ability_name or f"[{adv.slots} slots]"
+        if len(ab) > 34:
+            ab = ab[:33] + ".."
+        screen.blit(fonts['tiny'].render(ab, True, COLORS['text_dim']),
+                    (r.x + 44, r.y + 22))
+        ps = fonts['small'].render(f"{price}¢", True,
+                                   COLORS['gold'] if can else COLORS['text_dim'])
+        screen.blit(ps, (r.right - ps.get_width() - 10, r.y + 8))
+        ui['hire_rows'].append((i, r))
+        y += row_h

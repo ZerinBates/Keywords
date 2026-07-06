@@ -71,17 +71,9 @@ class InputHandler:
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 lpos = self.game.screen_to_logical(event.pos)
                 if self.state.phase == GamePhase.DELVE_SETUP:
-                    from ..views.screens.delve import (
-                        PARTY_TRAY_Y, PARTY_TRAY_H, DELVE_CARD_W, DELVE_CARD_XS,
-                    )
                     overlays_open = (self.state.delve_inv_open or
                                      self.state.delve_recruit_open)
-                    if not overlays_open and self._try_start_drag_party(
-                        lpos, party_y=PARTY_TRAY_Y, card_w=DELVE_CARD_W,
-                        card_h=PARTY_TRAY_H,
-                        card_spacing=DELVE_CARD_XS[1] - DELVE_CARD_XS[0],
-                        card_x_start=DELVE_CARD_XS[0],
-                    ):
+                    if not overlays_open and self._try_start_drag_party(lpos):
                         continue
                 self._handle_click(event, lpos)
 
@@ -117,18 +109,21 @@ class InputHandler:
             for cx in DELVE_CARD_XS
         ]
 
-    def _try_start_drag_party(self, pos, party_y, card_w, card_h, card_spacing,
-                              card_x_start) -> bool:
-        px, py = pos
-        if py < party_y or py > party_y + card_h:
-            pass
-        else:
-            for i, adv in enumerate(self.state.party):
-                card_x = card_x_start + i * card_spacing
-                card_rect = pygame.Rect(card_x, party_y, card_w, card_h)
-                if card_rect.collidepoint(pos) and not adv.is_dead:
-                    self._begin_drag(i, pos, card_rect)
+    def _try_start_drag_party(self, pos) -> bool:
+        """Begin a drag from the party strip, or from a placed front square."""
+        from ..views.screens.delve import party_slot_rects
+
+        for i, slot in enumerate(party_slot_rects(self.state)):
+            if slot.collidepoint(pos):
+                adv = self.state.party[i]
+                if adv.is_dead:
+                    # Dead heroes can't be dragged — a click just toggles
+                    # their info dropdown.
+                    self.state.delve_hero_info_idx = (
+                        -1 if self.state.delve_hero_info_idx == i else i)
                     return True
+                self._begin_drag(i, pos, slot)
+                return True
 
         square_rects = self._front_square_rects()
         for sq_idx, rect in enumerate(square_rects):
@@ -160,6 +155,21 @@ class InputHandler:
         # The hero is left on its square during the drag, so this tells us
         # where (if anywhere) the drag originated.
         source_sq = s.find_adventurer_square(dragged)
+
+        # A click (barely moved, released where it began, inside the party
+        # strip) toggles that hero's info dropdown instead of dragging.
+        from ..views.screens.delve import PARTY_STRIP
+        began_in_party = (self.drag_source_rect is not None
+                          and PARTY_STRIP.contains(self.drag_source_rect))
+        moved = (abs(pos[0] - self.drag_start_pos[0])
+                 + abs(pos[1] - self.drag_start_pos[1]))
+        if began_in_party and moved < 8:
+            s.delve_hero_info_idx = (
+                -1 if s.delve_hero_info_idx == self.drag_adv_index
+                else self.drag_adv_index)
+            return
+        # Any real drag closes an open dropdown.
+        s.delve_hero_info_idx = -1
 
         # Which front square, if any, did we drop onto?
         target_idx = None
@@ -210,35 +220,18 @@ class InputHandler:
 
         if self.state.delve_inv_open:
             from ..views import widgets as _w
-            PX, PY, PW, PH = 60, 40, 1160, 710
-            col_top = PY + 55
-            left_x = PX + 10
-            left_w = 220
-            equip_x = left_x + left_w + 15
-            equip_w = 220
-            center_x = equip_x + equip_w + 10
-            center_w = 290
-            right_x = center_x + center_w + 15
-            right_w = PX + PW - right_x - 10
-            right_h = PY + PH - col_top - 50
-            right_rect = pygame.Rect(right_x, col_top, right_w, right_h)
-            _, _, list_rect = _w.get_item_list_geometry(right_rect)
-            list_top = list_rect.y
-            list_h = list_rect.h
-            item_row_h = _w.ITEM_LIST_ROW_H
-            visible_count = list_h // item_row_h
+            from ..views.screens.delve import INV_MID_RECT, INV_RIGHT_RECT
 
-            list_rect = pygame.Rect(right_x, list_top, right_w, list_h)
+            _, _, list_rect = _w.get_item_list_geometry(INV_RIGHT_RECT)
             if list_rect.collidepoint(mouse_pos):
                 merged = self.state.get_filtered_delve_items()
+                visible_count = list_rect.h // _w.ITEM_LIST_ROW_H
                 self.state.delve_inv_scroll -= event.y
                 max_scroll = max(0, len(merged) - visible_count)
                 self.state.delve_inv_scroll = max(0, min(self.state.delve_inv_scroll, max_scroll))
                 return
 
-            equip_rect = pygame.Rect(equip_x, col_top, equip_w,
-                                     PY + PH - col_top - 10)
-            if (equip_rect.collidepoint(mouse_pos)
+            if (INV_MID_RECT.collidepoint(mouse_pos)
                     and 0 <= self.state.delve_selected_adv_idx < len(self.state.party)):
                 adv = self.state.party[self.state.delve_selected_adv_idx]
                 self.state.delve_equipped_scroll -= event.y
@@ -249,25 +242,32 @@ class InputHandler:
 
         if self.state.phase == GamePhase.PREPARATION:
             from ..views.screens.preparation import (
-                INV_PANEL_RECT, ROSTER_RECT, STATS_RECT,
-                ROSTER_ROW_H, ROSTER_LIST_TOP,
+                PREP_LEFT_RECT, PREP_MID_RECT, PREP_RIGHT_RECT,
+                prep_roster_visible_count,
             )
             from ..views import widgets as _w
-            if INV_PANEL_RECT.collidepoint(mouse_pos):
-                _, _, list_rect = _w.get_item_list_geometry(INV_PANEL_RECT)
-                filtered = self.state.get_filtered_inventory()
-                max_vis = list_rect.h // _w.ITEM_LIST_ROW_H
-                self.state.inventory_scroll -= event.y
-                max_scroll = max(0, len(filtered) - max_vis)
-                self.state.inventory_scroll = max(0, min(self.state.inventory_scroll, max_scroll))
+            if PREP_RIGHT_RECT.collidepoint(mouse_pos):
+                if self.state.prep_view == 'inventory':
+                    _, _, list_rect = _w.get_item_list_geometry(PREP_RIGHT_RECT)
+                    filtered = self.state.get_filtered_inventory()
+                    max_vis = list_rect.h // _w.ITEM_LIST_ROW_H
+                    self.state.inventory_scroll -= event.y
+                    max_scroll = max(0, len(filtered) - max_vis)
+                    self.state.inventory_scroll = max(
+                        0, min(self.state.inventory_scroll, max_scroll))
+                else:
+                    total = (len(self.state.shop_items)
+                             + len(self.state.dead_adv_loot))
+                    self.state.shop_scroll = max(
+                        0, min(self.state.shop_scroll - event.y, total))
 
-            if ROSTER_RECT.collidepoint(mouse_pos):
+            if PREP_LEFT_RECT.collidepoint(mouse_pos):
                 self.state.roster_scroll -= event.y
-                visible_count = max(1, (ROSTER_RECT.h - ROSTER_LIST_TOP - 10) // ROSTER_ROW_H)
-                max_scroll = max(0, len(self.state.roster) - visible_count)
+                max_scroll = max(0, len(self.state.roster)
+                                 - prep_roster_visible_count())
                 self.state.roster_scroll = max(0, min(self.state.roster_scroll, max_scroll))
 
-            if (STATS_RECT.collidepoint(mouse_pos)
+            if (PREP_MID_RECT.collidepoint(mouse_pos)
                     and 0 <= self.state.selected_party_index < len(self.state.roster)):
                 adv = self.state.roster[self.state.selected_party_index]
                 self.state.prep_equipped_scroll -= event.y
@@ -571,104 +571,92 @@ class InputHandler:
     # ------------------------------------------------------------------
 
     def _handle_preparation_click(self, mouse_pos):
+        """Shop screen clicks — hit-tests the rects stashed by the renderer."""
         s = self.state
-        from ..views.screens.preparation import (
-            ROSTER_RECT, INV_PANEL_RECT,
-            STATS_RECT, CARD_RECT, SHOP_RECT, SHOP_ITEM_ROW_H,
-            ROSTER_ROW_H, ROSTER_LIST_TOP,
-        )
+        ui = getattr(s, '_prep_ui', {}) or {}
 
-        if not INV_PANEL_RECT.collidepoint(mouse_pos):
-            s.prep_inv_search_active = False
-
-        if ROSTER_RECT.collidepoint(mouse_pos):
-            # In Shop, roster row click selects that adventurer for editing.
-            # Team selection itself happens inside the delve via Recruit.
-            y_offset = mouse_pos[1] - (ROSTER_RECT.y + ROSTER_LIST_TOP)
-            if y_offset >= 0:
-                index = (y_offset // ROSTER_ROW_H) + s.roster_scroll
-                if 0 <= index < len(s.roster):
-                    if s.selected_party_index != index:
-                        s.prep_equipped_scroll = 0
-                    s.selected_party_index = index
-
-        elif INV_PANEL_RECT.collidepoint(mouse_pos):
-            from ..views import widgets as _w
-            header_rect, search_rect, list_rect = _w.get_item_list_geometry(INV_PANEL_RECT)
-            if search_rect.collidepoint(mouse_pos):
-                s.prep_inv_search_active = True
+        # Keyword-filter dropdown claims every click while open.
+        if s.prep_filter_open:
+            for kw_id, r in ui.get('filter_chips', []):
+                if r.collidepoint(mouse_pos):
+                    if kw_id in s.prep_kw_filter:
+                        s.prep_kw_filter.discard(kw_id)
+                    else:
+                        s.prep_kw_filter.add(kw_id)
+                    s.inventory_scroll = 0
+                    s.shop_scroll = 0
+                    return
+            cr = ui.get('filter_clear')
+            if cr and cr.collidepoint(mouse_pos):
+                s.prep_kw_filter.clear()
+                s.inventory_scroll = 0
+                s.shop_scroll = 0
                 return
-            filtered = s.get_filtered_inventory()
-            idx, item = _w.hit_test_item_list(
-                INV_PANEL_RECT, filtered, s.inventory_scroll, mouse_pos)
-            if item is not None:
-                if pygame.key.get_mods() & pygame.KMOD_CTRL:
-                    s.sell_item_obj(item)
-                else:
-                    if 0 <= s.selected_party_index < len(s.roster):
-                        adv = s.roster[s.selected_party_index]
-                        s.equip_item_obj(item, adv)
-                    else:
-                        s.set_message("Select a roster member first (click a row).")
+            pr = ui.get('filter_panel')
+            if pr and pr.collidepoint(mouse_pos):
+                return
+            s.prep_filter_open = False
+            return
 
-        elif STATS_RECT.collidepoint(mouse_pos) and 0 <= s.selected_party_index < len(s.roster):
+        fb = ui.get('filter_btn')
+        if fb and fb.collidepoint(mouse_pos):
+            s.prep_filter_open = True
+            return
+
+        for lab, r in (ui.get('toggle_rects') or {}).items():
+            if r.collidepoint(mouse_pos):
+                s.prep_view = 'inventory' if lab == 'Inventory' else 'shop'
+                return
+
+        sr = ui.get('search_rect')
+        if sr and sr.collidepoint(mouse_pos):
+            s.prep_inv_search_active = True
+            return
+        s.prep_inv_search_active = False
+
+        # Roster: per-hero Unequip, Unequip All, then card selection.
+        for roster_idx, r in ui.get('unequip_btns', []):
+            if r.collidepoint(mouse_pos):
+                if 0 <= roster_idx < len(s.roster):
+                    n = s.unequip_all_from(s.roster[roster_idx])
+                    if n:
+                        s.set_message(f"Returned {n} item(s) to inventory.")
+                return
+        ua = ui.get('unequip_all')
+        if ua and ua.collidepoint(mouse_pos):
+            n = s.unequip_all_roster()
+            s.set_message(f"Returned {n} item(s) to inventory.")
+            return
+        for roster_idx, r in ui.get('roster_cards', []):
+            if r.collidepoint(mouse_pos):
+                if s.selected_party_index != roster_idx:
+                    s.prep_equipped_scroll = 0
+                s.selected_party_index = roster_idx
+                return
+
+        # Middle column: click an equipped row to unequip that one item.
+        if 0 <= s.selected_party_index < len(s.roster):
             adv = s.roster[s.selected_party_index]
-            row_rects = getattr(s, '_prep_equipped_rows', []) or []
-            for item, rr in row_rects:
+            for item, rr in (getattr(s, '_prep_equipped_rows', []) or []):
                 if rr.collidepoint(mouse_pos) and item in adv.equipped_items:
-                    idx = adv.equipped_items.index(item)
-                    s.unequip_item(adv, idx)
+                    s.unequip_item(adv, adv.equipped_items.index(item))
                     return
 
-        elif CARD_RECT.collidepoint(mouse_pos) and s.selected_party_index >= 0:
-            if s.selected_party_index < len(s.roster):
-                adv = s.roster[s.selected_party_index]
-                idx = paper_doll.hit_test_chip(CARD_RECT.x, CARD_RECT.y, mouse_pos, adv)
-                if idx is not None:
-                    s.unequip_item(adv, idx)
-
-        elif SHOP_RECT.collidepoint(mouse_pos):
-            self._handle_prep_shop_click(mouse_pos, SHOP_RECT, SHOP_ITEM_ROW_H)
-
-    def _handle_prep_shop_click(self, mouse_pos, shop_rect, row_h):
-        s = self.state
-        sx, sy = shop_rect.x, shop_rect.y
-
-        merged = [(it, False) for it in s.shop_items] + \
-                 [(it, True)  for it in s.dead_adv_loot]
-
-        items_y_start = sy + 34 + 20
-        if merged:
-            for i, (item, is_fallen) in enumerate(merged):
-                iy = items_y_start + i * row_h
-                if iy + row_h > shop_rect.bottom - 6:
-                    break
-                row_rect = pygame.Rect(shop_rect.x + 4, iy,
-                                       shop_rect.w - 8, row_h - 4)
-                if row_rect.collidepoint(mouse_pos):
-                    if is_fallen:
-                        try:
-                            dl_idx = s.dead_adv_loot.index(item)
-                            s.buy_dead_adv_loot(dl_idx)
-                        except ValueError:
-                            pass
+        # Right column rows: equip/sell (inventory view) or buy (shop view).
+        for idx, item, rr in ui.get('item_rows', []):
+            if rr.collidepoint(mouse_pos):
+                if s.prep_view == 'inventory':
+                    if pygame.key.get_mods() & pygame.KMOD_CTRL:
+                        s.sell_item_obj(item)
+                    elif 0 <= s.selected_party_index < len(s.roster):
+                        s.equip_item_obj(item, s.roster[s.selected_party_index])
                     else:
-                        try:
-                            si_idx = s.shop_items.index(item)
-                            s.buy_shop_item(si_idx)
-                        except ValueError:
-                            pass
-                    return
-
-        adv_y_start = items_y_start + len(merged) * row_h if merged else sy + 34
-        adv_y_start += 20
-        for i, adv in enumerate(s.shop_adventurers):
-            iy = adv_y_start + i * row_h
-            if iy + row_h > shop_rect.bottom - 6:
-                break
-            row_rect = pygame.Rect(shop_rect.x + 4, iy,
-                                   shop_rect.w - 8, row_h - 4)
-            if row_rect.collidepoint(mouse_pos):
+                        s.set_message("Select a roster member first (click a card).")
+                else:
+                    s.buy_shop_item_obj(item)
+                return
+        for i, rr in ui.get('hire_rows', []):
+            if rr.collidepoint(mouse_pos):
                 s.buy_shop_adventurer(i)
                 return
 
@@ -676,71 +664,80 @@ class InputHandler:
         s = self.state
 
         if s.delve_inv_open:
-            PX, PY, PW, PH = 60, 40, 1160, 710
-            col_top = PY + 55
-            left_x = PX + 10
-            left_w = 220
-            equip_x = left_x + left_w + 15
-            equip_w = 220
-            center_x = equip_x + equip_w + 10
-            center_w = 290
-            right_x = center_x + center_w + 15
-            right_w = PX + PW - right_x - 10
+            from ..views.screens.delve import (
+                INV_LEFT_RECT, INV_MID_RECT, INV_CARD_H, INV_CARD_GAP,
+            )
+            ui = getattr(s, '_delve_ui', {}) or {}
 
-            adv_card_h = 94
-            adv_gap = 8
-            adv_y_start = col_top + 36
+            # Keyword-filter dropdown claims every click while open.
+            if s.delve_filter_open:
+                for kw_id, r in ui.get('filter_chips', []):
+                    if r.collidepoint(mouse_pos):
+                        if kw_id in s.delve_kw_filter:
+                            s.delve_kw_filter.discard(kw_id)
+                        else:
+                            s.delve_kw_filter.add(kw_id)
+                        s.delve_inv_scroll = 0
+                        return
+                cr = ui.get('filter_clear')
+                if cr and cr.collidepoint(mouse_pos):
+                    s.delve_kw_filter.clear()
+                    s.delve_inv_scroll = 0
+                    return
+                pr = ui.get('filter_panel')
+                if pr and pr.collidepoint(mouse_pos):
+                    return
+                s.delve_filter_open = False
+                return
 
+            fb = ui.get('filter_btn')
+            if fb and fb.collidepoint(mouse_pos):
+                s.delve_filter_open = True
+                return
+
+            # Roster: per-hero Unequip, Unequip All, then card selection.
+            for i, r in ui.get('unequip_btns', []):
+                if r.collidepoint(mouse_pos):
+                    n = s.delve_unequip_all_from(i)
+                    if n:
+                        s.set_message(f"Moved {n} item(s) to delve loot.")
+                    return
+            ua = ui.get('unequip_all')
+            if ua and ua.collidepoint(mouse_pos):
+                n = s.delve_unequip_all_party()
+                s.set_message(f"Moved {n} item(s) to delve loot.")
+                return
             for i, adv in enumerate(s.party):
-                cy = adv_y_start + i * (adv_card_h + adv_gap)
-                adv_rect = pygame.Rect(left_x, cy, left_w, adv_card_h)
-                if adv_rect.collidepoint(mouse_pos) and not adv.is_dead:
+                cy = INV_LEFT_RECT.y + 10 + i * (INV_CARD_H + INV_CARD_GAP)
+                card = pygame.Rect(INV_LEFT_RECT.x + 8, cy,
+                                   INV_LEFT_RECT.w - 16, INV_CARD_H)
+                if card.collidepoint(mouse_pos) and not adv.is_dead:
                     if s.delve_selected_adv_idx != i:
                         s.delve_equipped_scroll = 0
                     s.delve_selected_adv_idx = i
                     return
 
-            equip_rect = pygame.Rect(equip_x, col_top, equip_w,
-                                     PY + PH - col_top - 10)
-            if equip_rect.collidepoint(mouse_pos):
+            # Middle column: click an equipped row to unequip
+            if INV_MID_RECT.collidepoint(mouse_pos):
                 if 0 <= s.delve_selected_adv_idx < len(s.party):
                     adv = s.party[s.delve_selected_adv_idx]
-                    row_rects = getattr(s, '_delve_equipped_rows', []) or []
-                    for item, rr in row_rects:
+                    for item, rr in (getattr(s, '_delve_equipped_rows', []) or []):
                         if rr.collidepoint(mouse_pos) and item in adv.equipped_items:
-                            idx = adv.equipped_items.index(item)
-                            s.delve_unequip_item(idx)
+                            s.delve_unequip_item(adv.equipped_items.index(item))
                             return
                 return
 
-            if 0 <= s.delve_selected_adv_idx < len(s.party):
-                adv = s.party[s.delve_selected_adv_idx]
-                card_x = center_x + (center_w - paper_doll.CARD_W) // 2
-                card_y = col_top + 30
-                card_rect = pygame.Rect(card_x, card_y,
-                                        paper_doll.CARD_W, paper_doll.CARD_H)
-                if card_rect.collidepoint(mouse_pos):
-                    chip_idx = paper_doll.hit_test_chip(
-                        card_x, card_y, mouse_pos, adv)
-                    if chip_idx is not None and 0 <= chip_idx < len(adv.equipped_items):
-                        s.delve_unequip_item(chip_idx)
-                        return
-
-            from ..views import widgets as _w
-            right_h = PY + PH - col_top - 50
-            right_rect = pygame.Rect(right_x, col_top, right_w, right_h)
-            header_rect, search_rect, list_rect = _w.get_item_list_geometry(right_rect)
-            if search_rect.collidepoint(mouse_pos):
+            # Right column: search box focus / click an item to equip
+            sr = ui.get('search_rect')
+            if sr and sr.collidepoint(mouse_pos):
                 s.delve_item_search_active = True
                 return
             s.delve_item_search_active = False
 
-            filtered = s.get_filtered_delve_items()
-            idx, item = _w.hit_test_item_list(
-                right_rect, filtered, s.delve_inv_scroll, mouse_pos)
-            if item is not None:
-                s.delve_equip_item_obj(item)
-                return
+            for idx, item, rr in ui.get('item_rows', []):
+                if rr.collidepoint(mouse_pos):
+                    s.delve_equip_item_obj(item)
+                    return
 
             return
 
@@ -755,18 +752,31 @@ class InputHandler:
                     return
 
     def _handle_boss_choice_click(self, mouse_pos):
-        """Click an available hero card to send them at the boss next."""
+        """Pick a hero, then a target: one of the boss's items, or the boss."""
         s = self.state
         if not s.boss_square or s.boss_square.get('outcome'):
             return
-        # Cards mirror boss.draw_choice: available heroes laid out left->right.
-        x = 30
-        for adv in s.boss_available_heroes():
-            card_rect = pygame.Rect(x, 505, 280, 200)
-            if card_rect.collidepoint(mouse_pos):
-                s.fight_boss_hero(s.party.index(adv))
+        ui = getattr(s, '_boss_ui', {}) or {}
+
+        # Hero cards: click selects (click again to deselect).
+        for party_idx, rect in ui.get('hero_cards', []):
+            if rect.collidepoint(mouse_pos):
+                s.boss_selected_hero = (
+                    -1 if s.boss_selected_hero == party_idx else party_idx)
                 return
-            x += 300
+
+        if s.boss_selected_hero < 0:
+            return
+
+        # Targets: an equipped item, or the boss itself.
+        for item_idx, rect in ui.get('item_cards', []):
+            if rect.collidepoint(mouse_pos):
+                s.boss_attack_item(s.boss_selected_hero, item_idx)
+                return
+        br = ui.get('boss_rect')
+        if br and br.collidepoint(mouse_pos):
+            s.boss_challenge(s.boss_selected_hero)
+            return
 
     def _handle_shop_click(self, mouse_pos):
         s = self.state

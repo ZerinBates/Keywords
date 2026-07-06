@@ -356,85 +356,64 @@ def adventurer_boss_power(adv: Adventurer, boss_keywords: List[str], bonus: dict
     }
 
 
-def _pick_keyword_to_remove(boss_keywords: List[str]) -> Optional[str]:
-    """Choose which keyword a surviving hero strips off the boss.
+def boss_item_defense(item, boss_keywords: List[str]) -> int:
+    """How hard one of the boss's items is to destroy.
 
-    Prefer a keyword that is part of a stack (count >= 2) so removing it can
-    break the boss's multiplier; otherwise drop the first keyword.
+    The boss actively guards its gear, so an item's defense is its own points
+    scaled by the boss's current keyword multiplier — smashing stacked items
+    first breaks that multiplier and softens the rest.
     """
-    if not boss_keywords:
-        return None
-    counts: Dict[str, int] = {}
-    for k in boss_keywords:
-        counts[k] = counts.get(k, 0) + 1
-    for k in boss_keywords:
-        if counts[k] >= 2:
-            return k
-    return boss_keywords[0]
+    return max(1, int(item.points * boss_keyword_multiplier(boss_keywords)))
 
 
-def resolve_boss_step(adv: Adventurer, boss_keywords: List[str], boss_score: int,
-                      bonus: dict, keyword_registry: KeywordRegistry,
-                      is_final: bool,
-                      threshold_fraction: float = BOSS_THRESHOLD_FRACTION):
-    """Resolve ONE hero's attack on the boss.
+def resolve_boss_item_attack(adv: Adventurer, item, boss_keywords: List[str],
+                             bonus: dict,
+                             keyword_registry: KeywordRegistry) -> dict:
+    """One hero strikes at one of the boss's equipped items.
 
-    Pure: returns ``(step, new_score, new_keywords)``.  The caller owns the
-    running boss state and applies side effects (hero death, rewards, reset).
-
-    `is_final` marks the last hero of the relay — they face no threshold and
-    win simply by out-scoring whatever boss score remains.
+    Pure: returns a step dict. Caller applies side effects (item removal and
+    total recompute on success, hero death on failure).
     """
     ap = adventurer_boss_power(adv, boss_keywords, bonus, keyword_registry)
-    power = ap['power']
-
-    new_keywords: List[str] = list(boss_keywords)
-    score = boss_score
-
-    step = {
+    defense = boss_item_defense(item, boss_keywords)
+    destroyed = ap['power'] >= defense
+    return {
+        'kind': 'item',
         'adventurer': adv,
-        'is_final': is_final,
-        'power': power,
+        'item': item,
+        'is_final': False,
+        'power': ap['power'],
         'adv_base': ap['base'],
         'adv_mult': ap['mult'],
         'adv_weakness': ap['weakness'],
-        'boss_score_before': boss_score,
-        'boss_keywords_before': list(boss_keywords),
-        'threshold': 0,
-        'damage': 0,
-        'removed_keyword': None,
-        'survived': False,
+        'threshold': defense,
+        'destroyed': destroyed,
+        'survived': destroyed,
         'killed_boss': False,
+        'damage': 0,
     }
 
-    if is_final:
-        # No threshold: out-score whatever remains.
-        if power >= score:
-            step['survived'] = True
-            step['killed_boss'] = True
-            step['damage'] = score
-            score = 0
-        # else: final hero loses -> battle lost (handled by caller).
-    else:
-        threshold = boss_threshold(score, threshold_fraction)
-        step['threshold'] = threshold
-        if power >= threshold:
-            step['survived'] = True
-            damage = power - threshold
-            step['damage'] = damage
-            score = max(0, score - damage)
-            removed = _pick_keyword_to_remove(new_keywords)
-            if removed is not None:
-                new_keywords.remove(removed)
-                step['removed_keyword'] = removed
-            if score <= 0:
-                score = 0
-                step['killed_boss'] = True
-        # else: hero fails the threshold and dies (caller applies death).
 
-    step['boss_score_after'] = score
-    step['boss_keywords_after'] = list(new_keywords)
-    return step, score, new_keywords
+def resolve_boss_challenge(adv: Adventurer, boss_keywords: List[str],
+                           boss_score: int, bonus: dict,
+                           keyword_registry: KeywordRegistry) -> dict:
+    """One hero challenges the boss itself — win or lose, this ends the fight."""
+    ap = adventurer_boss_power(adv, boss_keywords, bonus, keyword_registry)
+    win = ap['power'] >= boss_score
+    return {
+        'kind': 'boss',
+        'adventurer': adv,
+        'is_final': True,
+        'power': ap['power'],
+        'adv_base': ap['base'],
+        'adv_mult': ap['mult'],
+        'adv_weakness': ap['weakness'],
+        'threshold': boss_score,
+        'destroyed': False,
+        'survived': win,
+        'killed_boss': win,
+        'damage': boss_score if win else 0,
+    }
 
 
 # ---------------------------------------------------------------------------

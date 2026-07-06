@@ -11,7 +11,7 @@ from typing import Callable, List, Optional, Tuple
 import pygame
 
 from .. import theme
-from ..config import COLORS
+from ..config import COLORS, SCREEN_HEIGHT
 
 # Standardized spacing tokens (XS=4, S=8, M=16, L=24, XL=40).
 XS, S, M, L = theme.XS, theme.S, theme.M, theme.L
@@ -31,6 +31,30 @@ def draw_panel(surface, rect: pygame.Rect, *, fill=None, border=None,
     pygame.draw.rect(surface, border or COLORS['border'], rect, border_w,
                      border_radius=radius)
     return inner_rect(rect, M)
+
+
+def draw_pixel_box(screen, rect: pygame.Rect, border=None, fill=None):
+    """Chunky pixel-art panel: dark fill, light border, faint inset line."""
+    pygame.draw.rect(screen, fill or theme.mix(COLORS['bg'], COLORS['surface'], 0.55),
+                     rect, border_radius=3)
+    pygame.draw.rect(screen, border or COLORS['border'], rect, 2, border_radius=3)
+    pygame.draw.rect(screen, theme.mix(COLORS['bg'], border or COLORS['border'], 0.3),
+                     rect.inflate(-4, -4), 1, border_radius=2)
+
+
+def collapse_keywords(kw_ids):
+    """Collapse duplicates into ordered (kw_id, count) pairs.
+
+    ['beast', 'beast', 'poison'] -> [('beast', 2), ('poison', 1)] so the UI
+    can show '2x beast, poison' instead of repeating the word.
+    """
+    order, counts = [], {}
+    for k in kw_ids:
+        if k not in counts:
+            order.append(k)
+            counts[k] = 0
+        counts[k] += 1
+    return [(k, counts[k]) for k in order]
 
 
 def draw_text_box(surface, rect: pygame.Rect, *, active: bool = False,
@@ -59,19 +83,27 @@ class Button:
         self.hovered = self.rect.collidepoint(mouse_pos) and self.enabled
 
     def draw(self, surface, font):
-        color = self.hover_color if self.hovered else self.color
+        # Chunky pixel-art button: dark fill, coloured border, "[ label ]".
         if not self.enabled:
-            color = COLORS['panel_dark']
+            fill = COLORS['panel_dark']
+            border = COLORS['divider']
+            text_c = COLORS['text_dim']
+        elif self.hovered:
+            fill = theme.mix(COLORS['panel'], self.hover_color, 0.25)
+            border = self.hover_color
+            text_c = self.text_color
+        else:
+            fill = COLORS['panel_dark']
+            border = self.color
+            text_c = self.text_color
 
-        pygame.draw.rect(surface, color, self.rect, border_radius=R_S)
-        pygame.draw.rect(surface, COLORS['border'], self.rect, BW, border_radius=R_S)
+        pygame.draw.rect(surface, fill, self.rect, border_radius=R_S)
+        pygame.draw.rect(surface, border, self.rect, BW, border_radius=R_S)
 
-        text_surf = font.render(
-            self.text, True,
-            self.text_color if self.enabled else COLORS['text_dim'],
-        )
-        text_rect = text_surf.get_rect(center=self.rect.center)
-        surface.blit(text_surf, text_rect)
+        text_surf = font.render(f"[ {self.text} ]", True, text_c)
+        if text_surf.get_width() > self.rect.w - 8:
+            text_surf = font.render(self.text, True, text_c)
+        surface.blit(text_surf, text_surf.get_rect(center=self.rect.center))
 
     def is_clicked(self, event) -> bool:
         return (
@@ -92,6 +124,9 @@ class Panel:
     def draw(self, surface, font, title_font=None):
         pygame.draw.rect(surface, COLORS['panel'], self.rect, border_radius=R_M)
         pygame.draw.rect(surface, COLORS['border'], self.rect, BW, border_radius=R_M)
+        # Faint inset line for the double-border pixel look.
+        pygame.draw.rect(surface, theme.mix(COLORS['bg'], COLORS['border'], 0.3),
+                         self.rect.inflate(-4, -4), 1, border_radius=R_S)
 
         if self.title:
             tf = title_font or font
@@ -306,11 +341,19 @@ def draw_item_list_panel(screen, fonts, state, rect: pygame.Rect,
                          sell_price_func: Optional[Callable] = None,
                          buy_price_func: Optional[Callable] = None,
                          paper_doll_module=None,
-                         hover_pos: Optional[Tuple[int, int]] = None) -> dict:
-    """Render a complete item list panel (header + search + scrollable list).
+                         hover_pos: Optional[Tuple[int, int]] = None,
+                         toggle_labels: Optional[Tuple[str, str]] = None,
+                         toggle_active: int = 0,
+                         filter_selected: Optional[set] = None,
+                         filter_open: bool = False) -> dict:
+    """Render a complete item list panel (header + controls + scrollable list).
+
+    The controls row holds an optional [A|B] view toggle (left), the search
+    bar, and an optional keyword Filter button (right).
 
     Returns a dict with:
       - 'header_rect', 'search_rect', 'list_rect' (pygame.Rect)
+      - 'toggle_rects' {label: rect}, 'filter_btn_rect' (Rect or None)
       - 'visible' [(idx, item, rect), ...]
       - 'hovered_item' (Item or None)
       - 'max_scroll' (int)
@@ -324,63 +367,242 @@ def draw_item_list_panel(screen, fonts, state, rect: pygame.Rect,
     screen.blit(hs, (header_rect.centerx - hs.get_width() // 2,
                      header_rect.centery - hs.get_height() // 2))
 
-    # Search bar
-    draw_item_search_bar(screen, fonts, search_rect, search_text, search_active)
+    # Controls row: [toggle][search........][filter]
+    toggle_rects = {}
+    filter_btn_rect = None
+    sr = search_rect.copy()
+    if toggle_labels:
+        for k, lab in enumerate(toggle_labels):
+            tw = fonts['tiny'].render(lab, True, COLORS['text']).get_width() + 16
+            r = pygame.Rect(sr.x, sr.y, tw, sr.h)
+            active = (k == toggle_active)
+            pygame.draw.rect(screen,
+                             COLORS['panel_light'] if active else COLORS['panel_dark'],
+                             r, border_radius=R_S)
+            pygame.draw.rect(screen,
+                             COLORS['accent'] if active else COLORS['border'],
+                             r, 1, border_radius=R_S)
+            ls = fonts['tiny'].render(lab, True,
+                                      COLORS['text'] if active else COLORS['text_dim'])
+            screen.blit(ls, ls.get_rect(center=r.center))
+            toggle_rects[lab] = r
+            sr.x += tw + 4
+            sr.w -= tw + 4
+    if filter_selected is not None:
+        n = len(filter_selected)
+        lab = f"Filter ({n})" if n else "Filter"
+        fw = fonts['tiny'].render(lab, True, COLORS['text']).get_width() + 16
+        filter_btn_rect = pygame.Rect(sr.right - fw, sr.y, fw, sr.h)
+        sr.w -= fw + 4
+        lit = bool(n) or filter_open
+        pygame.draw.rect(screen,
+                         COLORS['panel_light'] if lit else COLORS['panel_dark'],
+                         filter_btn_rect, border_radius=R_S)
+        pygame.draw.rect(screen,
+                         COLORS['gold'] if n else
+                         (COLORS['accent'] if filter_open else COLORS['border']),
+                         filter_btn_rect, 1, border_radius=R_S)
+        fl = fonts['tiny'].render(lab, True,
+                                  COLORS['gold'] if n else COLORS['text'])
+        screen.blit(fl, fl.get_rect(center=filter_btn_rect.center))
+    draw_item_search_bar(screen, fonts, sr, search_text, search_active)
 
     # List background
     pygame.draw.rect(screen, COLORS['well'], list_rect, border_radius=R_M)
     pygame.draw.rect(screen, COLORS['border'], list_rect, 1, border_radius=R_M)
 
-    # Empty message
+    visible: List[Tuple[int, object, pygame.Rect]] = []
+    hovered_item = None
+    max_scroll = 0
+
     if not items:
         empty = fonts['small'].render("No items", True, COLORS['text_dim'])
         screen.blit(empty,
                     (list_rect.centerx - empty.get_width() // 2,
                      list_rect.y + 30))
-        return {
-            'header_rect': header_rect,
-            'search_rect': search_rect,
-            'list_rect': list_rect,
-            'visible': [],
-            'hovered_item': None,
-            'max_scroll': 0,
-        }
+    else:
+        visible_count = list_rect.h // ITEM_LIST_ROW_H
+        max_scroll = max(0, len(items) - visible_count)
+        scroll = max(0, min(scroll, max_scroll))
 
-    visible_count = list_rect.h // ITEM_LIST_ROW_H
-    max_scroll = max(0, len(items) - visible_count)
-    scroll = max(0, min(scroll, max_scroll))
+        if len(items) > visible_count:
+            sc = (f"Scroll: {scroll + 1}-"
+                  f"{min(scroll + visible_count, len(items))} of {len(items)}")
+            screen.blit(fonts['tiny'].render(sc, True, COLORS['text_dim']),
+                        (list_rect.right - 155, list_rect.y - 14))
 
-    if len(items) > visible_count:
-        sc = (f"Scroll: {scroll + 1}-"
-              f"{min(scroll + visible_count, len(items))} of {len(items)}")
-        screen.blit(fonts['tiny'].render(sc, True, COLORS['text_dim']),
-                    (list_rect.right - 155, list_rect.y - 14))
-
-    visible: List[Tuple[int, object, pygame.Rect]] = []
-    hovered_item = None
-    for idx, rr in get_visible_item_rects(list_rect, len(items), scroll):
-        it = items[idx]
-        is_new   = bool(is_new_func   and is_new_func(it))
-        is_fall  = bool(is_fallen_func and is_fallen_func(it))
-        sell_p   = sell_price_func(it) if sell_price_func else None
-        buy_p    = buy_price_func(it)  if buy_price_func  else None
-        is_hov   = hover_pos is not None and rr.collidepoint(hover_pos)
-        if is_hov:
-            hovered_item = it
-        draw_item_row(screen, fonts, state, rr, it,
-                      is_new=is_new, is_fallen=is_fall,
-                      sell_price=sell_p, buy_price=buy_p,
-                      hovered=is_hov, paper_doll_module=paper_doll_module)
-        visible.append((idx, it, rr))
+        for idx, rr in get_visible_item_rects(list_rect, len(items), scroll):
+            it = items[idx]
+            is_new   = bool(is_new_func   and is_new_func(it))
+            is_fall  = bool(is_fallen_func and is_fallen_func(it))
+            sell_p   = sell_price_func(it) if sell_price_func else None
+            buy_p    = buy_price_func(it)  if buy_price_func  else None
+            is_hov   = hover_pos is not None and rr.collidepoint(hover_pos)
+            if is_hov:
+                hovered_item = it
+            draw_item_row(screen, fonts, state, rr, it,
+                          is_new=is_new, is_fallen=is_fall,
+                          sell_price=sell_p, buy_price=buy_p,
+                          hovered=is_hov, paper_doll_module=paper_doll_module)
+            visible.append((idx, it, rr))
 
     return {
         'header_rect': header_rect,
-        'search_rect': search_rect,
+        'search_rect': sr,
         'list_rect': list_rect,
+        'toggle_rects': toggle_rects,
+        'filter_btn_rect': filter_btn_rect,
         'visible': visible,
         'hovered_item': hovered_item,
         'max_scroll': max_scroll,
     }
+
+
+def draw_kw_filter_dropdown(screen, fonts, state, anchor_rect: pygame.Rect,
+                            items: List, selected: set) -> dict:
+    """Keyword-filter popup under `anchor_rect` — multi-select chips.
+
+    Lists every keyword present on `items` with its count. Returns
+    {'panel_rect', 'chips': [(kw_id, rect)], 'clear_rect'} for hit-testing.
+    """
+    counts = {}
+    for it in items:
+        for k in set(getattr(it, 'keywords', [])):
+            counts[k] = counts.get(k, 0) + 1
+
+    def _name(k):
+        kw = state.keyword_registry.get(k)
+        return kw.name if kw else k
+    kws = sorted(counts, key=lambda k: _name(k).lower())
+
+    pad = 8
+    x0, y0 = anchor_rect.x, anchor_rect.bottom + 4
+    panel_w = anchor_rect.w
+    chip_h = fonts['tiny'].get_height() + 8
+
+    # Lay out chips in a wrapping grid (capped at the screen bottom).
+    chip_data = []
+    cx, cy = x0 + pad, y0 + pad + 20
+    truncated = 0
+    for k in kws:
+        label = f"{_name(k)} ({counts[k]})"
+        w = fonts['tiny'].render(label, True, COLORS['bg']).get_width() + 14
+        if cx + w > x0 + panel_w - pad:
+            cx = x0 + pad
+            cy += chip_h + 6
+        if cy + chip_h > SCREEN_HEIGHT - 40:
+            truncated += 1
+            continue
+        chip_data.append((k, label, pygame.Rect(cx, cy, w, chip_h)))
+        cx += w + 6
+
+    panel_h = (cy + chip_h + pad) - y0 if chip_data else 56
+    panel = pygame.Rect(x0, y0, panel_w, panel_h)
+    draw_pixel_box(screen, panel, border=COLORS['accent'],
+                   fill=theme.mix(COLORS['bg'], COLORS['surface'], 0.35))
+
+    hdr = fonts['tiny'].render("Filter by keyword (click to toggle):", True,
+                               COLORS['text_dim'])
+    screen.blit(hdr, (x0 + pad, y0 + 6))
+    clear_s = fonts['tiny'].render("[Clear]", True,
+                                   COLORS['danger'] if selected else COLORS['text_dim'])
+    clear_rect = clear_s.get_rect(topright=(panel.right - pad, y0 + 6))
+    screen.blit(clear_s, clear_rect)
+
+    if not chip_data:
+        none_s = fonts['tiny'].render("No keywords in this list", True,
+                                      COLORS['text_dim'])
+        screen.blit(none_s, (x0 + pad, y0 + 28))
+
+    chips_out = []
+    for k, label, r in chip_data:
+        kw = state.keyword_registry.get(k)
+        color = kw.color if kw else COLORS['muted']
+        if k in selected:
+            pygame.draw.rect(screen, color, r, border_radius=2)
+            ts = fonts['tiny'].render(label, True, COLORS['bg'])
+        else:
+            pygame.draw.rect(screen, COLORS['panel_dark'], r, border_radius=2)
+            pygame.draw.rect(screen, color, r, 1, border_radius=2)
+            ts = fonts['tiny'].render(label, True, color)
+        screen.blit(ts, ts.get_rect(center=r.center))
+        chips_out.append((k, r))
+
+    if truncated:
+        more = fonts['tiny'].render(f"+{truncated} more...", True, COLORS['text_dim'])
+        screen.blit(more, (panel.right - more.get_width() - pad,
+                           panel.bottom - more.get_height() - 4))
+
+    return {'panel_rect': panel, 'chips': chips_out, 'clear_rect': clear_rect}
+
+
+def draw_hero_loadout_column(screen, fonts, state, rect: pygame.Rect, adv,
+                             scroll: int, paper_doll_module) -> List[Tuple[object, pygame.Rect]]:
+    """Merged HERO LOADOUT column: big sprite, POWER/SLOTS, equipped rows.
+
+    Used by both the delve Items overlay and the Shop screen so the two look
+    identical. Returns [(item, row_rect)] for unequip hit-testing.
+    """
+    draw_pixel_box(screen, rect)
+    rows: List[Tuple[object, pygame.Rect]] = []
+    if adv is None:
+        prompt = fonts['medium'].render("Select a hero", True, COLORS['text_dim'])
+        screen.blit(prompt, prompt.get_rect(center=rect.center))
+        return rows
+
+    paper_doll_module.draw_adventurer_thumbnail(
+        screen, adv, rect.centerx - 72, rect.y + 14, 144)
+
+    power = adv.get_base_points() * adv.get_multiplier()
+    role = ""
+    if adv is getattr(state, 'hero_king', None):
+        power *= 2
+        role = "  (KING x2)"
+    elif adv is getattr(state, 'hero_dunce', None):
+        power //= 2
+        role = "  (DUNCE /2)"
+    p1 = fonts['large'].render(f"POWER: {power}{role}", True, COLORS['success'])
+    screen.blit(p1, p1.get_rect(centerx=rect.centerx, y=rect.y + 170))
+    p2 = fonts['large'].render(
+        f"SLOTS: {len(adv.equipped_items)}/{adv.slots}", True, COLORS['success'])
+    screen.blit(p2, p2.get_rect(centerx=rect.centerx, y=rect.y + 212))
+
+    # Equipped items — click a row to unequip; wheel scrolls.
+    row_h = 56
+    row_y = rect.y + 262
+    start = max(0, min(scroll, max(0, len(adv.equipped_items) - 1)))
+    max_rows = (rect.bottom - 36 - row_y) // row_h
+    for item in adv.equipped_items[start:start + max_rows]:
+        r = pygame.Rect(rect.x + 16, row_y, rect.w - 32, row_h - 6)
+        paper_doll_module.draw_item_thumbnail(screen, item, r.x + 2, r.y + 6, 36)
+        nm = item.name if len(item.name) <= 24 else item.name[:23] + ".."
+        ns = fonts['small'].render(nm, True, COLORS['text'])
+        screen.blit(ns, (r.x + 48, r.y + 4))
+        screen.blit(fonts['small'].render(f"+{item.points}", True, COLORS['gold']),
+                    (r.x + 54 + ns.get_width(), r.y + 4))
+        kx = r.x + 48
+        for kw_id, count in collapse_keywords(getattr(item, 'keywords', []))[:3]:
+            kw = state.keyword_registry.get(kw_id)
+            label = kw.name if kw else kw_id
+            if count > 1:
+                label = f"{count}x {label}"
+            ks = fonts['tiny'].render(label, True,
+                                      kw.color if kw else COLORS['text_dim'])
+            if kx + ks.get_width() > r.right - 6:
+                break
+            screen.blit(ks, (kx, r.y + 28))
+            kx += ks.get_width() + 10
+        rows.append((item, r))
+        row_y += row_h
+    hidden = len(adv.equipped_items) - start - max_rows
+    if hidden > 0:
+        more = fonts['tiny'].render(f"+{hidden} more (scroll)", True,
+                                    COLORS['text_dim'])
+        screen.blit(more, (rect.x + 16, row_y))
+    hint = fonts['tiny'].render("(Click any item to unequip)", True,
+                                COLORS['text_dim'])
+    screen.blit(hint, hint.get_rect(centerx=rect.centerx, y=rect.bottom - 24))
+    return rows
 
 
 

@@ -9,12 +9,19 @@ import pygame
 class SpriteManager:
     """Manages loading and caching sprites for characters, monsters, and items."""
 
+    # Category name -> subdirectory under assets/ (aliases the existing layout).
+    CATEGORY_DIRS = {
+        'characters': 'portraits',
+        'monsters':   'monsters',
+        'items':      'items',
+    }
+
     def __init__(self, base_path: Optional[Path] = None):
         if base_path is None:
             try:
-                base_path = Path(__file__).parent.parent.parent / "sprites"
+                base_path = Path(__file__).parent.parent.parent / "assets"
             except NameError:
-                base_path = Path.cwd() / "sprites"
+                base_path = Path.cwd() / "assets"
         self.base_path = Path(base_path) if not isinstance(base_path, Path) else base_path
         self.sprites: Dict[str, pygame.Surface] = {}
         self.missing: Set[str] = set()  # Track missing sprites to skip repeat lookups
@@ -42,7 +49,8 @@ class SpriteManager:
         if base_key in self.missing:
             return None
 
-        sprite_path = self.base_path / category / f"{name}.png"
+        cat_dir = self.CATEGORY_DIRS.get(category, category)
+        sprite_path = self.base_path / cat_dir / f"{name}.png"
         if sprite_path.exists():
             try:
                 sprite = pygame.image.load(str(sprite_path)).convert_alpha()
@@ -65,7 +73,11 @@ class SpriteManager:
     def get_monster_sprite(self, monster_name: str,
                            size: Tuple[int, int] = (96, 96)) -> Optional[pygame.Surface]:
         safe_name = monster_name.lower().replace(" ", "_").replace("'", "")
-        return self.get_sprite("monsters", safe_name, size)
+        sprite = self.get_sprite("monsters", safe_name, size)
+        if sprite is None:
+            # Generic stand-in until this monster gets its own art.
+            sprite = self.get_sprite("monsters", "_default_monster", size)
+        return sprite
 
     def get_item_sprite(self, item_id: str,
                         size: Tuple[int, int] = (32, 32)) -> Optional[pygame.Surface]:

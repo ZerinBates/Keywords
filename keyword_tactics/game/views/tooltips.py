@@ -156,7 +156,8 @@ def draw_tooltip_panel(screen, font_tiny, lines: List[Tuple[str, tuple]],
         return
 
     pad = 8
-    line_h = 18
+    # Line step derives from the actual font so lines never overlap.
+    line_h = font_tiny.get_height() + 4
 
     # Measure required width
     max_w = 0
@@ -197,10 +198,34 @@ def draw_combat_tooltip(screen, fonts, state, hover_pos: Tuple[int, int]):
     CW = 300
     font_tiny = fonts['tiny']
 
+    # --- Boss icon in the delve header: gear + rounds-until-boss preview ---
+    if state.phase == GamePhase.DELVE_SETUP:
+        br = getattr(state, '_boss_icon_rect', None)
+        boss_mon = (state.boss_square['monster'] if state.boss_square
+                    else getattr(state.current_deck, 'boss_monster', None))
+        if br and boss_mon and br.collidepoint(mx, my):
+            draw_tooltip_panel(screen, font_tiny,
+                               _boss_preview_lines(state, boss_mon),
+                               br.x - 220, br.bottom + 6)
+            return
+
+    # --- Boss screen: hover an equipped-item card for full details ---
+    if state.phase == GamePhase.BOSS_CHOICE and state.boss_square:
+        ui = getattr(state, '_boss_ui', {}) or {}
+        items = state.boss_square.get('items', [])
+        for item_idx, rect in ui.get('item_cards', []):
+            if rect.collidepoint(mx, my) and item_idx < len(items):
+                draw_item_tooltip(screen, fonts, state,
+                                  items[item_idx], hover_pos)
+                return
+
     # --- Front row monster cards ---
     if state.phase in (GamePhase.DELVE_SETUP, GamePhase.DELVE_RESULTS):
-        front_y = 128 if state.phase == GamePhase.DELVE_SETUP else 90
-        front_h = 200
+        from .screens.delve import FRONT_ROW_Y, FRONT_ROW_H
+        if state.phase == GamePhase.DELVE_SETUP:
+            front_y, front_h = FRONT_ROW_Y, FRONT_ROW_H
+        else:
+            front_y, front_h = 90, 200
 
         for i, sq in enumerate(state.front_row):
             rect = pygame.Rect(CXS[i], front_y, CW, front_h)
@@ -253,14 +278,13 @@ def draw_combat_tooltip(screen, fonts, state, hover_pos: Tuple[int, int]):
                 draw_tooltip_panel(screen, font_tiny, lines, tip_x, front_y)
                 return
 
-    # --- Party adventurer cards (DELVE_SETUP) ---
+    # --- Party adventurer slots (DELVE_SETUP) ---
     if state.phase == GamePhase.DELVE_SETUP:
-        party_y = 345
-        party_h = 160
+        from .screens.delve import party_slot_rects
 
-        for i, adv in enumerate(state.party):
-            cx = CXS[i] if i < 4 else 20
-            rect = pygame.Rect(cx, party_y, CW, party_h)
+        for i, rect in enumerate(party_slot_rects(state)):
+            adv = state.party[i]
+            cx, party_y = rect.x, rect.y
             if rect.collidepoint(mx, my):
                 if adv.is_dead:
                     lines = [
@@ -543,6 +567,48 @@ def draw_adventurer_tooltip(screen, fonts, state, adv, hover_pos: Tuple[int, int
     draw_tooltip_panel(screen, fonts['tiny'], lines, mx + 16, my + 8)
 
 
+def _boss_preview_lines(state, boss_mon):
+    """Tooltip lines for the delve-header boss icon: gear + rounds away."""
+    from ..controllers import combat as _combat
+
+    d = state.current_deck
+    items = getattr(d, '_boss_items_preview', None)
+    if items is None:
+        items = [it for it in (state.item_registry.create_copy(iid)
+                               for iid in getattr(d, 'boss_item_ids', []))
+                 if it is not None]
+        d._boss_items_preview = items
+
+    base = boss_mon.base_points + sum(it.points for it in items)
+    kws = list(boss_mon.keywords)
+    for it in items:
+        kws.extend(it.keywords)
+    score = _combat.boss_total_score(base, kws)
+
+    lines = [
+        (f"--- FINAL BOSS: {boss_mon.name} ---", COLORS['danger']),
+        (f"Total score: {score}", COLORS['danger']),
+        (f"Keywords: {', '.join(boss_mon.keywords)}", COLORS['text_dim']),
+        ("", COLORS['text']),
+        ("Equipped gear (smash it to weaken the boss):", COLORS['gold']),
+    ]
+    for it in items:
+        lines.append((f"* {it.name}  (+{it.points})", COLORS['text']))
+        kw_line = ", ".join(it.keywords) if it.keywords else "no keywords"
+        lines.append((f"    {kw_line}", COLORS['text_dim']))
+    if not items:
+        lines.append(("(no gear)", COLORS['text_dim']))
+
+    lines.append(("", COLORS['text']))
+    rows = state.rows_until_boss()
+    if rows <= 0:
+        lines.append(("The boss fight is NOW!", COLORS['warning']))
+    else:
+        lines.append((f"Rows until the boss: {rows}", COLORS['warning']))
+    lines.append(("Win with gear intact = bonus loot!", COLORS['gold']))
+    return lines
+
+
 # ---------------------------------------------------------------------------
 # Preparation-phase hover tooltips
 # ---------------------------------------------------------------------------
@@ -550,81 +616,41 @@ def draw_adventurer_tooltip(screen, fonts, state, adv, hover_pos: Tuple[int, int
 def draw_preparation_tooltip(screen, fonts, state, hover_pos: Tuple[int, int]):
     """Hover tooltips during the PREPARATION phase.
 
-    Covers: roster rows, party rows, inventory rows, shop items, shop adventurers,
-    and the paper-doll card's item chips.
+    Hit-tests the rects the renderer stashed in state._prep_ui, so tooltips
+    always match the drawn three-column layout.
     """
-    from .screens.preparation import (
-        ROSTER_RECT, INV_PANEL_RECT, SHOP_RECT, CARD_RECT,
-        SHOP_ITEM_ROW_H,
-    )
-    from . import paper_doll
+    ui = getattr(state, '_prep_ui', {}) or {}
 
-    mx, my = hover_pos
+    # While the filter dropdown is open, don't fight it with tooltips.
+    if state.prep_filter_open:
+        return
 
-    # --- Roster rows ---
-    if ROSTER_RECT.collidepoint(hover_pos):
-        y_off = my - (ROSTER_RECT.y + 30)
-        if y_off >= 0:
-            idx = (y_off // 52) + state.roster_scroll
-            if 0 <= idx < len(state.roster):
-                draw_adventurer_tooltip(screen, fonts, state, state.roster[idx], hover_pos)
-                return
-
-    # --- Paper-doll item chips (selected roster member) ---
-    if (CARD_RECT.collidepoint(hover_pos)
-            and 0 <= state.selected_party_index < len(state.roster)):
-        adv = state.roster[state.selected_party_index]
-        chip_idx = paper_doll.hit_test_chip(CARD_RECT.x, CARD_RECT.y, hover_pos, adv)
-        if chip_idx is not None and 0 <= chip_idx < len(adv.equipped_items):
-            draw_item_tooltip(screen, fonts, state, adv.equipped_items[chip_idx], hover_pos)
+    # --- Roster cards ---
+    for roster_idx, rect in ui.get('roster_cards', []):
+        if rect.collidepoint(hover_pos) and 0 <= roster_idx < len(state.roster):
+            draw_adventurer_tooltip(screen, fonts, state,
+                                    state.roster[roster_idx], hover_pos)
             return
 
-    # --- Equipped items side panel (shared widget) ---
-    from .screens.preparation import STATS_RECT as _STATS_RECT
-    if (_STATS_RECT.collidepoint(hover_pos)
-            and 0 <= state.selected_party_index < len(state.roster)):
-        adv = state.roster[state.selected_party_index]
-        row_rects = getattr(state, '_prep_equipped_rows', []) or []
-        for item, rr in row_rects:
+    # --- Equipped rows in the loadout column ---
+    if 0 <= state.selected_party_index < len(state.roster):
+        for item, rr in (getattr(state, '_prep_equipped_rows', []) or []):
             if rr.collidepoint(hover_pos):
                 draw_item_tooltip(screen, fonts, state, item, hover_pos)
                 return
 
-    # --- Inventory rows (shared widget layout) ---
-    if INV_PANEL_RECT.collidepoint(hover_pos):
-        from .widgets import hit_test_item_list
-        filtered = state.get_filtered_inventory()
-        idx, item = hit_test_item_list(
-            INV_PANEL_RECT, filtered, state.inventory_scroll, hover_pos)
-        if item is not None:
+    # --- Right column rows (inventory or shop stock) ---
+    for idx, item, rr in ui.get('item_rows', []):
+        if rr.collidepoint(hover_pos):
             draw_item_tooltip(screen, fonts, state, item, hover_pos)
             return
 
-    # --- Shop items (merged with dead_adv_loot) ---
-    if SHOP_RECT.collidepoint(hover_pos):
-        merged = list(state.shop_items) + list(state.dead_adv_loot)
-        items_y_start = SHOP_RECT.y + 34 + 20
-        for i, item in enumerate(merged):
-            iy = items_y_start + i * SHOP_ITEM_ROW_H
-            if iy + SHOP_ITEM_ROW_H > SHOP_RECT.bottom - 6:
-                break
-            row_rect = pygame.Rect(SHOP_RECT.x + 4, iy,
-                                   SHOP_RECT.w - 8, SHOP_ITEM_ROW_H - 4)
-            if row_rect.collidepoint(hover_pos):
-                draw_item_tooltip(screen, fonts, state, item, hover_pos)
-                return
-
-        adv_y_start = items_y_start + len(merged) * SHOP_ITEM_ROW_H + 20 \
-            if merged else SHOP_RECT.y + 34 + 20
-        for i, adv in enumerate(state.shop_adventurers):
-            iy = adv_y_start + i * SHOP_ITEM_ROW_H
-            if iy + SHOP_ITEM_ROW_H > SHOP_RECT.bottom - 6:
-                break
-            row_rect = pygame.Rect(SHOP_RECT.x + 4, iy,
-                                   SHOP_RECT.w - 8, SHOP_ITEM_ROW_H - 4)
-            if row_rect.collidepoint(hover_pos):
-                draw_adventurer_tooltip(screen, fonts, state, adv, hover_pos)
-                return
+    # --- Adventurers for hire ---
+    for i, rr in ui.get('hire_rows', []):
+        if rr.collidepoint(hover_pos) and i < len(state.shop_adventurers):
+            draw_adventurer_tooltip(screen, fonts, state,
+                                    state.shop_adventurers[i], hover_pos)
+            return
 
 
 # ---------------------------------------------------------------------------
@@ -634,75 +660,44 @@ def draw_preparation_tooltip(screen, fonts, state, hover_pos: Tuple[int, int]):
 def draw_delve_inv_tooltip(screen, fonts, state, hover_pos: Tuple[int, int]):
     """Hover tooltips when state.delve_inv_open is True.
 
-    Covers: adventurer rows in the left column, items in the equipped side
-    panel, item chips on the centre paper-doll card, and rows in the
-    right-column merged list.
+    Covers: hero cards in the roster column, equipped rows in the loadout
+    column, and rows in the right-column merged item list.
     """
-    from . import paper_doll
+    from .screens.delve import (
+        INV_LEFT_RECT, INV_RIGHT_RECT, INV_CARD_H, INV_CARD_GAP,
+    )
 
-    PX, PY, PW, PH = 60, 40, 1160, 710
-    col_top = PY + 55
-    left_x = PX + 10
-    left_w = 220
-    equip_x = left_x + left_w + 15
-    equip_w = 220
-    center_x = equip_x + equip_w + 10
-    center_w = 290
-    right_x = center_x + center_w + 15
-    right_w = PX + PW - right_x - 10
-
-    # --- Equipped items side panel: hover over a row → tooltip ---
+    # --- Loadout column: hover over an equipped row → item tooltip ---
     if 0 <= state.delve_selected_adv_idx < len(state.party):
-        adv = state.party[state.delve_selected_adv_idx]
         row_rects = getattr(state, '_delve_equipped_rows', []) or []
         for item, rr in row_rects:
             if rr.collidepoint(hover_pos):
                 draw_item_tooltip(screen, fonts, state, item, hover_pos)
                 return
 
-    # --- Left column: party member rows ---
-    party_row_h = 70
+    # --- Roster column: hero cards ---
     for i, adv in enumerate(state.party):
-        ay = col_top + 30 + i * party_row_h
-        if ay + party_row_h > PY + PH - 8:
-            break
-        adv_rect = pygame.Rect(left_x, ay, left_w, party_row_h)
-        if adv_rect.collidepoint(hover_pos):
+        cy = INV_LEFT_RECT.y + 10 + i * (INV_CARD_H + INV_CARD_GAP)
+        card = pygame.Rect(INV_LEFT_RECT.x + 8, cy,
+                           INV_LEFT_RECT.w - 16, INV_CARD_H)
+        if card.collidepoint(hover_pos):
             draw_adventurer_tooltip(screen, fonts, state, adv, hover_pos)
             return
 
-    # --- Centre column: paper-doll card chips ---
-    if 0 <= state.delve_selected_adv_idx < len(state.party):
-        adv = state.party[state.delve_selected_adv_idx]
-        card_x = center_x + (center_w - paper_doll.CARD_W) // 2
-        card_y = col_top + 30
-        card_rect = pygame.Rect(card_x, card_y,
-                                paper_doll.CARD_W, paper_doll.CARD_H)
-        if card_rect.collidepoint(hover_pos):
-            chip_idx = paper_doll.hit_test_chip(card_x, card_y, hover_pos, adv)
-            if chip_idx is not None and 0 <= chip_idx < len(adv.equipped_items):
-                draw_item_tooltip(screen, fonts, state,
-                                  adv.equipped_items[chip_idx], hover_pos)
-                return
-
     # --- Right column: merged item rows ---
-    from .widgets import (
-        ITEM_LIST_HEADER_H, ITEM_LIST_SEARCH_H, ITEM_LIST_ROW_H,
-    )
-    list_top = col_top + ITEM_LIST_HEADER_H + 4 + ITEM_LIST_SEARCH_H + 6
-    list_h   = PY + PH - list_top - 50
-    list_rect = pygame.Rect(right_x, list_top, right_w, list_h)
+    from .widgets import get_item_list_geometry, ITEM_LIST_ROW_H
+    _, _, list_rect = get_item_list_geometry(INV_RIGHT_RECT)
     if list_rect.collidepoint(hover_pos):
         filtered = state.get_filtered_delve_items()
         scroll = state.delve_inv_scroll
-        visible_count = list_h // ITEM_LIST_ROW_H
+        visible_count = list_rect.h // ITEM_LIST_ROW_H
         for k in range(visible_count):
             idx = scroll + k
             if idx >= len(filtered):
                 break
-            iy = list_top + 4 + k * ITEM_LIST_ROW_H
-            row_rect = pygame.Rect(right_x + 4, iy,
-                                   right_w - 8, ITEM_LIST_ROW_H - 4)
+            iy = list_rect.y + 4 + k * ITEM_LIST_ROW_H
+            row_rect = pygame.Rect(list_rect.x + 4, iy,
+                                   list_rect.w - 8, ITEM_LIST_ROW_H - 4)
             if row_rect.collidepoint(hover_pos):
                 draw_item_tooltip(screen, fonts, state, filtered[idx], hover_pos)
                 return

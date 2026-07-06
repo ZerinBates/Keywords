@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python -c ' *)"
+      "Bash(python -c ' *)",
+      "PowerShell($sp = \"C:\\\\Users\\\\zerin\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-zerin-Documents-GitHub-funzies-git-keyword-tactics-web-Keywords-keyword-tactics\\\\2e814b25-e6f6-4912-99a9-edb2eb8cb851\\\\scratchpad\"; python -c \"import zipfile; zf = zipfile.ZipFile\\(r'$sp\\\\dl\\\\crawl-tiles.zip'\\); mons = [m for m in zf.namelist\\(\\) if '/dc-mon/' in m]; zf.extractall\\(r'$sp\\\\crawl', members=mons\\); print\\(len\\(mons\\), 'monster tiles extracted'\\)\")",
+      "PowerShell(python -c \"import numpy; print\\(numpy.__version__\\)\")",
+      "PowerShell(python \"C:\\\\Users\\\\zerin\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-zerin-Documents-GitHub-funzies-git-keyword-tactics-web-Keywords-keyword-tactics\\\\bc4090cd-aa46-4b80-aaf3-37e419542501\\\\scratchpad\\\\dumpmask.py\")",
+      "PowerShell(python \"C:\\\\Users\\\\zerin\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-zerin-Documents-GitHub-funzies-git-keyword-tactics-web-Keywords-keyword-tactics\\\\bc4090cd-aa46-4b80-aaf3-37e419542501\\\\scratchpad\\\\compose.py\")",
+      "PowerShell(python -c \"from PIL import Image; scr=r'C:\\\\Users\\\\zerin\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-zerin-Documents-GitHub-funzies-git-keyword-tactics-web-Keywords-keyword-tactics\\\\bc4090cd-aa46-4b80-aaf3-37e419542501\\\\scratchpad'; im=Image.open\\(scr+r'\\\\composite_v3.png'\\); im.crop\\(\\(0,220,1792,440\\)\\).save\\(scr+r'\\\\row_hiking.png'\\); im.crop\\(\\(0,1010,1792,1230\\)\\).save\\(scr+r'\\\\row_daywear.png'\\)\")",
+      "PowerShell(python \"C:\\\\Users\\\\zerin\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-zerin-Documents-GitHub-funzies-git-keyword-tactics-web-Keywords-keyword-tactics\\\\bc4090cd-aa46-4b80-aaf3-37e419542501\\\\scratchpad\\\\glasses.py\")"
     ]
   }
 }

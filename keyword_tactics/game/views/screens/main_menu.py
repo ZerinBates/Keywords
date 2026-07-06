@@ -34,7 +34,7 @@ def draw(screen, fonts, state):
     cx = SCREEN_WIDTH // 2
 
     # ---- Title block ----
-    title = fonts['title'].render("KEYWORD TACTICS", True, pal['primary'])
+    title = fonts['title'].render("DOUBLE EDGED", True, pal['primary'])
     screen.blit(title, title.get_rect(center=(cx, 96)))
 
     # Accent underline beneath the title.

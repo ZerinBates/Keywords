@@ -37,6 +37,7 @@
     ],
     "boss": {
       "name": "The Grand Overseer Golem",
+      "items": ["wrecking_ball", "construct_hammer", "piston_fist"],
       "keywords": ["construct", "metal", "elite", "boss"],
       "base_points": 500,
       "guaranteed_drop": "overseer_core"
@@ -68,6 +69,7 @@
     ],
     "boss": {
       "name": "Apex Predator Primal Beast",
+      "items": ["summon_book", "crocodile_jaw", "poison_fang"],
       "keywords": ["beast", "nature", "elite", "boss"],
       "base_points": 900,
       "guaranteed_drop": "apex_pelt"
@@ -99,6 +101,7 @@
     ],
     "boss": {
       "name": "The Usurper Warlord",
+      "items": ["king_crown", "spectral_blade", "void_blade"],
       "keywords": ["humanoid", "sword", "elite", "boss"],
       "base_points": 1000,
       "guaranteed_drop": "warlord_crown"
@@ -130,6 +133,7 @@
     ],
     "boss": {
       "name": "The Forgotten Bone Dragon",
+      "items": ["necromancy_staff", "blood_scythe", "lich_crown"],
       "keywords": ["undead", "dragon", "elite", "boss"],
       "base_points": 1000,
       "guaranteed_drop": "cursed_skull"
@@ -161,6 +165,7 @@
     ],
     "boss": {
       "name": "Bahamut, the Platinum Emperor",
+      "items": ["dragon_wing", "phoenix_crest", "phoenix_ash"],
       "keywords": ["dragon", "divine", "elite", "boss"],
       "base_points": 1200,
       "guaranteed_drop": "platinum_scale"
@@ -192,6 +197,7 @@
     ],
     "boss": {
       "name": "Omega Forge Core",
+      "items": ["piston_fist", "engineer_toolkit", "wrecking_ball"],
       "keywords": ["construct", "metal", "elite", "boss"],
       "base_points": 1000,
       "guaranteed_drop": "omega_gear"
@@ -223,6 +229,7 @@
     ],
     "boss": {
       "name": "Azazel, the Hellbringer",
+      "items": ["chaos_blade", "demon_contract", "demon_fang"],
       "keywords": ["demon", "fire", "elite", "boss"],
       "base_points": 1000,
       "guaranteed_drop": "hellbringer_horns"
@@ -254,6 +261,7 @@
     ],
     "boss": {
       "name": "Metatron, Voice of the Divine",
+      "items": ["angel_wing", "halo_ring", "angel_sword"],
       "keywords": ["angel", "light", "elite", "boss"],
       "base_points": 1000,
       "guaranteed_drop": "divine_halo"
@@ -285,6 +293,7 @@
     ],
     "boss": {
       "name": "The Archfey of the Changing Seasons",
+      "items": ["sylvan_cloak", "enchanted_bow", "glamour_mirror"],
       "keywords": ["fey", "nature", "elite", "boss"],
       "base_points": 1000,
       "guaranteed_drop": "archfey_heart"
@@ -316,6 +325,7 @@
     ],
     "boss": {
       "name": "The Primordial Ooze",
+      "items": ["slime_crown", "mutant_blob", "aberration_staff"],
       "keywords": ["slime", "acid", "elite", "boss"],
       "base_points": 1000,
       "guaranteed_drop": "primordial_nucleus"
@@ -347,6 +357,7 @@
     ],
     "boss": {
       "name": "The Apex Swarm-Mother",
+      "items": ["swarm_caller", "basilisk_eye", "spore_cloud"],
       "keywords": ["insect", "poison", "elite", "boss"],
       "base_points": 1000,
       "guaranteed_drop": "royal_jelly"
@@ -378,6 +389,7 @@
     ],
     "boss": {
       "name": "Yggdrasil's Corrupted Root",
+      "items": ["root_armor", "life_seed", "basilisk_eye"],
       "keywords": ["plant", "earth", "elite", "boss"],
       "base_points": 1000,
       "guaranteed_drop": "world_root"
@@ -409,6 +421,7 @@
     ],
     "boss": {
       "name": "Leviathan of the Depths",
+      "items": ["pearl_gem", "deep_crown", "crocodile_jaw"],
       "keywords": ["aquatic", "water", "elite", "boss"],
       "base_points": 1000,
       "guaranteed_drop": "abyssal_pearl"
@@ -440,6 +453,7 @@
     ],
     "boss": {
       "name": "The Zenith Stormbird",
+      "items": ["angel_wing", "seraph_wing", "dragon_wing"],
       "keywords": ["avian", "wind", "elite", "boss"],
       "base_points": 1000,
       "guaranteed_drop": "zenith_feather"
@@ -471,6 +485,7 @@
     ],
     "boss": {
       "name": "Quetzalcoatl, the Feathered Serpent",
+      "items": ["basilisk_eye", "turtle_shell", "storm_cloud"],
       "keywords": ["reptile", "wind", "elite", "boss"],
       "base_points": 1000,
       "guaranteed_drop": "feathered_scale"
@@ -502,6 +517,7 @@
     ],
     "boss": {
       "name": "The Amalgamated Soul-Mass",
+      "items": ["ghost_essence", "spectral_blade", "soul_cage"],
       "keywords": ["spirit", "void", "elite", "boss"],
       "base_points": 1000,
       "guaranteed_drop": "soul_gem"
@@ -533,6 +549,7 @@
     ],
     "boss": {
       "name": "Cthulhu, the Dreamer in the Deep",
+      "items": ["mind_flay", "eldritch_book", "aberration_staff"],
       "keywords": ["aberration", "psionic", "elite", "boss"],
       "base_points": 1200,
       "guaranteed_drop": "eldritch_idol"
@@ -564,6 +581,7 @@
     ],
     "boss": {
       "name": "The Primordial Convergence",
+      "items": ["storm_cloud", "elemental_ring", "elemental_sword"],
       "keywords": ["elemental", "magic", "elite", "boss"],
       "base_points": 1000,
       "guaranteed_drop": "convergence_core"

@@ -44,6 +44,9 @@ class Deck:
         self.boss_monster: Optional[Monster] = None
         self.boss_guaranteed_drop: Optional[str] = None
         self.boss_defeated: bool = False
+        # Item ids the boss has equipped. They add points/keywords to its
+        # total; heroes can destroy them individually during the boss fight.
+        self.boss_item_ids: List[str] = []
         boss_data = data.get('boss')
         if boss_data:
             self.boss_monster = Monster(
@@ -52,6 +55,7 @@ class Deck:
                 boss_data['base_points'],
             )
             self.boss_guaranteed_drop = boss_data.get('guaranteed_drop')
+            self.boss_item_ids = list(boss_data.get('items', []))
 
         # Current round's pool (monsters pulled for this exploration)
         self.round_monsters: List[Monster] = []
