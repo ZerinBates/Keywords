@@ -57,6 +57,60 @@ def collapse_keywords(kw_ids):
     return [(k, counts[k]) for k in order]
 
 
+# Keyword chip metrics (single source so flow + measure stay in sync)
+def _chip_metrics(fonts):
+    chip_h = fonts['tiny'].get_height() + 6
+    return chip_h, chip_h + 4   # (chip height, line step)
+
+
+def _chip_label(state, kw_id, count):
+    kw = state.keyword_registry.get(kw_id)
+    label = kw.name if kw else str(kw_id)
+    if count > 1:
+        label = f"{count}x {label}"
+    return label, (kw.color if kw else COLORS['muted'])
+
+
+def kw_chip_flow_height(fonts, state, kw_ids, max_w) -> int:
+    """Height the full wrapped chip flow will occupy (0 if no keywords)."""
+    if not kw_ids:
+        return 0
+    chip_h, step = _chip_metrics(fonts)
+    cx, lines = 0, 1
+    for kw_id, count in collapse_keywords(kw_ids):
+        label, _ = _chip_label(state, kw_id, count)
+        w = fonts['tiny'].render(label, True, COLORS['bg']).get_width() + 12
+        if cx + w > max_w and cx > 0:
+            cx = 0
+            lines += 1
+        cx += w + 6
+    return (lines - 1) * step + chip_h
+
+
+def draw_kw_chip_flow(screen, fonts, state, kw_ids, x, y, max_w) -> int:
+    """Every keyword as a coloured chip ('2x beast' for stacks), wrapping to
+    as many lines as needed — nothing is truncated.
+
+    Returns the y just below the last line.
+    """
+    if not kw_ids:
+        return y
+    chip_h, step = _chip_metrics(fonts)
+    cx, cy = x, y
+    for kw_id, count in collapse_keywords(kw_ids):
+        label, color = _chip_label(state, kw_id, count)
+        ts = fonts['tiny'].render(label, True, COLORS['bg'])
+        w = ts.get_width() + 12
+        if cx + w > x + max_w and cx > x:
+            cx = x
+            cy += step
+        chip = pygame.Rect(cx, cy, w, chip_h)
+        pygame.draw.rect(screen, color, chip, border_radius=2)
+        screen.blit(ts, (chip.x + 6, chip.y + (chip_h - ts.get_height()) // 2))
+        cx += w + 6
+    return cy + chip_h + 4
+
+
 def draw_text_box(surface, rect: pygame.Rect, *, active: bool = False,
                   radius: int = R_S) -> pygame.Rect:
     """Draw an inset text/search box and return its padded content rect."""
@@ -473,7 +527,8 @@ def draw_kw_filter_dropdown(screen, fonts, state, anchor_rect: pygame.Rect,
     def _name(k):
         kw = state.keyword_registry.get(k)
         return kw.name if kw else k
-    kws = sorted(counts, key=lambda k: _name(k).lower())
+    # Most-repeated keywords first (ties break alphabetically).
+    kws = sorted(counts, key=lambda k: (-counts[k], _name(k).lower()))
 
     pad = 8
     x0, y0 = anchor_rect.x, anchor_rect.bottom + 4
@@ -536,6 +591,60 @@ def draw_kw_filter_dropdown(screen, fonts, state, anchor_rect: pygame.Rect,
     return {'panel_rect': panel, 'chips': chips_out, 'clear_rect': clear_rect}
 
 
+def draw_roster_card(screen, fonts, state, card: pygame.Rect, adv,
+                     is_sel: bool, paper_doll_module):
+    """One roster hero card: portrait, name, total power, keyword chips —
+    the same info the delve party strip shows.
+
+    Returns the [Unequip] button rect, or None if the hero carries nothing.
+    """
+    fill = (theme.mix(COLORS['bg'], COLORS['success'], 0.12)
+            if is_sel else COLORS['panel_dark'])
+    pygame.draw.rect(screen, fill, card, border_radius=3)
+    pygame.draw.rect(screen, COLORS['success'] if is_sel else COLORS['border'],
+                     card, 2, border_radius=3)
+
+    paper_doll_module.draw_adventurer_thumbnail(screen, adv,
+                                                card.x + 8, card.y + 8, 56)
+    name_c = COLORS['danger'] if adv.is_dead else COLORS['text']
+    screen.blit(fonts['medium'].render(adv.name, True, name_c),
+                (card.x + 74, card.y + 6))
+
+    if adv.is_dead:
+        screen.blit(fonts['small'].render("DEAD", True, COLORS['danger']),
+                    (card.x + 74, card.y + 36))
+    else:
+        power = adv.get_base_points() * adv.get_multiplier()
+        lbl = fonts['small'].render("Power: ", True, COLORS['text'])
+        screen.blit(lbl, (card.x + 74, card.y + 36))
+        val = fonts['small'].render(
+            str(power), True,
+            COLORS['danger'] if power <= 0 else COLORS['success'])
+        screen.blit(val, (card.x + 74 + lbl.get_width(), card.y + 36))
+        slots = fonts['tiny'].render(
+            f"{len(adv.equipped_items)}/{adv.slots} slots", True,
+            COLORS['warning'] if len(adv.equipped_items) >= adv.slots
+            else COLORS['text_dim'])
+        screen.blit(slots, (card.x + 84 + lbl.get_width() + val.get_width(),
+                            card.y + 39))
+
+    # Keyword chips wrap freely; clip to the card so long lists stay tidy.
+    prev_clip = screen.get_clip()
+    screen.set_clip(card.inflate(-4, -4))
+    draw_kw_chip_flow(screen, fonts, state, adv.get_all_keywords(),
+                      card.x + 12, card.y + 62, card.w - 24)
+    screen.set_clip(prev_clip)
+
+    ub = None
+    if adv.equipped_items:
+        ub = pygame.Rect(card.right - 76, card.y + 6, 68, 22)
+        pygame.draw.rect(screen, COLORS['panel_dark'], ub, border_radius=2)
+        pygame.draw.rect(screen, COLORS['danger'], ub, 1, border_radius=2)
+        us = fonts['tiny'].render("Unequip", True, COLORS['text'])
+        screen.blit(us, us.get_rect(center=ub.center))
+    return ub
+
+
 def draw_hero_loadout_column(screen, fonts, state, rect: pygame.Rect, adv,
                              scroll: int, paper_doll_module) -> List[Tuple[object, pygame.Rect]]:
     """Merged HERO LOADOUT column: big sprite, POWER/SLOTS, equipped rows.
@@ -562,39 +671,50 @@ def draw_hero_loadout_column(screen, fonts, state, rect: pygame.Rect, adv,
         power //= 2
         role = "  (DUNCE /2)"
     p1 = fonts['large'].render(f"POWER: {power}{role}", True, COLORS['success'])
-    screen.blit(p1, p1.get_rect(centerx=rect.centerx, y=rect.y + 170))
+    screen.blit(p1, p1.get_rect(centerx=rect.centerx, y=rect.y + 164))
     p2 = fonts['large'].render(
         f"SLOTS: {len(adv.equipped_items)}/{adv.slots}", True, COLORS['success'])
-    screen.blit(p2, p2.get_rect(centerx=rect.centerx, y=rect.y + 212))
+    screen.blit(p2, p2.get_rect(centerx=rect.centerx, y=rect.y + 204))
 
-    # Equipped items — click a row to unequip; wheel scrolls.
-    row_h = 56
-    row_y = rect.y + 262
+    # The hero's own keywords, highlighted like everywhere else.
+    kws = adv.get_all_keywords()
+    flow_w = rect.w - 40
+    flow_h = kw_chip_flow_height(fonts, state, kws, flow_w)
+    kx = rect.x + 20
+    ky = rect.y + 246
+    draw_kw_chip_flow(screen, fonts, state, kws, kx, ky, flow_w)
+
+    div_y = ky + flow_h + 8
+    pygame.draw.line(screen, COLORS['divider'],
+                     (rect.x + 16, div_y), (rect.right - 16, div_y), 1)
+
+    # Equipped items — click a row to unequip; wheel scrolls. Rows grow to
+    # fit however many keyword-chip lines an item needs.
+    row_y = div_y + 8
     start = max(0, min(scroll, max(0, len(adv.equipped_items) - 1)))
-    max_rows = (rect.bottom - 36 - row_y) // row_h
-    for item in adv.equipped_items[start:start + max_rows]:
-        r = pygame.Rect(rect.x + 16, row_y, rect.w - 32, row_h - 6)
-        paper_doll_module.draw_item_thumbnail(screen, item, r.x + 2, r.y + 6, 36)
+    shown = 0
+    for item in adv.equipped_items[start:]:
+        item_kws = getattr(item, 'keywords', [])
+        chips_h = kw_chip_flow_height(fonts, state, item_kws, rect.w - 92)
+        r_h = 28 + (chips_h + 6 if chips_h else 0)
+        if row_y + r_h > rect.bottom - 32:
+            break
+        r = pygame.Rect(rect.x + 16, row_y, rect.w - 32, r_h)
+        pygame.draw.rect(screen, COLORS['panel_dark'], r, border_radius=3)
+        pygame.draw.rect(screen, COLORS['border'], r, 1, border_radius=3)
+        paper_doll_module.draw_item_thumbnail(screen, item, r.x + 4, r.y + 4, 36)
         nm = item.name if len(item.name) <= 24 else item.name[:23] + ".."
         ns = fonts['small'].render(nm, True, COLORS['text'])
         screen.blit(ns, (r.x + 48, r.y + 4))
         screen.blit(fonts['small'].render(f"+{item.points}", True, COLORS['gold']),
                     (r.x + 54 + ns.get_width(), r.y + 4))
-        kx = r.x + 48
-        for kw_id, count in collapse_keywords(getattr(item, 'keywords', []))[:3]:
-            kw = state.keyword_registry.get(kw_id)
-            label = kw.name if kw else kw_id
-            if count > 1:
-                label = f"{count}x {label}"
-            ks = fonts['tiny'].render(label, True,
-                                      kw.color if kw else COLORS['text_dim'])
-            if kx + ks.get_width() > r.right - 6:
-                break
-            screen.blit(ks, (kx, r.y + 28))
-            kx += ks.get_width() + 10
+        if item_kws:
+            draw_kw_chip_flow(screen, fonts, state, item_kws,
+                              r.x + 48, r.y + 28, rect.w - 92)
         rows.append((item, r))
-        row_y += row_h
-    hidden = len(adv.equipped_items) - start - max_rows
+        row_y += r_h + 6
+        shown += 1
+    hidden = len(adv.equipped_items) - start - shown
     if hidden > 0:
         more = fonts['tiny'].render(f"+{hidden} more (scroll)", True,
                                     COLORS['text_dim'])

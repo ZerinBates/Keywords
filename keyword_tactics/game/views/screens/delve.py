@@ -44,7 +44,7 @@ _collapse_keywords = widgets.collapse_keywords
 INV_LEFT_RECT  = pygame.Rect(20, 44, 300, 660)
 INV_MID_RECT   = pygame.Rect(340, 44, 420, 660)
 INV_RIGHT_RECT = pygame.Rect(780, 44, 480, 660)
-INV_CARD_H     = 84
+INV_CARD_H     = 132
 INV_CARD_GAP   = 10
 
 
@@ -197,43 +197,27 @@ def _draw_monster_card(screen, fonts, state, sprite_manager, x, y, sq, index):
     # Name + type tags
     name = monster.name if len(monster.name) <= 24 else monster.name[:23] + "..."
     ns = fonts['medium'].render(name, True, COLORS['text'])
-    screen.blit(ns, ns.get_rect(centerx=rect.centerx, y=y + 230))
+    screen.blit(ns, ns.get_rect(centerx=rect.centerx, y=y + 228))
     tt = fonts['tiny'].render("Type Tags:", True, COLORS['text_dim'])
-    screen.blit(tt, tt.get_rect(centerx=rect.centerx, y=y + 268))
+    screen.blit(tt, tt.get_rect(centerx=rect.centerx, y=y + 256))
 
-    # Keyword names in their own colours ("2x beast" for duplicates).
-    # Rendered at 'small'; drops to 'tiny' if the line would overflow.
-    tags = []
-    for kw_id, count in _collapse_keywords(monster.keywords)[:4]:
-        kw = state.keyword_registry.get(kw_id)
-        label = kw.name if kw else kw_id
-        if count > 1:
-            label = f"{count}x {label}"
-        tags.append((label, kw.color if kw else COLORS['text_dim']))
-
-    for font_key in ('small', 'tiny'):
-        sep = fonts[font_key].render(", ", True, COLORS['text_dim'])
-        pieces = [fonts[font_key].render(label, True, color)
-                  for label, color in tags]
-        total_w = (sum(p.get_width() for p in pieces)
-                   + sep.get_width() * max(0, len(pieces) - 1))
-        if total_w <= DELVE_CARD_W - 20 or font_key == 'tiny':
-            break
-    tx = rect.centerx - total_w // 2
-    for j, p in enumerate(pieces):
-        screen.blit(p, (tx, y + 290))
-        tx += p.get_width()
-        if j < len(pieces) - 1:
-            screen.blit(sep, (tx, y + 290))
-            tx += sep.get_width()
+    # Every keyword as a chip; wraps onto more lines instead of truncating
+    # (clipped to the card if a monster is truly keyword-mad).
+    prev_clip = screen.get_clip()
+    screen.set_clip(rect.inflate(-4, -4))
+    widgets.draw_kw_chip_flow(screen, fonts, state, monster.keywords,
+                              x + 14, y + 274, DELVE_CARD_W - 28)
+    screen.set_clip(prev_clip)
 
 
 # Cache for party-strip background images ({name: Surface or None}).
 _BG_CACHE = {}
 
 
-def _party_background(state):
-    """Per-dungeon strip background: assets/backgrounds/{deck}.png, else _default."""
+def _party_background(state, size=None):
+    """Per-dungeon strip background: assets/backgrounds/{deck}.png, else
+    _default. `size` lets other screens (boss fight) reuse the same ground."""
+    size = tuple(size) if size else PARTY_STRIP.size
     deck = state.current_deck
     key = ''
     if deck is not None:
@@ -241,18 +225,19 @@ def _party_background(state):
     for name in (key, '_default'):
         if not name:
             continue
-        if name not in _BG_CACHE:
+        cache_key = (name, size)
+        if cache_key not in _BG_CACHE:
             path = os.path.join('assets', 'backgrounds', f'{name}.png')
             surf = None
             if os.path.exists(path):
                 try:
                     surf = pygame.image.load(path).convert_alpha()
-                    surf = pygame.transform.scale(surf, PARTY_STRIP.size)
+                    surf = pygame.transform.scale(surf, size)
                 except pygame.error:
                     surf = None
-            _BG_CACHE[name] = surf
-        if _BG_CACHE[name] is not None:
-            return _BG_CACHE[name]
+            _BG_CACHE[cache_key] = surf
+        if _BG_CACHE[cache_key] is not None:
+            return _BG_CACHE[cache_key]
     return None
 
 
@@ -265,9 +250,8 @@ def _draw_party_hero(screen, fonts, state, slot, adv, is_dragging):
     info_x = slot.x + 12
     info_y = slot.y + 14
 
-    collapsed = _collapse_keywords(adv.get_all_keywords())
-    chips = collapsed[:4]
-    extra = len(collapsed) - len(chips)
+    kws = adv.get_all_keywords()
+    flow_w = 190
 
     name_c = COLORS['danger'] if adv.is_dead else COLORS['text']
     name_surf = fonts['medium'].render(f"{adv.name}:", True, name_c)
@@ -284,14 +268,12 @@ def _draw_party_hero(screen, fonts, state, slot, adv, is_dragging):
     pc = COLORS['danger'] if power <= 0 else COLORS['success']
     val = fonts['small'].render(f"{power}{role}", True, pc)
 
-    # Chip geometry derives from the font so the tabs never overlap.
-    chip_h = fonts['tiny'].get_height() + 8
-    chip_step = chip_h + 6
-
-    # Translucent backing sized to the content.
+    # Translucent backing sized to the content (chips wrap, never truncate).
+    flow_h = widgets.kw_chip_flow_height(fonts, state, kws, flow_w) or 18
     backing_w = min(230, max(150, name_surf.get_width() + 14,
-                             lbl.get_width() + val.get_width() + 14))
-    backing_h = 92 + len(chips) * chip_step + (20 if extra else 0)
+                             lbl.get_width() + val.get_width() + 14,
+                             flow_w + 14))
+    backing_h = 92 + flow_h
     backing = pygame.Surface((backing_w, backing_h), pygame.SRCALPHA)
     backing.fill((10, 6, 14, 170))
     screen.blit(backing, (info_x - 6, info_y - 6))
@@ -302,24 +284,12 @@ def _draw_party_hero(screen, fonts, state, slot, adv, is_dragging):
     screen.blit(fonts['small'].render("Keywords:", True, COLORS['text']),
                 (info_x, info_y + 60))
 
-    cy = info_y + 86
-    if not chips:
+    if kws:
+        widgets.draw_kw_chip_flow(screen, fonts, state, kws,
+                                  info_x + 6, info_y + 84, flow_w)
+    else:
         screen.blit(fonts['small'].render("none", True, COLORS['text_dim']),
-                    (info_x + 8, cy))
-    for kw_id, count in chips:
-        kw = state.keyword_registry.get(kw_id)
-        label = (kw.name if kw else str(kw_id))[:12]
-        if count > 1:
-            label = f"{count}x {label}"
-        color = kw.color if kw else COLORS['muted']
-        ts = fonts['tiny'].render(label, True, COLORS['bg'])
-        chip = pygame.Rect(info_x + 8, cy, ts.get_width() + 14, chip_h)
-        pygame.draw.rect(screen, color, chip, border_radius=2)
-        screen.blit(ts, (chip.x + 7, chip.y + (chip_h - ts.get_height()) // 2))
-        cy += chip_step
-    if extra:
-        screen.blit(fonts['tiny'].render(f"+{extra} more", True,
-                                         COLORS['text_dim']), (info_x + 8, cy))
+                    (info_x + 8, info_y + 84))
 
     # The hero, big, standing on the path (silhouette fallback if no art).
     paper_doll.draw_adventurer_thumbnail(screen, adv, sx, sy, sprite_size)
@@ -619,36 +589,10 @@ def draw_inventory_panel(screen, fonts, state):
         cy = INV_LEFT_RECT.y + 10 + i * (INV_CARD_H + INV_CARD_GAP)
         card = pygame.Rect(INV_LEFT_RECT.x + 8, cy,
                            INV_LEFT_RECT.w - 16, INV_CARD_H)
-        is_sel = (i == state.delve_selected_adv_idx)
-        fill = (theme.mix(COLORS['bg'], COLORS['success'], 0.12)
-                if is_sel else COLORS['panel_dark'])
-        pygame.draw.rect(screen, fill, card, border_radius=3)
-        pygame.draw.rect(screen,
-                         COLORS['success'] if is_sel else COLORS['border'],
-                         card, 2, border_radius=3)
-
-        paper_doll.draw_adventurer_thumbnail(screen, adv,
-                                             card.x + 8, card.y + 10, 64)
-        name_c = COLORS['danger'] if adv.is_dead else COLORS['text']
-        screen.blit(fonts['medium'].render(adv.name, True, name_c),
-                    (card.x + 84, card.y + 12))
-        if adv.is_dead:
-            sub, sub_c = "DEAD", COLORS['danger']
-        else:
-            sub = f"Slots: {len(adv.equipped_items)}/{adv.slots}"
-            sub_c = (COLORS['warning']
-                     if len(adv.equipped_items) >= adv.slots
-                     else COLORS['text_dim'])
-        screen.blit(fonts['small'].render(sub, True, sub_c),
-                    (card.x + 84, card.y + 44))
-
-        # Per-hero [Unequip] button (only when they carry something)
-        if adv.equipped_items:
-            ub = pygame.Rect(card.right - 76, card.bottom - 28, 68, 22)
-            pygame.draw.rect(screen, COLORS['panel_dark'], ub, border_radius=2)
-            pygame.draw.rect(screen, COLORS['danger'], ub, 1, border_radius=2)
-            us = fonts['tiny'].render("Unequip", True, COLORS['text'])
-            screen.blit(us, us.get_rect(center=ub.center))
+        ub = widgets.draw_roster_card(
+            screen, fonts, state, card, adv,
+            i == state.delve_selected_adv_idx, paper_doll)
+        if ub is not None:
             ui['unequip_btns'].append((i, ub))
 
     # [Unequip All] pinned to the bottom of the roster column

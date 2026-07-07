@@ -22,7 +22,7 @@ from .. import widgets
 PREP_LEFT_RECT  = pygame.Rect(20, 68, 300, 676)
 PREP_MID_RECT   = pygame.Rect(340, 68, 420, 676)
 PREP_RIGHT_RECT = pygame.Rect(780, 68, 480, 676)
-PREP_CARD_H     = 84
+PREP_CARD_H     = 132
 PREP_CARD_GAP   = 10
 # Space reserved at the bottom of the roster column for [Unequip All].
 PREP_ROSTER_FOOTER = 48
@@ -85,36 +85,11 @@ def draw(screen, fonts, state):
         cy = PREP_LEFT_RECT.y + 14 + row * (PREP_CARD_H + PREP_CARD_GAP)
         card = pygame.Rect(PREP_LEFT_RECT.x + 8, cy,
                            PREP_LEFT_RECT.w - 16, PREP_CARD_H)
-        is_sel = (roster_idx == state.selected_party_index)
-        fill = (theme.mix(COLORS['bg'], COLORS['success'], 0.12)
-                if is_sel else COLORS['panel_dark'])
-        pygame.draw.rect(screen, fill, card, border_radius=3)
-        pygame.draw.rect(screen,
-                         COLORS['success'] if is_sel else COLORS['border'],
-                         card, 2, border_radius=3)
-
-        paper_doll.draw_adventurer_thumbnail(screen, adv,
-                                             card.x + 8, card.y + 10, 64)
-        name_c = COLORS['danger'] if adv.is_dead else COLORS['text']
-        screen.blit(fonts['medium'].render(adv.name, True, name_c),
-                    (card.x + 84, card.y + 12))
-        if adv.is_dead:
-            sub, sub_c = "DEAD", COLORS['danger']
-        else:
-            sub = f"Slots: {len(adv.equipped_items)}/{adv.slots}"
-            sub_c = (COLORS['warning']
-                     if len(adv.equipped_items) >= adv.slots
-                     else COLORS['text_dim'])
-        screen.blit(fonts['small'].render(sub, True, sub_c),
-                    (card.x + 84, card.y + 44))
+        ub = widgets.draw_roster_card(
+            screen, fonts, state, card, adv,
+            roster_idx == state.selected_party_index, paper_doll)
         ui['roster_cards'].append((roster_idx, card))
-
-        if adv.equipped_items:
-            ub = pygame.Rect(card.right - 76, card.bottom - 28, 68, 22)
-            pygame.draw.rect(screen, COLORS['panel_dark'], ub, border_radius=2)
-            pygame.draw.rect(screen, COLORS['danger'], ub, 1, border_radius=2)
-            us = fonts['tiny'].render("Unequip", True, COLORS['text'])
-            screen.blit(us, us.get_rect(center=ub.center))
+        if ub is not None:
             ui['unequip_btns'].append((roster_idx, ub))
 
     if end < len(state.roster):

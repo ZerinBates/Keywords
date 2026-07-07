@@ -16,6 +16,7 @@ from ...config import COLORS, SCREEN_WIDTH
 from ...controllers import combat
 from .. import paper_doll
 from .. import widgets
+from . import delve as delve_screen
 
 _pixel_box = widgets.draw_pixel_box
 
@@ -45,26 +46,18 @@ def _draw_boss_panel(screen, fonts, state, sprite_manager, boss, selected):
         was = fonts['small'].render(f"(was {total})", True, COLORS['text_dim'])
         screen.blit(was, (panel.x + 160 + sc.get_width(), panel.y + 96))
 
-    # Current keywords (collapsed, coloured)
-    kx = panel.x + 150
-    ky = panel.y + 138
-    for kw_id, count in widgets.collapse_keywords(boss.get('keywords', []))[:6]:
-        kw = state.keyword_registry.get(kw_id)
-        label = kw.name if kw else kw_id
-        if count > 1:
-            label = f"{count}x {label}"
-        ks = fonts['small'].render(label, True,
-                                   kw.color if kw else COLORS['text_dim'])
-        if kx + ks.get_width() > panel.right - 12:
-            break
-        screen.blit(ks, (kx, ky))
-        kx += ks.get_width() + 12
+    # Current keywords — chips that wrap, never truncated (clipped to panel).
+    prev_clip = screen.get_clip()
+    screen.set_clip(panel.inflate(-4, -4))
+    widgets.draw_kw_chip_flow(screen, fonts, state, boss.get('keywords', []),
+                              panel.x + 150, panel.y + 126, panel.w - 170)
+    screen.set_clip(prev_clip)
 
     if selected:
         hint = fonts['small'].render("CLICK TO CHALLENGE THE BOSS!", True,
                                      COLORS['gold'])
         screen.blit(hint, hint.get_rect(centerx=panel.centerx,
-                                        y=panel.bottom - 26))
+                                        y=panel.bottom - 24))
     return panel
 
 
@@ -101,18 +94,12 @@ def _draw_item_cards(screen, fonts, state, boss, ui, selected):
                                           COLORS['gold']),
                     (rect.x + 62, rect.y + 40))
 
-        kx = rect.x + 12
-        for kw_id, count in widgets.collapse_keywords(item.keywords)[:3]:
-            kw = state.keyword_registry.get(kw_id)
-            lab = kw.name if kw else kw_id
-            if count > 1:
-                lab = f"{count}x {lab}"
-            ks = fonts['small'].render(lab, True,
-                                       kw.color if kw else COLORS['text_dim'])
-            if kx + ks.get_width() > rect.right - 10:
-                break
-            screen.blit(ks, (kx, rect.y + 68))
-            kx += ks.get_width() + 10
+        # All keywords as chips, wrapping (clipped above the DEF line).
+        prev_clip = screen.get_clip()
+        screen.set_clip(pygame.Rect(rect.x + 6, rect.y + 62, rect.w - 12, 48))
+        widgets.draw_kw_chip_flow(screen, fonts, state, item.keywords,
+                                  rect.x + 12, rect.y + 64, rect.w - 24)
+        screen.set_clip(prev_clip)
 
         defense = combat.boss_item_defense(item, boss.get('keywords', []))
         ds = fonts['medium'].render(f"DEF {defense}", True, COLORS['danger'])
@@ -199,53 +186,73 @@ def draw_choice(screen, fonts, state, sprite_manager,
     ps = fonts['medium'].render(prompt, True, pcol)
     screen.blit(ps, ps.get_rect(centerx=SCREEN_WIDTH // 2, y=470))
 
-    # ---- Hero cards ----
+    # ---- Hero strip: same scenic ground as the delve party ----
+    strip = pygame.Rect(20, 498, 1240, 210)
+    bg = delve_screen._party_background(state, strip.size)
+    if bg:
+        screen.blit(bg, strip.topleft)
+    else:
+        pygame.draw.rect(screen, COLORS['panel_dark'], strip, border_radius=3)
+    pygame.draw.rect(screen, COLORS['border'], strip, 2, border_radius=3)
+
     available = state.boss_available_heroes()
     boss_score = boss.get('score', 0)
-    x = 30
-    for adv in available:
+    slot_w = 310
+    for j, adv in enumerate(available[:4]):
         party_idx = state.party.index(adv)
-        card_rect = pygame.Rect(x, 505, 280, 200)
+        slot = pygame.Rect(strip.x + j * slot_w, strip.y, slot_w, strip.h)
         is_sel = (party_idx == sel)
-        fill = (theme.mix(COLORS['bg'], COLORS['gold'], 0.10)
-                if is_sel else None)
-        _pixel_box(screen, card_rect,
-                   border=COLORS['gold'] if is_sel else COLORS['accent'],
-                   fill=fill)
 
-        paper_doll.draw_adventurer_thumbnail(screen, adv, x + 108, 516, 64)
-        screen.blit(fonts['small'].render(adv.name, True, COLORS['text']),
-                    (x + 14, 556))
+        info_x = slot.x + 12
+        info_y = slot.y + 12
+        kws = adv.get_all_keywords()
+        flow_w = 178
+        flow_h = widgets.kw_chip_flow_height(fonts, state, kws, flow_w) or 16
+
+        backing = pygame.Surface((flow_w + 14, 92 + flow_h), pygame.SRCALPHA)
+        backing.fill((10, 6, 14, 170))
+        screen.blit(backing, (info_x - 6, info_y - 6))
+
+        screen.blit(fonts['medium'].render(f"{adv.name}:", True, COLORS['text']),
+                    (info_x, info_y))
 
         ap = combat.adventurer_boss_power(
             adv, boss.get('keywords', []), boss['bonus'],
             state.keyword_registry,
         )
-        screen.blit(fonts['medium'].render(f"Power: {ap['power']}", True,
-                                           COLORS['success']),
-                    (x + 14, 584))
+        can_slay = ap['power'] >= boss_score
+        lbl = fonts['small'].render("Power: ", True, COLORS['text'])
+        screen.blit(lbl, (info_x, info_y + 32))
+        screen.blit(fonts['small'].render(
+            str(ap['power']), True,
+            COLORS['gold'] if can_slay else COLORS['success']),
+            (info_x + lbl.get_width(), info_y + 32))
+        verdict = ("Can slay the boss!" if can_slay
+                   else f"Boss score: {boss_score}")
+        screen.blit(fonts['tiny'].render(
+            verdict, True, COLORS['gold'] if can_slay else COLORS['text_dim']),
+            (info_x, info_y + 56))
 
-        if ap['power'] >= boss_score:
-            verdict = f"Can slay the boss ({boss_score})!"
-            vcol = COLORS['gold']
+        if kws:
+            widgets.draw_kw_chip_flow(screen, fonts, state, kws,
+                                      info_x, info_y + 78, flow_w)
         else:
-            verdict = f"Below boss score ({boss_score})"
-            vcol = COLORS['danger']
-        screen.blit(fonts['small'].render(verdict, True, vcol), (x + 14, 620))
+            screen.blit(fonts['tiny'].render("no keywords", True,
+                                             COLORS['text_dim']),
+                        (info_x, info_y + 78))
 
-        detail = f"base {ap['base']} x{ap['mult']} / weak {ap['weakness']}"
-        screen.blit(fonts['tiny'].render(detail, True, COLORS['text_dim']),
-                    (x + 14, 648))
+        # The hero, standing on the path (like the delve party strip).
+        paper_doll.draw_adventurer_thumbnail(
+            screen, adv, slot.x + 180, slot.bottom - 146, 120)
+
         if is_sel:
+            pygame.draw.rect(screen, COLORS['gold'], slot.inflate(-6, -6), 2,
+                             border_radius=3)
             tag = fonts['small'].render("SELECTED", True, COLORS['gold'])
-            screen.blit(tag, (x + 14, 674))
-        else:
-            screen.blit(fonts['tiny'].render(
-                f"Items: {len(adv.equipped_items)}/{adv.slots}", True,
-                COLORS['text_dim']), (x + 14, 676))
+            screen.blit(tag, tag.get_rect(centerx=slot.x + 240,
+                                          y=slot.bottom - 24))
 
-        ui['hero_cards'].append((party_idx, card_rect))
-        x += 300
+        ui['hero_cards'].append((party_idx, slot))
 
 
 def draw_result(screen, fonts, state):
