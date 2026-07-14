@@ -208,7 +208,7 @@ class Game:
 
         elif phase == GamePhase.DECK_SELECT:
             # Fixed top-left Back button — always visible regardless of scroll.
-            self.buttons.append(Button(20, 20, 160, 40, "Back to Shop"))
+            self.buttons.append(Button(20, 20, 180, 40, "Back to Management"))
 
             from ..views.screens.deck_select import (
                 DECK_LIST_RECT, DECK_ROW_H, deck_visible_count,
@@ -225,9 +225,10 @@ class Game:
                 )
 
                 if is_completed:
-                    btn = Button(SCREEN_WIDTH // 2 + 180, y + 25, 120, 35, "Cleared")
-                    btn.enabled = False
-                    btn.color = (40, 50, 40)
+                    # Cleared dungeons can be replayed at doubled strength.
+                    btn = Button(SCREEN_WIDTH // 2 + 180, y + 25, 120, 35,
+                                 "Replay", color=COLORS['danger'])
+                    btn.deck_id = deck_id  # type: ignore[attr-defined]
                 else:
                     btn = Button(SCREEN_WIDTH // 2 + 180, y + 25, 120, 35, "Enter")
                     btn.deck_id = deck_id  # type: ignore[attr-defined]
@@ -283,7 +284,13 @@ class Game:
             # Heroes attack one at a time — click a hero card to send them.
             # 'Skip Boss' is only offered before the first hero commits.
             bs = self.state.boss_square
-            if bs and not bs.get('fought'):
+            inv_open = self.state.delve_inv_open
+            items_label = "Back" if inv_open else "Items"
+            self.buttons.append(Button(
+                SCREEN_WIDTH - 170, 730, 150, 45, items_label,
+                color=COLORS['danger'],
+            ))
+            if bs and not bs.get('fought') and not inv_open:
                 self.buttons.append(Button(
                     SCREEN_WIDTH // 2 - 90, 730, 180, 45, "Skip Boss",
                 ))

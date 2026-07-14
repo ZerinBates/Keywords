@@ -81,6 +81,9 @@ class Renderer:
                 self.game.input_handler.dragging,
                 self.game.input_handler.drag_adv_index,
             )
+            # Last chance to gear up before committing to the boss.
+            if self.state.delve_inv_open:
+                delve_screen.draw_inventory_panel(screen, self.fonts, self.state)
         elif phase == GamePhase.BOSS_RESULT:
             boss_screen.draw_result(screen, self.fonts, self.state)
         elif phase == GamePhase.ROUND_END:

@@ -85,10 +85,23 @@ def _draw_deck_row(screen, fonts, state, deck_id, y):
     else:
         name_text = deck_data['name']
         name_color = COLORS['accent']
-    screen.blit(
-        fonts['medium'].render(name_text, True, name_color),
-        (SCREEN_WIDTH // 2 - 340, y),
-    )
+    name_surf = fonts['medium'].render(name_text, True, name_color)
+    screen.blit(name_surf, (SCREEN_WIDTH // 2 - 340, y))
+
+    # One red skull per stat-doubling (replays).
+    replay_level = getattr(active_deck, 'replay_level', 0) if active_deck else 0
+    sx = SCREEN_WIDTH // 2 - 330 + name_surf.get_width()
+    for _ in range(min(replay_level, 8)):
+        cy = y + 10
+        pygame.draw.circle(screen, COLORS['danger'], (sx + 7, cy), 7)
+        pygame.draw.rect(screen, COLORS['danger'], (sx + 3, cy + 5, 9, 4))
+        pygame.draw.circle(screen, COLORS['bg'], (sx + 4, cy - 1), 2)
+        pygame.draw.circle(screen, COLORS['bg'], (sx + 10, cy - 1), 2)
+        sx += 20
+    if replay_level > 0:
+        mult_s = fonts['small'].render(f"x{2 ** replay_level} stats", True,
+                                       COLORS['danger'])
+        screen.blit(mult_s, (sx + 6, y + 2))
 
     desc = deck_data.get('description', '')
     screen.blit(

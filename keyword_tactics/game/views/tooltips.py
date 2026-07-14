@@ -296,6 +296,9 @@ def draw_combat_tooltip(screen, fonts, state, hover_pos: Tuple[int, int]):
 
                 info = get_weakness_info_for_adventurer(state, adv)
                 lines = [(f"--- {adv.name} ---", COLORS['accent'])]
+                rb = adv.get_base_points()
+                km = adv.get_multiplier()
+                lines.append((f"Power: {rb} x {km} = {rb * km}", COLORS['success']))
                 if adv.ability_name:
                     lines.append((f"{adv.ability_name}: {adv.ability_desc}", COLORS['text_dim']))
 
@@ -494,6 +497,11 @@ def build_adventurer_tooltip_lines(state, adv) -> List[Tuple[str, tuple]]:
     """Lines for a class/ability tooltip — name, ability, slots, role, keywords."""
     lines: List[Tuple[str, tuple]] = []
     lines.append((f"--- {adv.name} ---", COLORS['accent']))
+
+    # Total power with its flat x multiplier breakdown.
+    flat = adv.get_base_points()
+    mult = adv.get_multiplier()
+    lines.append((f"Power: {flat} x {mult} = {flat * mult}", COLORS['success']))
 
     # Role badge in the tooltip too
     if hasattr(state, 'hero_king') and adv is state.hero_king:

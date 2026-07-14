@@ -21,63 +21,72 @@ from ..models import GamePhase
 
 TUTORIAL_MESSAGES: Dict[GamePhase, List[str]] = {
     GamePhase.MAIN_MENU: [
-        "Hey! Listen! I'm Spark — your guide.",
-        "I'll pop up on each screen with a tip. Toggle me off any time below.",
-        "Click 'New Game' when you're ready. I'll meet you there.",
-    ],
-
-    GamePhase.PREPARATION: [
-        "Shop time. Manage your roster and gear them up between delves.",
-        "LEFT panel: your roster. Click a row to select that adventurer for editing.",
-        "RIGHT panel: items in your inventory. Click an item to equip it on the selected adventurer.",
-        "Lower-right: the shop — buy adventurers and items with coins.",
-        "Press TAB anywhere to open the keyword reference — it shows what counters what.",
-        "Click 'To Delve' (top-right) when ready. Pick your team inside the delve.",
+        "Hey! Listen! I'm Spark — your guide to Double Edged.",
+        "I'll pop up on each screen with tips. Toggle me off below any time.",
+        "Click 'New Game' and pick a dungeon. I'll meet you there!",
     ],
 
     GamePhase.DECK_SELECT: [
-        "Pick your dungeon. Each deck has its own keyword theme.",
-        "Look at the monster keywords listed — your party should counter them.",
-        "Decks persist across runs: monsters you kill stay dead.",
+        "Pick a dungeon! Each one has its own keyword theme and a final boss.",
+        "Check the listed keywords — bring heroes and items that counter them.",
+        "Dungeons are persistent: monsters you kill STAY dead across delves.",
+        "Scroll if the list is long. Click 'Enter' on a dungeon to delve in.",
     ],
 
     GamePhase.DELVE_SETUP: [
-        "The delve! Each square is one fight.",
-        "First: click Recruit to pick your team — up to 4 adventurers from your roster.",
-        "King badge doubles your total; dunce badge halves it. Killing a king enemy makes that character a king next.",
-        "DRAG adventurers from the bottom tray onto squares to assign matchups.",
-        "Each square has a bonus — buff or resist a keyword. Read it before placing.",
-        "All living adventurers must be placed before FIGHT! becomes clickable.",
-        "Click 'Items' to swap gear mid-delve. 'Retreat' bails out, keeping your loot.",
+        "The delve! Monsters on top, your party on the path below.",
+        "First time in? The Recruit screen picks your team — up to 4 heroes.",
+        "Each monster card shows a big red number: its total defense. Duplicate keywords MULTIPLY it — '2x construct' is no joke.",
+        "DRAG a hero from the path onto a monster card to match them. Green number = your hero's power. Green beats red!",
+        "Click a matched card to unmatch. Drop a hero on an occupied card to swap. Click a hero on the path for their full info.",
+        "KING monsters hit x2, DUNCE at half. Your heroes get the same badges — earned by slaying kings.",
+        "Top-right: the FINAL BOSS. Hover its icon to scout its gear and see how many rows away it is.",
+        "Click 'Items' to equip gear. You only have what you DREW from your item deck (8 cards) plus loot — each cleared row draws 1 more.",
+        "Hover any card for weakness details. TAB opens the keyword reference.",
+        "Match every living hero, then FIGHT! Retreat bails out and keeps your loot.",
     ],
 
     GamePhase.DELVE_RESULTS: [
-        "Combat resolved. Wins earn coins and loot drops.",
-        "Adventurers who LOST died and dropped all their items. Plan around that.",
-        "Earned multipliers carry forward — they matter a lot for the boss fight.",
+        "The row is resolved — each card tells you exactly why it went that way.",
+        "'Won by N power' means your hero out-hit the defense. 'Short by N' means they fell — and dropped ALL their gear.",
+        "Fallen heroes' items land in the shop's fallen stock — you can buy them back later.",
+        "Clearing the row drew you a fresh card from your item deck. Check 'Items' before the next row!",
     ],
 
     GamePhase.BOSS_CHOICE: [
-        "A BOSS! Your living heroes fight it one at a time, in order.",
-        "Each hero must beat the 30% threshold: pass to survive, chip the boss's score, and strip a keyword.",
-        "Miss the threshold and that hero dies. Drop the score to 0 for an early KO.",
-        "The LAST hero has no threshold — they just need to out-score whatever's left. 'Skip Boss' bails.",
+        "The BOSS! See its gear? Those items add points AND keywords to its score — stacked keywords multiply it sky-high.",
+        "Pick a hero, then pick a target: SMASH an item (beat its DEF or the hero dies) or click the BOSS itself to challenge.",
+        "Destroying items strips their keywords and CRASHES the boss's total. But...",
+        "...every item still intact when you win becomes BONUS LOOT. Weaken it, or gamble for the full prize — that's the double edge!",
+        "Challenging the boss ends the fight, win or lose. 'Skip Boss' bails out — it'll wait, at full strength.",
     ],
 
     GamePhase.BOSS_RESULT: [
-        "Boss relay done — see how each hero fared.",
-        "Win and the boss drops a reward: bonus slot, stolen keyword, or stat bump.",
-        "Lose the final fight and the boss fully resets for next time.",
+        "Read the strike: power vs the target's number tells the whole story.",
+        "Destroyed gear = the boss's score drops for the next hero. Fallen heroes drop their items.",
+        "Beat the boss for coins, drops, a special reward — and bonus loot for every intact item. Lose, and it resets completely.",
+    ],
+
+    GamePhase.PREPARATION: [
+        "MANAGEMENT! Three columns: your ROSTER, the middle DECK/LOADOUT panel, and your INVENTORY.",
+        "The middle panel opens on your ITEM DECK — what delves draw from: 8 cards to start, +1 per cleared row. Use its tabs to keep several decks; one is active.",
+        "Deck items stay in your inventory (even while equipped) — the deck is a selection. All 15 slots must be filled to delve. No duplicates, except scrap.",
+        "Toggle to Loadout to gear a hero directly: click a roster card to select, click an inventory item to equip; Ctrl+click sells it.",
+        "The 'Unequip' buttons strip one hero; 'Unequip All' strips everyone back to inventory.",
+        "Use the '+ Team' buttons to save a squad of 4 — they auto-join your delves, skipping the recruit screen.",
+        "Heroes enter and leave delves bare-handed: gear comes from your deck draws. Cleared dungeons can be REPLAYED at double strength!",
+        "The right column also toggles to the SHOP: buy items and hire adventurers. Stock refreshes as you slay monsters.",
+        "Use Search and the Filter button (sorted by your most-stacked keywords) to dig through gear. TAB = keyword reference.",
+        "Click 'To Delve' at the bottom when you're ready.",
     ],
 
     GamePhase.ROUND_END: [
-        "Shop! Spend coins on items and new adventurers.",
-        "Shop quality scales with your progress — clear more decks for better stock.",
+        "Spend your coins, then keep delving — better stock unlocks as you clear dungeons.",
     ],
 
     GamePhase.GAME_OVER: [
-        "End of run.",
-        "Either you cleared every dungeon or your party was wiped. Either way — back to menu.",
+        "End of the run — every dungeon cleared, or the party wiped.",
+        "Unlocks are permanent. Next run starts stronger. Back to the menu!",
     ],
 }
 

@@ -99,6 +99,10 @@ def _draw_header(screen, fonts, state, sprite_manager):
         spr = sprite_manager.get_monster_sprite(boss_mon.name, (44, 44))
         if spr:
             screen.blit(spr, (boss_box.right - 52, boss_box.y + 6))
+        # Red ring: the boss is the NEXT fight after this row.
+        if state.rows_until_boss() <= 1:
+            pygame.draw.circle(screen, COLORS['danger'],
+                               (boss_box.right - 30, boss_box.y + 28), 27, 3)
 
 
 def _square_totals(state, sq):
@@ -161,18 +165,22 @@ def _draw_monster_card(screen, fonts, state, sprite_manager, x, y, sq, index):
         screen.blit(badge, (rect.right - badge.get_width() - 10, y + 8))
 
     # Massive matchup numbers — no DEF/POWER labels (colour carries meaning).
-    # Long numbers step down a font size so they stay inside their half.
+    # Long numbers step down font sizes so they stay inside their half
+    # (replayed dungeons can push these into 6+ digits).
+    def _fit_number(value, color):
+        for key in ('huge', 'title', 'large', 'medium'):
+            surf = fonts[key].render(str(value), True, color)
+            if surf.get_width() <= 130:
+                return surf
+        return surf
+
     mon_total, adv_total = _square_totals(state, sq)
-    def_surf = fonts['huge'].render(str(mon_total), True, COLORS['danger'])
-    if def_surf.get_width() > 130:
-        def_surf = fonts['title'].render(str(mon_total), True, COLORS['danger'])
+    def_surf = _fit_number(mon_total, COLORS['danger'])
     screen.blit(def_surf, def_surf.get_rect(centerx=x + 82, top=y + 2))
     if adv_total is not None:
         pc = (COLORS['success'] if adv_total > mon_total else
               COLORS['danger'] if adv_total < mon_total else COLORS['warning'])
-        pw_surf = fonts['huge'].render(str(adv_total), True, pc)
-        if pw_surf.get_width() > 130:
-            pw_surf = fonts['title'].render(str(adv_total), True, pc)
+        pw_surf = _fit_number(adv_total, pc)
         screen.blit(pw_surf, pw_surf.get_rect(centerx=x + 218, top=y + 2))
         vs = fonts['small'].render("vs", True, COLORS['text_dim'])
         screen.blit(vs, vs.get_rect(centerx=x + 150, y=y + 40))
@@ -572,7 +580,7 @@ def draw_inventory_panel(screen, fonts, state):
 
     ui = {'unequip_btns': [], 'unequip_all': None, 'filter_btn': None,
           'filter_chips': [], 'filter_clear': None, 'filter_panel': None,
-          'search_rect': None, 'item_rows': []}
+          'search_rect': None, 'item_rows': [], 'sort_rects': {}}
     state._delve_ui = ui
 
     # Column headers
@@ -589,11 +597,11 @@ def draw_inventory_panel(screen, fonts, state):
         cy = INV_LEFT_RECT.y + 10 + i * (INV_CARD_H + INV_CARD_GAP)
         card = pygame.Rect(INV_LEFT_RECT.x + 8, cy,
                            INV_LEFT_RECT.w - 16, INV_CARD_H)
-        ub = widgets.draw_roster_card(
+        rects = widgets.draw_roster_card(
             screen, fonts, state, card, adv,
             i == state.delve_selected_adv_idx, paper_doll)
-        if ub is not None:
-            ui['unequip_btns'].append((i, ub))
+        if rects['unequip'] is not None:
+            ui['unequip_btns'].append((i, rects['unequip']))
 
     # [Unequip All] pinned to the bottom of the roster column
     ua = pygame.Rect(INV_LEFT_RECT.x + 8, INV_LEFT_RECT.bottom - 42,
@@ -617,8 +625,8 @@ def draw_inventory_panel(screen, fonts, state):
         scroll=state.delve_inv_scroll,
         search_text=state.delve_item_search,
         search_active=state.delve_item_search_active,
-        header_text=(f"{len(state.delve_loot)} new + "
-                     f"{len(state.inventory)} stored — click to equip"),
+        header_text=(f"{len(state.delve_drawn_items)} deck + "
+                     f"{len(state.delve_loot)} loot — click to equip"),
         is_new_func=lambda it: it in state.delve_loot,
         paper_doll_module=paper_doll,
         hover_pos=state.hover_pos,
@@ -631,13 +639,14 @@ def draw_inventory_panel(screen, fonts, state):
 
     # Keyword-filter dropdown drawn last so it overlays the list.
     if state.delve_filter_open:
-        pool = list(state.delve_loot) + list(state.inventory)
+        pool = list(state.delve_drawn_items) + list(state.delve_loot)
         dd = widgets.draw_kw_filter_dropdown(
             screen, fonts, state, res['search_rect'], pool,
-            state.delve_kw_filter)
+            state.delve_kw_filter, sort_mode=state.delve_sort_mode)
         ui['filter_chips'] = dd['chips']
         ui['filter_clear'] = dd['clear_rect']
         ui['filter_panel'] = dd['panel_rect']
+        ui['sort_rects'] = dd['sort_rects']
 
 
 # ---------------------------------------------------------------------------
@@ -680,19 +689,41 @@ def draw_recruit_panel(screen, fonts, state):
             (660, 210),
         )
     else:
-        for j, adv in enumerate(available):
-            y = 142 + j * 74
-            if y > 620:
-                break
+        # Define the viewable scrolling area
+        list_rect = pygame.Rect(660, 142, 580, 520)
+        scroll = getattr(state, 'delve_recruit_scroll', 0)
+        item_height = 74
+        total_h = len(available) * item_height
 
-            rect = pygame.Rect(660, y, 560, 64)
+        # Clamp scroll to prevent scrolling past the content
+        max_scroll = max(0, total_h - list_rect.height)
+        scroll = max(0, min(scroll, max_scroll))
+        state.delve_recruit_scroll = scroll
+
+        ui_rects = []
+
+        # Apply clipping to hide items outside the box
+        prev_clip = screen.get_clip()
+        screen.set_clip(list_rect)
+
+        for j, adv in enumerate(available):
+            y = list_rect.y + j * item_height - scroll
+
+            # Cull completely off-screen items
+            if y + item_height < list_rect.top or y > list_rect.bottom:
+                continue
+
+            # Draw the recruit card slightly narrower to fit the scrollbar
+            rect = pygame.Rect(660, y, 540, 64)
             pygame.draw.rect(screen, COLORS['panel_light'], rect, border_radius=6)
             pygame.draw.rect(screen, COLORS['accent'], rect, 1, border_radius=6)
+            
+            ui_rects.append((adv, rect))
 
-            # Portrait thumbnail — right side
+            # Portrait thumbnail — aligned to new card width
             adv_id = getattr(adv, 'id', adv.name)
             paper_doll.draw_portrait_thumbnail(screen, adv_id,
-                                               660 + 560 - 54, y + 8, 48)
+                                               rect.right - 54, y + 8, 48)
 
             screen.blit(fonts['medium'].render(adv.name, True, COLORS['text']),
                         (676, y + 8))
@@ -701,8 +732,8 @@ def draw_recruit_panel(screen, fonts, state):
                         (676 + 180, y + 12))
 
             ability = f"{adv.ability_name}: {adv.ability_desc}"
-            if len(ability) > 65:
-                ability = ability[:64] + "..."
+            if len(ability) > 63:
+                ability = ability[:60] + "..."
             screen.blit(fonts['small'].render(ability, True, COLORS['text_dim']),
                         (676, y + 38))
 
@@ -712,8 +743,24 @@ def draw_recruit_panel(screen, fonts, state):
                     fonts['small'].render(
                         f"{eq_count} items equipped", True, COLORS['warning'],
                     ),
-                    (1100, y + 12),
+                    (rect.right - 180, y + 12),
                 )
+
+        # Restore original clipping
+        screen.set_clip(prev_clip)
+        
+        # Save rects for the input handler so clicks map correctly
+        state._delve_recruit_ui = ui_rects
+
+        # Draw a scrollbar if the content height exceeds the list bounding box
+        if total_h > list_rect.height:
+            sb_rect = pygame.Rect(list_rect.right - 10, list_rect.y, 8, list_rect.height)
+            pygame.draw.rect(screen, COLORS['panel_dark'], sb_rect, border_radius=4)
+
+            thumb_h = max(20, list_rect.height * (list_rect.height / total_h))
+            thumb_y = list_rect.y + (scroll / max_scroll) * (list_rect.height - thumb_h)
+            thumb_rect = pygame.Rect(sb_rect.x, thumb_y, 8, thumb_h)
+            pygame.draw.rect(screen, COLORS['border'], thumb_rect, border_radius=4)
 
     screen.blit(
         fonts['small'].render(

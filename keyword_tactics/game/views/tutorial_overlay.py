@@ -30,9 +30,9 @@ FAIRY_HIT_PAD = 24      # Generous click target
 BOB_AMPLITUDE = 6
 
 BUBBLE_W = 540
-BUBBLE_H = 140
+BUBBLE_H = 170
 BUBBLE_OFFSET_X = 50    # Right of fairy
-BUBBLE_OFFSET_Y = -170  # Above fairy
+BUBBLE_OFFSET_Y = -185  # Above fairy
 
 FAIRY_COLOR_CORE = (255, 250, 220)
 FAIRY_COLOR_GLOW = (255, 220, 110)
@@ -189,7 +189,7 @@ def _draw_speech_bubble(screen, fonts, tutorial: 'Tutorial'):
     body_left = br.left + 14
     max_w = br.width - 28
     lines = _wrap_text(msg, fonts['small'], max_w)
-    for i, line in enumerate(lines[:3]):  # Hard cap; keeps bubble height stable
+    for i, line in enumerate(lines[:4]):  # Hard cap; keeps bubble height stable
         line_surf = fonts['small'].render(line, True, COLORS['text'])
         screen.blit(line_surf, (body_left, body_top + i * 22))
 

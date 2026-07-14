@@ -60,6 +60,44 @@ class Deck:
         # Current round's pool (monsters pulled for this exploration)
         self.round_monsters: List[Monster] = []
 
+        # Pristine templates so a cleared deck can be replayed at higher
+        # strength. replay_level = times the deck has been reset (stats
+        # double per level).
+        self._monster_templates: List[Monster] = [m.copy() for m in self.monsters]
+        self._boss_template: Optional[Monster] = (
+            self.boss_monster.copy() if self.boss_monster else None)
+        self.replay_level: int = 0
+
+    def start_replay(self):
+        """Reset a cleared deck with every monster at double strength.
+
+        Stacks: each replay doubles again (x2, x4, x8...). The boss and its
+        gear come back too.
+        """
+        self.replay_level += 1
+        mult = 2 ** self.replay_level
+        self.monsters = []
+        for t in self._monster_templates:
+            m = t.copy()
+            m.base_points = t.base_points * mult
+            self.monsters.append(m)
+        if self._boss_template:
+            b = self._boss_template.copy()
+            b.base_points = self._boss_template.base_points * mult
+            self.boss_monster = b
+        self.boss_defeated = False
+        self.is_completed = False
+        self.round_monsters = []
+
+    def apply_replay_level(self, level: int):
+        """Rebuild the scaled boss after loading a save mid-replay."""
+        self.replay_level = max(0, int(level))
+        if self.replay_level > 0 and self._boss_template:
+            mult = 2 ** self.replay_level
+            b = self._boss_template.copy()
+            b.base_points = self._boss_template.base_points * mult
+            self.boss_monster = b
+
     # ----- Round management -----
 
     def prepare_round(self, count: int = 4):

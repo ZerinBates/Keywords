@@ -209,6 +209,14 @@ class InputHandler:
     # ------------------------------------------------------------------
 
     def _handle_scroll(self, event, mouse_pos):
+        # Mid-delve recruit overlay (pixel-based scroll, clamped by the draw).
+        if self.state.delve_recruit_open:
+            panel_rect = pygame.Rect(640, 80, 620, 620)
+            if panel_rect.collidepoint(mouse_pos):
+                self.state.delve_recruit_scroll = max(
+                    0, self.state.delve_recruit_scroll - event.y * 40)
+                return
+
         if self.state.ref_panel_open:
             panel_rect = pygame.Rect(20, 100, 400, 550)
             if panel_rect.collidepoint(mouse_pos):
@@ -240,6 +248,23 @@ class InputHandler:
                     0, min(self.state.delve_equipped_scroll, max_scroll))
                 return
 
+
+        if getattr(self.state, 'delve_recruit_open', False):
+            list_rect = pygame.Rect(660, 142, 580, 520)
+            if list_rect.collidepoint(mouse_pos):
+                available = self.state.get_available_recruits()
+                total_h = len(available) * 74
+                
+                # Multiplier applied to event.y since this scroll is pixel-based, 
+                # whereas other UI elements in the game seem to be index-based.
+                scroll_speed = 30 
+                current_scroll = getattr(self.state, 'delve_recruit_scroll', 0)
+                current_scroll -= event.y * scroll_speed
+                
+                max_scroll = max(0, total_h - list_rect.height)
+                self.state.delve_recruit_scroll = max(0, min(current_scroll, max_scroll))
+                return
+            
         if self.state.phase == GamePhase.PREPARATION:
             from ..views.screens.preparation import (
                 PREP_LEFT_RECT, PREP_MID_RECT, PREP_RIGHT_RECT,
@@ -267,13 +292,17 @@ class InputHandler:
                                  - prep_roster_visible_count())
                 self.state.roster_scroll = max(0, min(self.state.roster_scroll, max_scroll))
 
-            if (PREP_MID_RECT.collidepoint(mouse_pos)
-                    and 0 <= self.state.selected_party_index < len(self.state.roster)):
-                adv = self.state.roster[self.state.selected_party_index]
-                self.state.prep_equipped_scroll -= event.y
-                max_scroll = max(0, len(adv.equipped_items) - 1)
-                self.state.prep_equipped_scroll = max(
-                    0, min(self.state.prep_equipped_scroll, max_scroll))
+            if PREP_MID_RECT.collidepoint(mouse_pos):
+                if self.state.prep_mid_view == 'deck':
+                    max_scroll = max(0, len(self.state.item_deck) - 1)
+                    self.state.deck_scroll = max(0, min(
+                        self.state.deck_scroll - event.y, max_scroll))
+                elif 0 <= self.state.selected_party_index < len(self.state.roster):
+                    adv = self.state.roster[self.state.selected_party_index]
+                    self.state.prep_equipped_scroll -= event.y
+                    max_scroll = max(0, len(adv.equipped_items) - 1)
+                    self.state.prep_equipped_scroll = max(
+                        0, min(self.state.prep_equipped_scroll, max_scroll))
 
         if self.state.phase == GamePhase.DECK_SELECT:
             from ..views.screens.deck_select import (
@@ -381,10 +410,12 @@ class InputHandler:
                 s.phase = GamePhase.DECK_SELECT
             else:
                 s.set_message("Your roster is empty — buy adventurers first.")
-        elif text in ("Back", "Back to Party", "Back to Shop") and s.phase == GamePhase.DECK_SELECT:
+        elif (text in ("Back", "Back to Party", "Back to Shop",
+                       "Back to Management")
+              and s.phase == GamePhase.DECK_SELECT):
             s.phase = GamePhase.PREPARATION
             s.deck_select_scroll = 0
-        elif text == "Enter":
+        elif text in ("Enter", "Replay"):
             if hasattr(button, 'deck_id'):
                 s.start_exploration(button.deck_id)
         elif text.startswith("Enter "):
@@ -592,6 +623,10 @@ class InputHandler:
                 s.inventory_scroll = 0
                 s.shop_scroll = 0
                 return
+            for mode, r in (ui.get('sort_rects') or {}).items():
+                if r.collidepoint(mouse_pos):
+                    s.prep_sort_mode = mode
+                    return
             pr = ui.get('filter_panel')
             if pr and pr.collidepoint(mouse_pos):
                 return
@@ -607,6 +642,25 @@ class InputHandler:
             if r.collidepoint(mouse_pos):
                 s.prep_view = 'inventory' if lab == 'Inventory' else 'shop'
                 return
+
+        for lab, r in (ui.get('mid_toggle_rects') or {}).items():
+            if r.collidepoint(mouse_pos):
+                s.prep_mid_view = 'loadout' if lab == 'Loadout' else 'deck'
+                return
+
+        # Deck tabs / add / delete (deck-builder view)
+        for i, r in ui.get('deck_tabs', []):
+            if r.collidepoint(mouse_pos):
+                s.set_active_deck(i)
+                return
+        da = ui.get('deck_add')
+        if da and da.collidepoint(mouse_pos):
+            s.add_deck()
+            return
+        dd = ui.get('deck_del')
+        if dd and dd.collidepoint(mouse_pos):
+            s.delete_active_deck()
+            return
 
         sr = ui.get('search_rect')
         if sr and sr.collidepoint(mouse_pos):
@@ -627,6 +681,11 @@ class InputHandler:
             n = s.unequip_all_roster()
             s.set_message(f"Returned {n} item(s) to inventory.")
             return
+        for roster_idx, r in ui.get('team_btns', []):
+            if r.collidepoint(mouse_pos):
+                if 0 <= roster_idx < len(s.roster):
+                    s.toggle_team_member(s.roster[roster_idx])
+                return
         for roster_idx, r in ui.get('roster_cards', []):
             if r.collidepoint(mouse_pos):
                 if s.selected_party_index != roster_idx:
@@ -634,7 +693,12 @@ class InputHandler:
                 s.selected_party_index = roster_idx
                 return
 
-        # Middle column: click an equipped row to unequip that one item.
+        # Middle column: deck-builder rows return items to the inventory;
+        # loadout equipped rows unequip a single item.
+        for item, rr in ui.get('deck_rows', []):
+            if rr.collidepoint(mouse_pos):
+                s.deck_remove_item(item)
+                return
         if 0 <= s.selected_party_index < len(s.roster):
             adv = s.roster[s.selected_party_index]
             for item, rr in (getattr(s, '_prep_equipped_rows', []) or []):
@@ -642,12 +706,19 @@ class InputHandler:
                     s.unequip_item(adv, adv.equipped_items.index(item))
                     return
 
-        # Right column rows: equip/sell (inventory view) or buy (shop view).
+        # Right column rows: equip/sell/add-to-deck (inventory view) or
+        # buy (shop view).
         for idx, item, rr in ui.get('item_rows', []):
             if rr.collidepoint(mouse_pos):
                 if s.prep_view == 'inventory':
                     if pygame.key.get_mods() & pygame.KMOD_CTRL:
                         s.sell_item_obj(item)
+                    elif s.prep_mid_view == 'deck':
+                        # Toggle: dimmed (already-in-deck) items come back out.
+                        if item in s.item_deck:
+                            s.deck_remove_item(item)
+                        else:
+                            s.deck_add_item(item)
                     elif 0 <= s.selected_party_index < len(s.roster):
                         s.equip_item_obj(item, s.roster[s.selected_party_index])
                     else:
@@ -660,10 +731,10 @@ class InputHandler:
                 s.buy_shop_adventurer(i)
                 return
 
-    def _handle_delve_click(self, mouse_pos):
+    def _handle_delve_inventory_click(self, mouse_pos):
+        """Clicks on the fullscreen loadout overlay (delve AND boss phases)."""
         s = self.state
-
-        if s.delve_inv_open:
+        if True:
             from ..views.screens.delve import (
                 INV_LEFT_RECT, INV_MID_RECT, INV_CARD_H, INV_CARD_GAP,
             )
@@ -684,6 +755,10 @@ class InputHandler:
                     s.delve_kw_filter.clear()
                     s.delve_inv_scroll = 0
                     return
+                for mode, r in (ui.get('sort_rects') or {}).items():
+                    if r.collidepoint(mouse_pos):
+                        s.delve_sort_mode = mode
+                        return
                 pr = ui.get('filter_panel')
                 if pr and pr.collidepoint(mouse_pos):
                     return
@@ -741,19 +816,33 @@ class InputHandler:
 
             return
 
-        if s.delve_recruit_open:
+    def _handle_delve_click(self, mouse_pos):
+        s = self.state
+
+        if s.delve_inv_open:
+            self._handle_delve_inventory_click(mouse_pos)
+            return
+
+        if getattr(s, 'delve_recruit_open', False):
+            ui_rects = getattr(s, '_delve_recruit_ui', [])
             available = s.get_available_recruits()
-            for j, adv in enumerate(available):
-                recruit_rect = pygame.Rect(660, 142 + j * 74, 560, 64)
-                if recruit_rect.collidepoint(mouse_pos):
-                    s.delve_recruit(j)
-                    if not s.party_needs_recruits():
-                        s.delve_recruit_open = False
+
+            for adv, rect in ui_rects:
+                if rect.collidepoint(mouse_pos):
+                    if adv in available:
+                        idx = available.index(adv)
+                        s.delve_recruit(idx)
+                        if not s.party_needs_recruits():
+                            s.delve_recruit_open = False
                     return
 
     def _handle_boss_choice_click(self, mouse_pos):
         """Pick a hero, then a target: one of the boss's items, or the boss."""
         s = self.state
+        if s.delve_inv_open:
+            # Gear-up overlay is open — route clicks there instead.
+            self._handle_delve_inventory_click(mouse_pos)
+            return
         if not s.boss_square or s.boss_square.get('outcome'):
             return
         ui = getattr(s, '_boss_ui', {}) or {}

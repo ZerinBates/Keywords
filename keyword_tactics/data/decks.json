@@ -18,28 +18,28 @@
       "torn_wing"
     ],
     "monsters": [
-      { "name": "Lost Pup", "keywords": ["beast", "spirit"], "base_points": 1 },
-      { "name": "Rusty Cog", "keywords": ["construct", "metal"], "base_points": 1 },
-      { "name": "Sickly Goblin", "keywords": ["humanoid", "poison"], "base_points": 1 },
-      { "name": "Withered Spore", "keywords": ["plant", "undead"], "base_points": 1 },
-      { "name": "Confused Imp", "keywords": ["demon", "fey"], "base_points": 2 },
-      { "name": "Dull Slime", "keywords": ["slime", "earth"], "base_points": 3 },
-      { "name": "Small Flame", "keywords": ["elemental", "fire"], "base_points": 3 },
-      { "name": "Muddy Crab", "keywords": ["aquatic", "beast"], "base_points": 3 },
-      { "name": "Tired Hatchling", "keywords": ["dragon", "avian"], "base_points": 5 },
-      { "name": "Weak Poltergeist", "keywords": ["spirit", "wind"], "base_points": 7 },
-      { "name": "Clumsy Cultist", "keywords": ["humanoid", "occult"], "base_points": 0 },
-      { "name": "Dazed Larva", "keywords": ["insect", "aberration"], "base_points": 6 },
-      { "name": "Shed Snake Skin", "keywords": ["reptile", "construct"], "base_points": 6 },
-      { "name": "Fallen Cherub", "keywords": ["angel", "darkness"], "base_points": 7 },
-      { "name": "Lost Shadow", "keywords": ["undead", "illusion"], "base_points": 7 },
-      { "name": "The Practice Dummy", "keywords": ["construct", "construct", "construct", "wood", "dummy"], "base_points": 147 }
+      { "name": "Lost Pup", "keywords": ["beast", "spirit"], "base_points": 5 },
+      { "name": "Rusty Cog", "keywords": ["construct", "metal"], "base_points": 5 },
+      { "name": "Sickly Goblin", "keywords": ["humanoid", "poison"], "base_points": 5 },
+      { "name": "Withered Spore", "keywords": ["plant", "undead"], "base_points": 5 },
+      { "name": "Confused Imp", "keywords": ["demon", "fey"], "base_points": 10 },
+      { "name": "Dull Slime", "keywords": ["slime", "earth"], "base_points": 20 },
+      { "name": "Small Flame", "keywords": ["elemental", "fire"], "base_points": 40 },
+      { "name": "Muddy Crab", "keywords": ["aquatic", "beast"], "base_points": 40 },
+      { "name": "Tired Hatchling", "keywords": ["dragon", "avian"], "base_points": 50 },
+      { "name": "Weak Poltergeist", "keywords": ["spirit", "wind"], "base_points": 70 },
+      { "name": "Clumsy Cultist", "keywords": ["humanoid", "occult"], "base_points": 1 },
+      { "name": "Dazed Larva", "keywords": ["insect", "aberration"], "base_points": 60 },
+      { "name": "Shed Snake Skin", "keywords": ["reptile", "construct"], "base_points": 60 },
+      { "name": "Fallen Cherub", "keywords": ["angel", "darkness"], "base_points": 70 },
+      { "name": "Lost Shadow", "keywords": ["undead", "illusion"], "base_points": 70 },
+      { "name": "The Practice Dummy", "keywords": ["construct", "construct","metal"], "base_points": 70 }
     ],
     "boss": {
       "name": "The Grand Overseer Golem",
-      "items": ["wrecking_ball", "construct_hammer", "piston_fist"],
+      "items": ["boss_iron_plate", "boss_iron_sword", "boss_metal_gear"],
       "keywords": ["construct", "metal", "elite", "boss"],
-      "base_points": 500,
+      "base_points": 250,
       "guaranteed_drop": "overseer_core"
     }
   },
@@ -47,7 +47,7 @@
     "name": "Beast's Den",
     "description": "A savage wilderness ruled by alpha predators. Prepare for pack tactics and raw physical power.",
     "color": [139, 69, 19],
-    "common_keywords": ["beast", "nature", "poison", "claw", "fang"],
+    "common_keywords": ["beast", "nature", "poison", "claw"],
     "drop_items": ["wolf_pelt", "bear_claw", "boar_tusk", "lion_heart", "snake_venom", "feral_instinct", "scrap_beast", "scrap_nature", "scrap_claw", "scrap_poison"],
     "monsters": [
       { "name": "Dire Rat", "keywords": ["beast", "poison"], "base_points": 40 },
@@ -69,9 +69,9 @@
     ],
     "boss": {
       "name": "Apex Predator Primal Beast",
-      "items": ["summon_book", "crocodile_jaw", "poison_fang"],
+      "items": ["boss_wolf_pelt", "boss_bear_claw", "boss_lit_torch"],
       "keywords": ["beast", "nature", "elite", "boss"],
-      "base_points": 900,
+      "base_points": 450,
       "guaranteed_drop": "apex_pelt"
     }
   },
@@ -101,9 +101,9 @@
     ],
     "boss": {
       "name": "The Usurper Warlord",
-      "items": ["king_crown", "spectral_blade", "void_blade"],
+      "items": ["boss_knight_helm", "boss_assassin_blade", "boss_iron_sword"],
       "keywords": ["humanoid", "sword", "elite", "boss"],
-      "base_points": 1000,
+      "base_points": 500,
       "guaranteed_drop": "warlord_crown"
     }
   },
@@ -114,28 +114,28 @@
     "common_keywords": ["undead", "darkness", "spirit", "necromancy", "poison"],
     "drop_items": ["bone_club", "skull_helm", "rotting_flesh", "ghost_essence", "lich_crown", "vampire_cape", "scrap_undead", "scrap_bone", "scrap_necromancy", "scrap_darkness"],
     "monsters": [
-      { "name": "Skeleton Warrior", "keywords": ["undead", "sword"], "base_points": 50 },
-      { "name": "Rotting Rat", "keywords": ["undead", "beast"], "base_points": 50 },
-      { "name": "Walking Hand", "keywords": ["undead", "fist"], "base_points": 56 },
-      { "name": "Zombie Peasant", "keywords": ["undead", "humanoid"], "base_points": 60 },
-      { "name": "Bone Dog", "keywords": ["undead", "beast"], "base_points": 64 },
-      { "name": "Rotting Zombie", "keywords": ["undead", "poison"], "base_points": 100 },
-      { "name": "Skeleton Archer", "keywords": ["undead", "bow"], "base_points": 104 },
-      { "name": "Crypt Ghoul", "keywords": ["undead", "beast", "darkness"], "base_points": 110 },
-      { "name": "Restless Spirit", "keywords": ["undead", "undead", "spirit"], "base_points": 116 },
-      { "name": "Mummy", "keywords": ["undead", "undead", "earth", "curse"], "base_points": 120 },
-      { "name": "Vampire Lord", "keywords": ["undead", "undead", "blood", "humanoid"], "base_points": 200 },
-      { "name": "Phantom", "keywords": ["undead", "undead", "spirit", "illusion"], "base_points": 210 },
-      { "name": "Bone Golem", "keywords": ["undead", "undead", "construct"], "base_points": 220 },
-      { "name": "Death Knight", "keywords": ["undead", "undead", "knight", "ice"], "base_points": 230 },
-      { "name": "Necromancer", "keywords": ["undead", "undead", "mage", "necromancy"], "base_points": 240 },
+      { "name": "Skeleton Warrior", "keywords": ["undead", "sword"], "base_points": 75 },
+      { "name": "Rotting Rat", "keywords": ["undead", "beast"], "base_points": 75 },
+      { "name": "Walking Hand", "keywords": ["undead", "fist"], "base_points": 76 },
+      { "name": "Zombie Peasant", "keywords": ["undead", "humanoid"], "base_points": 90 },
+      { "name": "Bone Dog", "keywords": ["undead", "beast"], "base_points": 94 },
+      { "name": "Rotting Zombie", "keywords": ["undead", "poison"], "base_points": 130 },
+      { "name": "Skeleton Archer", "keywords": ["undead", "bow"], "base_points": 134 },
+      { "name": "Crypt Ghoul", "keywords": ["undead", "beast", "darkness"], "base_points": 140 },
+      { "name": "Restless Spirit", "keywords": ["undead", "undead", "spirit"], "base_points": 146 },
+      { "name": "Mummy", "keywords": ["undead", "undead", "earth", "void"], "base_points": 160 },
+      { "name": "Vampire Lord", "keywords": ["undead", "undead", "blood", "humanoid"], "base_points": 240 },
+      { "name": "Phantom", "keywords": ["undead", "undead", "spirit", "illusion"], "base_points": 250 },
+      { "name": "Bone Golem", "keywords": ["undead", "undead", "construct"], "base_points": 250 },
+      { "name": "Death Knight", "keywords": ["undead", "undead", "knight", "ice"], "base_points": 280 },
+      { "name": "Necromancer", "keywords": ["undead", "undead", "mage", "necromancy"], "base_points": 280 },
       { "name": "Elder Lich", "keywords": ["undead", "undead", "undead", "necromancy", "king"], "base_points": 480 }
     ],
     "boss": {
       "name": "The Forgotten Bone Dragon",
-      "items": ["necromancy_staff", "blood_scythe", "lich_crown"],
+      "items": ["boss_ghost_essence", "boss_skeletal_bow", "boss_cursed_ring"],
       "keywords": ["undead", "dragon", "elite", "boss"],
-      "base_points": 1000,
+      "base_points": 500,
       "guaranteed_drop": "cursed_skull"
     }
   },
@@ -165,9 +165,9 @@
     ],
     "boss": {
       "name": "Bahamut, the Platinum Emperor",
-      "items": ["dragon_wing", "phoenix_crest", "phoenix_ash"],
+      "items": ["boss_dragon_scale", "boss_sun_ray", "boss_divine_text"],
       "keywords": ["dragon", "divine", "elite", "boss"],
-      "base_points": 1200,
+      "base_points": 600,
       "guaranteed_drop": "platinum_scale"
     }
   },
@@ -197,9 +197,9 @@
     ],
     "boss": {
       "name": "Omega Forge Core",
-      "items": ["piston_fist", "engineer_toolkit", "wrecking_ball"],
+      "items": ["boss_servo_arm", "boss_iron_plate", "boss_metal_gear"],
       "keywords": ["construct", "metal", "elite", "boss"],
-      "base_points": 1000,
+      "base_points": 500,
       "guaranteed_drop": "omega_gear"
     }
   },
@@ -229,9 +229,9 @@
     ],
     "boss": {
       "name": "Azazel, the Hellbringer",
-      "items": ["chaos_blade", "demon_contract", "demon_fang"],
+      "items": ["boss_demon_blood", "boss_hellfire_torch", "boss_imp_horn"],
       "keywords": ["demon", "fire", "elite", "boss"],
-      "base_points": 1000,
+      "base_points": 500,
       "guaranteed_drop": "hellbringer_horns"
     }
   },
@@ -261,9 +261,9 @@
     ],
     "boss": {
       "name": "Metatron, Voice of the Divine",
-      "items": ["angel_wing", "halo_ring", "angel_sword"],
+      "items": ["boss_sun_ray", "boss_trumpet", "boss_white_feather"],
       "keywords": ["angel", "light", "elite", "boss"],
-      "base_points": 1000,
+      "base_points": 500,
       "guaranteed_drop": "divine_halo"
     }
   },
@@ -293,9 +293,9 @@
     ],
     "boss": {
       "name": "The Archfey of the Changing Seasons",
-      "items": ["sylvan_cloak", "enchanted_bow", "glamour_mirror"],
+      "items": ["boss_flower_wand", "boss_fey_whip", "boss_pixie_dust"],
       "keywords": ["fey", "nature", "elite", "boss"],
-      "base_points": 1000,
+      "base_points": 500,
       "guaranteed_drop": "archfey_heart"
     }
   },
@@ -303,7 +303,7 @@
     "name": "Toxic Sewers",
     "description": "Dank tunnels filled with amorphous ooze. Physical attacks may get stuck.",
     "color": [50, 205, 50],
-    "common_keywords": ["slime", "poison", "water", "acid", "earth"],
+    "common_keywords": ["slime", "poison", "water", "earth"],
     "drop_items": ["green_goo", "sticky_shield", "water_splash", "gelatinous_cube", "ooze_armor", "slime_crown", "scrap_slime", "scrap_poison", "scrap_water", "scrap_darkness"],
     "monsters": [
       { "name": "Green Slime", "keywords": ["slime", "poison"], "base_points": 50 },
@@ -318,16 +318,16 @@
       { "name": "Toxic Cloud", "keywords": ["slime", "slime", "wind", "poison"], "base_points": 120 },
       { "name": "Gelatinous Cube", "keywords": ["slime", "slime", "construct", "guardian"], "base_points": 200 },
       { "name": "Black Pudding", "keywords": ["slime", "slime", "darkness", "metal"], "base_points": 210 },
-      { "name": "Ochre Jelly", "keywords": ["slime", "slime", "earth", "division"], "base_points": 220 },
+      { "name": "Ochre Jelly", "keywords": ["slime", "slime", "earth"], "base_points": 220 },
       { "name": "Mimic", "keywords": ["slime", "slime", "illusion", "construct"], "base_points": 230 },
       { "name": "Corrosive Mass", "keywords": ["slime", "slime", "fire", "acid"], "base_points": 240 },
       { "name": "Slime King", "keywords": ["slime", "slime", "slime", "king", "poison"], "base_points": 480 }
     ],
     "boss": {
       "name": "The Primordial Ooze",
-      "items": ["slime_crown", "mutant_blob", "aberration_staff"],
+      "items": ["boss_ooze_armor", "boss_gelatinous_cube", "boss_green_goo"],
       "keywords": ["slime", "acid", "elite", "boss"],
-      "base_points": 1000,
+      "base_points": 500,
       "guaranteed_drop": "primordial_nucleus"
     }
   },
@@ -351,15 +351,15 @@
       { "name": "Mantis Warrior", "keywords": ["insect", "insect", "claw", "assassin"], "base_points": 200 },
       { "name": "Widow Spider", "keywords": ["insect", "insect", "poison", "darkness"], "base_points": 210 },
       { "name": "Centipede Titan", "keywords": ["insect", "insect", "earth", "warrior"], "base_points": 220 },
-      { "name": "Scorpion King", "keywords": ["insect", "insect", "poison", "desert"], "base_points": 230 },
+      { "name": "Scorpion King", "keywords": ["insect", "insect", "poison", "fire"], "base_points": 230 },
       { "name": "Moth Mage", "keywords": ["insect", "insect", "mage", "dust"], "base_points": 240 },
       { "name": "Hive Queen", "keywords": ["insect", "insect", "insect", "king", "psionic"], "base_points": 480 }
     ],
     "boss": {
       "name": "The Apex Swarm-Mother",
-      "items": ["swarm_caller", "basilisk_eye", "spore_cloud"],
+      "items": ["boss_spider_silk", "boss_insect_bow", "boss_venom_sac"],
       "keywords": ["insect", "poison", "elite", "boss"],
-      "base_points": 1000,
+      "base_points": 500,
       "guaranteed_drop": "royal_jelly"
     }
   },
@@ -389,9 +389,9 @@
     ],
     "boss": {
       "name": "Yggdrasil's Corrupted Root",
-      "items": ["root_armor", "life_seed", "basilisk_eye"],
+      "items": ["boss_earth_shield", "boss_flower_wand", "boss_thorn_whip"],
       "keywords": ["plant", "earth", "elite", "boss"],
-      "base_points": 1000,
+      "base_points": 500,
       "guaranteed_drop": "world_root"
     }
   },
@@ -421,9 +421,9 @@
     ],
     "boss": {
       "name": "Leviathan of the Depths",
-      "items": ["pearl_gem", "deep_crown", "crocodile_jaw"],
+      "items": ["boss_trident_steel", "boss_water_blast", "boss_crab_claw"],
       "keywords": ["aquatic", "water", "elite", "boss"],
-      "base_points": 1000,
+      "base_points": 500,
       "guaranteed_drop": "abyssal_pearl"
     }
   },
@@ -453,9 +453,9 @@
     ],
     "boss": {
       "name": "The Zenith Stormbird",
-      "items": ["angel_wing", "seraph_wing", "dragon_wing"],
+      "items": ["boss_sky_bow", "boss_talon_glove", "boss_feather_cape"],
       "keywords": ["avian", "wind", "elite", "boss"],
-      "base_points": 1000,
+      "base_points": 500,
       "guaranteed_drop": "zenith_feather"
     }
   },
@@ -472,22 +472,22 @@
       { "name": "Chameleon", "keywords": ["reptile", "illusion"], "base_points": 60 },
       { "name": "Newt", "keywords": ["reptile", "slime"], "base_points": 64 },
       { "name": "Cobra", "keywords": ["reptile", "poison"], "base_points": 100 },
-      { "name": "Snapping Turtle", "keywords": ["reptile", "guardian", "armor"], "base_points": 104 },
+      { "name": "Snapping Turtle", "keywords": ["reptile", "guardian", "shield"], "base_points": 104 },
       { "name": "Crocodile", "keywords": ["reptile", "water", "beast"], "base_points": 110 },
       { "name": "Iguana Warrior", "keywords": ["reptile", "reptile", "spear"], "base_points": 116 },
       { "name": "Viper", "keywords": ["reptile", "reptile", "assassin", "poison"], "base_points": 120 },
       { "name": "Lizardman Warrior", "keywords": ["reptile", "reptile", "humanoid", "spear"], "base_points": 200 },
       { "name": "Basilisk", "keywords": ["reptile", "reptile", "earth", "illusion"], "base_points": 210 },
-      { "name": "Hydra Spawn", "keywords": ["reptile", "reptile", "regeneration"], "base_points": 220 },
+      { "name": "Hydra Spawn", "keywords": ["reptile", "reptile"], "base_points": 220 },
       { "name": "Naga Siren", "keywords": ["reptile", "reptile", "arcane", "water"], "base_points": 230 },
       { "name": "Dragon Turtle", "keywords": ["reptile", "reptile", "dragon", "fire"], "base_points": 240 },
       { "name": "Serpent God", "keywords": ["reptile", "reptile", "reptile", "divine", "poison"], "base_points": 480 }
     ],
     "boss": {
       "name": "Quetzalcoatl, the Feathered Serpent",
-      "items": ["basilisk_eye", "turtle_shell", "storm_cloud"],
+      "items": ["boss_camouflage", "boss_serpent_staff", "boss_lizard_skin"],
       "keywords": ["reptile", "wind", "elite", "boss"],
-      "base_points": 1000,
+      "base_points": 500,
       "guaranteed_drop": "feathered_scale"
     }
   },
@@ -505,21 +505,21 @@
       { "name": "Echo", "keywords": ["spirit", "sonic"], "base_points": 64 },
       { "name": "Poltergeist", "keywords": ["spirit", "wind", "sonic"], "base_points": 100 },
       { "name": "Ghostly Butler", "keywords": ["spirit", "humanoid"], "base_points": 104 },
-      { "name": "Flying Book", "keywords": ["spirit", "knowledge", "avian"], "base_points": 110 },
+      { "name": "Flying Book", "keywords": ["spirit", "arcane", "avian"], "base_points": 110 },
       { "name": "Possessed Armor", "keywords": ["spirit", "spirit", "construct", "metal"], "base_points": 116 },
       { "name": "Ghast", "keywords": ["spirit", "spirit", "undead", "poison"], "base_points": 120 },
       { "name": "Banshee", "keywords": ["spirit", "spirit", "sonic", "undead"], "base_points": 200 },
       { "name": "Void Ghost", "keywords": ["spirit", "spirit", "void", "darkness"], "base_points": 210 },
       { "name": "Wraith", "keywords": ["spirit", "spirit", "ice", "darkness"], "base_points": 220 },
-      { "name": "Specter", "keywords": ["spirit", "spirit", "illusion", "mind"], "base_points": 230 },
+      { "name": "Specter", "keywords": ["spirit", "spirit", "illusion", "arcane"], "base_points": 230 },
       { "name": "Ghost Ship", "keywords": ["spirit", "spirit", "water", "construct"], "base_points": 240 },
       { "name": "Spirit Lord", "keywords": ["spirit", "spirit", "spirit", "king", "arcane"], "base_points": 480 }
     ],
     "boss": {
       "name": "The Amalgamated Soul-Mass",
-      "items": ["ghost_essence", "spectral_blade", "soul_cage"],
+      "items": ["boss_poltergeist", "boss_ghost_hood", "boss_haunted_doll"],
       "keywords": ["spirit", "void", "elite", "boss"],
-      "base_points": 1000,
+      "base_points": 500,
       "guaranteed_drop": "soul_gem"
     }
   },
@@ -545,13 +545,13 @@
       { "name": "Beholder", "keywords": ["aberration", "aberration", "arcane", "guardian"], "base_points": 260 },
       { "name": "Void Walker", "keywords": ["aberration", "aberration", "space", "time"], "base_points": 270 },
       { "name": "Star Spawn", "keywords": ["aberration", "aberration", "fire", "elemental"], "base_points": 280 },
-      { "name": "Elder God", "keywords": ["aberration", "aberration", "aberration", "god", "space"], "base_points": 560 }
+      { "name": "Elder God", "keywords": ["aberration", "aberration", "aberration", "king", "space"], "base_points": 560 }
     ],
     "boss": {
       "name": "Cthulhu, the Dreamer in the Deep",
-      "items": ["mind_flay", "eldritch_book", "aberration_staff"],
+      "items": ["boss_tentacle_whip", "boss_chaos_stone", "boss_void_essence"],
       "keywords": ["aberration", "psionic", "elite", "boss"],
-      "base_points": 1200,
+      "base_points": 600,
       "guaranteed_drop": "eldritch_idol"
     }
   },
@@ -581,9 +581,9 @@
     ],
     "boss": {
       "name": "The Primordial Convergence",
-      "items": ["storm_cloud", "elemental_ring", "elemental_sword"],
-      "keywords": ["elemental", "magic", "elite", "boss"],
-      "base_points": 1000,
+      "items": ["boss_prism_shard", "boss_water_core", "boss_living_ember"],
+      "keywords": ["elemental", "elemental", "elite", "boss"],
+      "base_points": 500,
       "guaranteed_drop": "convergence_core"
     }
   }

@@ -304,6 +304,7 @@ def draw_item_row(screen, fonts, state, row_rect: pygame.Rect, item,
                   sell_price: Optional[int] = None,
                   buy_price: Optional[int] = None,
                   hovered: bool = False,
+                  dimmed: bool = False,
                   paper_doll_module=None):
     """Render a single item row inside `row_rect`.
 
@@ -385,6 +386,15 @@ def draw_item_row(screen, fonts, state, row_rect: pygame.Rect, item,
         screen.blit(rl, (row_rect.right - rl.get_width() - 10,
                          row_rect.y + 21))
 
+    # Greyed out (e.g. already in the item deck while the builder is open)
+    if dimmed:
+        shade = pygame.Surface((row_rect.w, row_rect.h), pygame.SRCALPHA)
+        shade.fill((10, 6, 14, 150))
+        screen.blit(shade, row_rect.topleft)
+        tag = fonts['tiny'].render("IN DECK", True, COLORS['gold'])
+        screen.blit(tag, (row_rect.right - tag.get_width() - 8,
+                          row_rect.centery - tag.get_height() // 2))
+
 
 def draw_item_list_panel(screen, fonts, state, rect: pygame.Rect,
                          items: List, scroll: int,
@@ -399,7 +409,8 @@ def draw_item_list_panel(screen, fonts, state, rect: pygame.Rect,
                          toggle_labels: Optional[Tuple[str, str]] = None,
                          toggle_active: int = 0,
                          filter_selected: Optional[set] = None,
-                         filter_open: bool = False) -> dict:
+                         filter_open: bool = False,
+                         dim_func: Optional[Callable] = None) -> dict:
     """Render a complete item list panel (header + controls + scrollable list).
 
     The controls row holds an optional [A|B] view toggle (left), the search
@@ -497,7 +508,9 @@ def draw_item_list_panel(screen, fonts, state, rect: pygame.Rect,
             draw_item_row(screen, fonts, state, rr, it,
                           is_new=is_new, is_fallen=is_fall,
                           sell_price=sell_p, buy_price=buy_p,
-                          hovered=is_hov, paper_doll_module=paper_doll_module)
+                          hovered=is_hov,
+                          dimmed=bool(dim_func and dim_func(it)),
+                          paper_doll_module=paper_doll_module)
             visible.append((idx, it, rr))
 
     return {
@@ -513,11 +526,14 @@ def draw_item_list_panel(screen, fonts, state, rect: pygame.Rect,
 
 
 def draw_kw_filter_dropdown(screen, fonts, state, anchor_rect: pygame.Rect,
-                            items: List, selected: set) -> dict:
-    """Keyword-filter popup under `anchor_rect` — multi-select chips.
+                            items: List, selected: set,
+                            sort_mode: str = '') -> dict:
+    """Keyword-filter popup under `anchor_rect` — multi-select chips plus a
+    sort row (by power or rarity).
 
-    Lists every keyword present on `items` with its count. Returns
-    {'panel_rect', 'chips': [(kw_id, rect)], 'clear_rect'} for hit-testing.
+    Lists every keyword present on `items` with its count, most-repeated
+    first. Returns {'panel_rect', 'chips': [(kw_id, rect)], 'clear_rect',
+    'sort_rects': {mode: rect}} for hit-testing.
     """
     counts = {}
     for it in items:
@@ -537,7 +553,7 @@ def draw_kw_filter_dropdown(screen, fonts, state, anchor_rect: pygame.Rect,
 
     # Lay out chips in a wrapping grid (capped at the screen bottom).
     chip_data = []
-    cx, cy = x0 + pad, y0 + pad + 20
+    cx, cy = x0 + pad, y0 + pad + 46
     truncated = 0
     for k in kws:
         label = f"{_name(k)} ({counts[k]})"
@@ -551,7 +567,7 @@ def draw_kw_filter_dropdown(screen, fonts, state, anchor_rect: pygame.Rect,
         chip_data.append((k, label, pygame.Rect(cx, cy, w, chip_h)))
         cx += w + 6
 
-    panel_h = (cy + chip_h + pad) - y0 if chip_data else 56
+    panel_h = (cy + chip_h + pad) - y0 if chip_data else 84
     panel = pygame.Rect(x0, y0, panel_w, panel_h)
     draw_pixel_box(screen, panel, border=COLORS['accent'],
                    fill=theme.mix(COLORS['bg'], COLORS['surface'], 0.35))
@@ -564,10 +580,31 @@ def draw_kw_filter_dropdown(screen, fonts, state, anchor_rect: pygame.Rect,
     clear_rect = clear_s.get_rect(topright=(panel.right - pad, y0 + 6))
     screen.blit(clear_s, clear_rect)
 
+    # Sort row
+    sort_rects = {}
+    sx = x0 + pad
+    s_lbl = fonts['tiny'].render("Sort:", True, COLORS['text_dim'])
+    screen.blit(s_lbl, (sx, y0 + 30))
+    sx += s_lbl.get_width() + 8
+    for lab, mode in (("Power", 'power'), ("Rarity", 'rarity'), ("None", '')):
+        w = fonts['tiny'].render(lab, True, COLORS['text']).get_width() + 14
+        r = pygame.Rect(sx, y0 + 26, w, chip_h)
+        active = (sort_mode == mode)
+        if active:
+            pygame.draw.rect(screen, COLORS['gold'], r, border_radius=2)
+            ls = fonts['tiny'].render(lab, True, COLORS['bg'])
+        else:
+            pygame.draw.rect(screen, COLORS['panel_dark'], r, border_radius=2)
+            pygame.draw.rect(screen, COLORS['border'], r, 1, border_radius=2)
+            ls = fonts['tiny'].render(lab, True, COLORS['text_dim'])
+        screen.blit(ls, ls.get_rect(center=r.center))
+        sort_rects[mode] = r
+        sx += w + 6
+
     if not chip_data:
         none_s = fonts['tiny'].render("No keywords in this list", True,
                                       COLORS['text_dim'])
-        screen.blit(none_s, (x0 + pad, y0 + 28))
+        screen.blit(none_s, (x0 + pad, y0 + 54))
 
     chips_out = []
     for k, label, r in chip_data:
@@ -588,15 +625,19 @@ def draw_kw_filter_dropdown(screen, fonts, state, anchor_rect: pygame.Rect,
         screen.blit(more, (panel.right - more.get_width() - pad,
                            panel.bottom - more.get_height() - 4))
 
-    return {'panel_rect': panel, 'chips': chips_out, 'clear_rect': clear_rect}
+    return {'panel_rect': panel, 'chips': chips_out, 'clear_rect': clear_rect,
+            'sort_rects': sort_rects}
 
 
 def draw_roster_card(screen, fonts, state, card: pygame.Rect, adv,
-                     is_sel: bool, paper_doll_module):
-    """One roster hero card: portrait, name, total power, keyword chips —
-    the same info the delve party strip shows.
+                     is_sel: bool, paper_doll_module, team_state=None):
+    """One roster hero card: portrait, name, total power (with the flat x
+    multiplier breakdown underneath), and keyword chips.
 
-    Returns the [Unequip] button rect, or None if the hero carries nothing.
+    `team_state`: None hides the Team button; True/False shows it as
+    in/out of the saved delve team.
+
+    Returns {'unequip': Rect|None, 'team': Rect|None} for hit-testing.
     """
     fill = (theme.mix(COLORS['bg'], COLORS['success'], 0.12)
             if is_sel else COLORS['panel_dark'])
@@ -614,7 +655,9 @@ def draw_roster_card(screen, fonts, state, card: pygame.Rect, adv,
         screen.blit(fonts['small'].render("DEAD", True, COLORS['danger']),
                     (card.x + 74, card.y + 36))
     else:
-        power = adv.get_base_points() * adv.get_multiplier()
+        flat = adv.get_base_points()
+        mult = adv.get_multiplier()
+        power = flat * mult
         lbl = fonts['small'].render("Power: ", True, COLORS['text'])
         screen.blit(lbl, (card.x + 74, card.y + 36))
         val = fonts['small'].render(
@@ -627,12 +670,15 @@ def draw_roster_card(screen, fonts, state, card: pygame.Rect, adv,
             else COLORS['text_dim'])
         screen.blit(slots, (card.x + 84 + lbl.get_width() + val.get_width(),
                             card.y + 39))
+        # Flat power x multiplier breakdown ("100 x 5").
+        bd = fonts['tiny'].render(f"{flat} x {mult}", True, COLORS['text_dim'])
+        screen.blit(bd, (card.x + 74, card.y + 58))
 
     # Keyword chips wrap freely; clip to the card so long lists stay tidy.
     prev_clip = screen.get_clip()
     screen.set_clip(card.inflate(-4, -4))
     draw_kw_chip_flow(screen, fonts, state, adv.get_all_keywords(),
-                      card.x + 12, card.y + 62, card.w - 24)
+                      card.x + 12, card.y + 78, card.w - 24)
     screen.set_clip(prev_clip)
 
     ub = None
@@ -642,7 +688,20 @@ def draw_roster_card(screen, fonts, state, card: pygame.Rect, adv,
         pygame.draw.rect(screen, COLORS['danger'], ub, 1, border_radius=2)
         us = fonts['tiny'].render("Unequip", True, COLORS['text'])
         screen.blit(us, us.get_rect(center=ub.center))
-    return ub
+
+    tb = None
+    if team_state is not None and not adv.is_dead:
+        tb = pygame.Rect(card.right - 76, card.y + 32, 68, 22)
+        if team_state:
+            pygame.draw.rect(screen, COLORS['gold'], tb, border_radius=2)
+            tl = fonts['tiny'].render("TEAM", True, COLORS['bg'])
+        else:
+            pygame.draw.rect(screen, COLORS['panel_dark'], tb, border_radius=2)
+            pygame.draw.rect(screen, COLORS['gold'], tb, 1, border_radius=2)
+            tl = fonts['tiny'].render("+ Team", True, COLORS['text'])
+        screen.blit(tl, tl.get_rect(center=tb.center))
+
+    return {'unequip': ub, 'team': tb}
 
 
 def draw_hero_loadout_column(screen, fonts, state, rect: pygame.Rect, adv,

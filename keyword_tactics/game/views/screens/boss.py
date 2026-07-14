@@ -213,12 +213,19 @@ def draw_choice(screen, fonts, state, sprite_manager,
         backing.fill((10, 6, 14, 170))
         screen.blit(backing, (info_x - 6, info_y - 6))
 
-        screen.blit(fonts['medium'].render(f"{adv.name}:", True, COLORS['text']),
+        # King/dunce roles earned in the delve carry into the boss fight.
+        is_king = adv is state.hero_king
+        is_dunce = adv is state.hero_dunce
+        role_tag = " (K)" if is_king else (" (D)" if is_dunce else "")
+        name_c = (COLORS['gold'] if is_king else
+                  COLORS['text_dim'] if is_dunce else COLORS['text'])
+        screen.blit(fonts['medium'].render(f"{adv.name}{role_tag}:", True, name_c),
                     (info_x, info_y))
 
         ap = combat.adventurer_boss_power(
             adv, boss.get('keywords', []), boss['bonus'],
             state.keyword_registry,
+            adv_is_king=is_king, adv_is_dunce=is_dunce,
         )
         can_slay = ap['power'] >= boss_score
         lbl = fonts['small'].render("Power: ", True, COLORS['text'])

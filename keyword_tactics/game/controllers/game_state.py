@@ -72,8 +72,24 @@ DECK_BOSS_UNLOCKS_CHARACTERS: Dict[str, List[str]] = {
 }
 
 
+class PlayerDeck:
+    """One player loadout preset: a 15-item selection + its own team of 4.
+
+    Items are REFERENCES into the shared inventory; team members are
+    references into the roster. Only one deck is active at a time — that's
+    the one a delve uses.
+    """
+
+    def __init__(self, name: str):
+        self.name: str = name
+        self.items: List[Item] = []
+        self.team: List[Adventurer] = []
+
+
 class GameState:
     """Manages all game state and high-level logic."""
+
+    MAX_DECKS = 6
 
     # ---------------------------------------------------------------------
     # Construction & data loading
@@ -113,6 +129,16 @@ class GameState:
         self.front_row: List[dict] = []                  # 4 squares - active, draggable
         self.back_row: List[dict] = []                   # 4 squares - preview only
         self.delve_loot: List[Item] = []
+        # Player loadout decks. Each PlayerDeck bundles a 15-item selection
+        # (references into the inventory) with its own team of 4. Exactly one
+        # is active; `item_deck` / `saved_team` are properties onto it, so all
+        # delve/shop logic operates on the active deck automatically.
+        self.decks: List[PlayerDeck] = [PlayerDeck("Deck 1")]
+        self.active_deck_index: int = 0
+        self.delve_drawn_items: List[Item] = []
+        self.delve_recruit_scroll: int = 0
+        # Fallen heroes who got their 25% second chance (shown for re-hire).
+        self.fallen_heroes: List[Adventurer] = []
         self.row_mult_base: int = 1                      # 1, 5, 9, ...
         self.rows_completed: int = 0
         self.boss_square: Optional[dict] = None
@@ -166,6 +192,13 @@ class GameState:
         self.prep_inv_search_active: bool = False
         # Right-column view on the Shop screen: 'inventory' or 'shop'.
         self.prep_view: str = 'inventory'
+        # Middle-column view on the Management screen: 'deck' (default,
+        # front-and-centre) or 'loadout'.
+        self.prep_mid_view: str = 'deck'
+        self.deck_scroll: int = 0
+        # Item-list sort modes: '' (none) | 'power' | 'rarity'.
+        self.prep_sort_mode: str = ''
+        self.delve_sort_mode: str = ''
         # Keyword filters (empty set = show everything) + dropdown-open flags.
         self.prep_kw_filter: set = set()
         self.prep_filter_open: bool = False
@@ -209,6 +242,81 @@ class GameState:
         # Load any persisted meta-progression on construction. This is safe
         # to call before new_game() since it only touches the unlock sets.
         self.load_meta_from_disk()
+
+    # ---------------------------------------------------------------------
+    # Loadout decks (multiple presets; one active)
+    # ---------------------------------------------------------------------
+
+    @property
+    def active_deck(self) -> PlayerDeck:
+        """The currently-selected loadout deck (always valid)."""
+        if not self.decks:
+            self.decks = [PlayerDeck("Deck 1")]
+        self.active_deck_index = max(0, min(self.active_deck_index,
+                                            len(self.decks) - 1))
+        return self.decks[self.active_deck_index]
+
+    @property
+    def item_deck(self) -> List[Item]:
+        """Active deck's item selection (what a delve draws from)."""
+        return self.active_deck.items
+
+    @item_deck.setter
+    def item_deck(self, value):
+        self.active_deck.items = list(value)
+
+    @property
+    def saved_team(self) -> List[Adventurer]:
+        """Active deck's assigned team (auto-joins delves)."""
+        return self.active_deck.team
+
+    @saved_team.setter
+    def saved_team(self, value):
+        self.active_deck.team = list(value)
+
+    def set_active_deck(self, index: int):
+        if 0 <= index < len(self.decks):
+            self.active_deck_index = index
+            self.deck_scroll = 0
+
+    def add_deck(self) -> bool:
+        if len(self.decks) >= self.MAX_DECKS:
+            self.set_message(f"Deck limit reached ({self.MAX_DECKS}).")
+            return False
+        # Name after the lowest unused "Deck N".
+        used = {d.name for d in self.decks}
+        n = 1
+        while f"Deck {n}" in used:
+            n += 1
+        self.decks.append(PlayerDeck(f"Deck {n}"))
+        self.active_deck_index = len(self.decks) - 1
+        self.deck_scroll = 0
+        return True
+
+    def delete_active_deck(self) -> bool:
+        if len(self.decks) <= 1:
+            self.set_message("You need at least one deck.")
+            return False
+        self.decks.pop(self.active_deck_index)
+        self.active_deck_index = min(self.active_deck_index,
+                                     len(self.decks) - 1)
+        self.deck_scroll = 0
+        return True
+
+    def _prune_deck_refs(self):
+        """Drop references to items/heroes that no longer exist (after sells,
+        deaths, etc.). Called before the Management screen draws.
+
+        Items stay deck-valid while equipped on a living roster hero — taking
+        gear out for a loadout doesn't kick it from the deck.
+        """
+        valid = {id(it) for it in self.inventory}
+        for a in self.roster:
+            if not a.is_dead:
+                valid.update(id(it) for it in a.equipped_items)
+        for d in self.decks:
+            d.items = [it for it in d.items if id(it) in valid]
+            d.team = [a for a in d.team if a in self.roster and not a.is_dead]
 
     # ---------------------------------------------------------------------
     # Game lifecycle
@@ -263,18 +371,37 @@ class GameState:
             if basic:
                 self.roster.append(basic)
 
-        # Starting items (mix of scrap and common) — filtered by unlocks
-        for _ in range(4):
+        # Starting items (mix of scrap and common) — filtered by unlocks.
+        # 15 total so the item deck starts full (delving requires all 15).
+        for _ in range(5):
             item = self._spawn_random_item('scrap')
             if item:
                 self.inventory.append(item)
-        for _ in range(7):
+        for _ in range(9):
             item = self._spawn_random_item('common')
             if item:
                 self.inventory.append(item)
         item = self.item_registry.create_copy('insect_bow')
         if item:
             self.inventory.append(item)
+
+        # One starting loadout deck, pre-filled with your spawned items
+        # (references; they stay in the inventory). saved_team/item_deck are
+        # properties onto this active deck.
+        self.decks = [PlayerDeck("Deck 1")]
+        self.active_deck_index = 0
+        self.item_deck = list(self.inventory[:self.ITEM_DECK_SIZE])
+        self.delve_drawn_items = []
+        self.saved_team = []
+        self.fallen_heroes = []
+        self.prep_mid_view = 'deck'
+        self.prep_view = 'inventory'
+        self.prep_kw_filter = set()
+        self.delve_kw_filter = set()
+        self.prep_sort_mode = ''
+        self.delve_sort_mode = ''
+        self.deck_scroll = 0
+        self.delve_recruit_scroll = 0
 
         # New runs land at Deck Select; the team is picked inside the first
         # delve via the recruit overlay (which auto-opens when party is empty).
@@ -516,6 +643,7 @@ class GameState:
         return {
             'is_completed':      deck.is_completed,
             'monsters_defeated': deck.monsters_defeated,
+            'replay_level':      deck.replay_level,
             # round_monsters is empty at save points (PREPARATION / ROUND_END)
             'monsters':          [self._monster_to_dict(m) for m in deck.monsters],
         }
@@ -523,6 +651,8 @@ class GameState:
     def _apply_deck_dict(self, deck: Deck, data: dict):
         deck.is_completed = bool(data.get('is_completed', False))
         deck.monsters_defeated = int(data.get('monsters_defeated', 0))
+        deck.apply_replay_level(data.get('replay_level', 0))
+        deck.boss_defeated = deck.is_completed
         saved_monsters = data.get('monsters')
         if isinstance(saved_monsters, list):
             deck.monsters = [self._monster_from_dict(m) for m in saved_monsters]
@@ -533,9 +663,29 @@ class GameState:
     def _serialize_run(self) -> dict:
         # Map roster identity -> index for cross-references
         ros_idx = {id(a): i for i, a in enumerate(self.roster)}
+        inv_idx = {id(it): i for i, it in enumerate(self.inventory)}
 
         def adv_ref(adv: Optional[Adventurer]) -> Optional[int]:
             return ros_idx.get(id(adv)) if adv is not None else None
+
+        def deck_ref(d: PlayerDeck) -> dict:
+            item_refs, equipped_refs = [], []
+            for it in d.items:
+                if id(it) in inv_idx:
+                    item_refs.append(inv_idx[id(it)])
+                    continue
+                # Deck item currently equipped on a roster hero.
+                for ri, a in enumerate(self.roster):
+                    if it in a.equipped_items:
+                        equipped_refs.append([ri, a.equipped_items.index(it)])
+                        break
+            return {
+                'name': d.name,
+                'item_indices': item_refs,
+                'equipped_item_refs': equipped_refs,
+                'team_indices': [ros_idx[id(a)] for a in d.team
+                                 if id(a) in ros_idx],
+            }
 
         return {
             'phase':              self.phase.value,
@@ -545,6 +695,9 @@ class GameState:
             'completed_decks':    sorted(self.completed_decks),
 
             'inventory':          [self._item_to_dict(i) for i in self.inventory],
+            # All loadout decks (item + team references) and which is active.
+            'player_decks':       [deck_ref(d) for d in self.decks],
+            'active_deck_index':  self.active_deck_index,
             'shop_items':         [self._item_to_dict(i) for i in self.shop_items],
             'dead_adv_loot':      [self._item_to_dict(i) for i in self.dead_adv_loot],
 
@@ -590,6 +743,7 @@ class GameState:
             for idx in run.get('party_indices', []):
                 if isinstance(idx, int) and 0 <= idx < len(self.roster):
                     self.party.append(self.roster[idx])
+            self.fallen_heroes = []
 
             slayer_idx = run.get('last_king_slayer')
             if isinstance(slayer_idx, int) and 0 <= slayer_idx < len(self.roster):
@@ -599,6 +753,49 @@ class GameState:
 
             # ---- Items / shop ----
             self.inventory = [self._item_from_dict(d) for d in run.get('inventory', [])]
+
+            # ---- Loadout decks (need roster + inventory loaded first) ----
+            def _items_at(indices):
+                return [self.inventory[i] for i in indices
+                        if isinstance(i, int) and 0 <= i < len(self.inventory)]
+
+            def _heroes_at(indices):
+                return [self.roster[i] for i in indices
+                        if isinstance(i, int) and 0 <= i < len(self.roster)]
+
+            self.decks = []
+            if run.get('player_decks'):
+                for dd in run['player_decks']:
+                    d = PlayerDeck(dd.get('name', f"Deck {len(self.decks) + 1}"))
+                    d.items = _items_at(dd.get('item_indices', []))
+                    # Deck items that were equipped on heroes at save time.
+                    for ref in dd.get('equipped_item_refs', []):
+                        if (isinstance(ref, list) and len(ref) == 2
+                                and isinstance(ref[0], int)
+                                and isinstance(ref[1], int)
+                                and 0 <= ref[0] < len(self.roster)):
+                            eq = self.roster[ref[0]].equipped_items
+                            if 0 <= ref[1] < len(eq):
+                                d.items.append(eq[ref[1]])
+                    d.team = _heroes_at(dd.get('team_indices', []))
+                    self.decks.append(d)
+            else:
+                # Legacy single-deck save: one deck from the old fields.
+                d = PlayerDeck("Deck 1")
+                if 'item_deck_indices' in run:
+                    d.items = _items_at(run.get('item_deck_indices', []))
+                else:
+                    for entry in run.get('item_deck', []):
+                        it = self._item_from_dict(entry)
+                        self.inventory.append(it)
+                        d.items.append(it)
+                d.team = _heroes_at(run.get('team_indices', []))
+                self.decks.append(d)
+            if not self.decks:
+                self.decks = [PlayerDeck("Deck 1")]
+            self.active_deck_index = max(0, min(
+                int(run.get('active_deck_index', 0)), len(self.decks) - 1))
+            self.delve_drawn_items = []
             self.shop_items = [self._item_from_dict(d) for d in run.get('shop_items', [])]
             self.dead_adv_loot = [self._item_from_dict(d) for d in run.get('dead_adv_loot', [])]
             self.shop_adventurers = []
@@ -838,6 +1035,61 @@ class GameState:
         """Strip every hero on the roster; returns items returned."""
         return sum(self.unequip_all_from(a) for a in self.roster)
 
+    # ---------------------------------------------------------------------
+    # Item deck — built in the Shop, drawn from during delves
+    # ---------------------------------------------------------------------
+
+    ITEM_DECK_SIZE = 15    # every deck has exactly this many slots
+    DECK_START_DRAW = 8    # items drawn when a delve begins
+
+    def deck_add_item(self, item: Item) -> bool:
+        """Tag an inventory item as part of the deck (it stays in inventory).
+
+        Rules: 15 slots max; no duplicates of the same item, except
+        scrap-rarity ones.
+        """
+        if item not in self.inventory:
+            return False
+        if item in self.item_deck:
+            self.set_message("That item is already in the deck.")
+            return False
+        if len(self.item_deck) >= self.ITEM_DECK_SIZE:
+            self.set_message(f"The item deck is full ({self.ITEM_DECK_SIZE} slots)!")
+            return False
+        if item.rarity != 'scrap' and any(d.name == item.name
+                                          for d in self.item_deck):
+            self.set_message("Only scrap items can be duplicated in the deck.")
+            return False
+        self.item_deck.append(item)
+        return True
+
+    def deck_remove_item(self, item: Item) -> bool:
+        """Untag a deck item (it was never out of the inventory)."""
+        if item not in self.item_deck:
+            return False
+        self.item_deck.remove(item)
+        return True
+
+    def _draw_from_item_deck(self, n: int = 1) -> List[Item]:
+        """Draw up to n random deck items into this delve's pool.
+
+        Drawn items leave the inventory while 'in play' and are tagged so
+        end-of-delve reconciliation returns every un-lost one.
+        """
+        drawn = []
+        pool = [it for it in self.item_deck
+                if it in self.inventory and it not in self.delve_drawn_items]
+        for _ in range(n):
+            if not pool:
+                break
+            it = random.choice(pool)
+            pool.remove(it)
+            self.inventory.remove(it)
+            it._from_deck = True
+            self.delve_drawn_items.append(it)
+            drawn.append(it)
+        return drawn
+
     def sell_item(self, inventory_index: int) -> bool:
         if not (0 <= inventory_index < len(self.inventory)):
             return False
@@ -846,6 +1098,10 @@ class GameState:
         coins = sell_prices.get(item.rarity, 1)
         self.coins += coins
         self.inventory.pop(inventory_index)
+        # Selling severs the item from every deck that referenced it.
+        for d in self.decks:
+            if item in d.items:
+                d.items.remove(item)
         self.set_message(f"Sold {item.name} for {coins} coin(s).")
         return True
 
@@ -866,10 +1122,36 @@ class GameState:
             return items
         return [it for it in items if any(k in selected for k in it.keywords)]
 
+    RARITY_RANK = {'scrap': 0, 'common': 1, 'uncommon': 2, 'rare': 3}
+
+    def _apply_sort(self, items: List[Item], mode: str) -> List[Item]:
+        """Sort an item list by 'power' (points) or 'rarity' (then points)."""
+        if mode == 'power':
+            return sorted(items, key=lambda it: -it.points)
+        if mode == 'rarity':
+            return sorted(items, key=lambda it: (
+                -self.RARITY_RANK.get(it.rarity, 1), -it.points))
+        return items
+
+    def toggle_team_member(self, adv: Adventurer) -> bool:
+        """Add/remove a roster hero from the saved 4-hero delve team."""
+        if adv in self.saved_team:
+            self.saved_team.remove(adv)
+            return True
+        if adv.is_dead:
+            self.set_message("Fallen heroes can't join the team.")
+            return False
+        if len(self.saved_team) >= 4:
+            self.set_message("The team is full (4 heroes)!")
+            return False
+        self.saved_team.append(adv)
+        return True
+
     def get_filtered_inventory(self) -> List[Item]:
         result = [it for it in self.inventory
                   if self._matches_search(it, self.prep_inv_search)]
-        return self._apply_kw_filter(result, self.prep_kw_filter)
+        result = self._apply_kw_filter(result, self.prep_kw_filter)
+        return self._apply_sort(result, self.prep_sort_mode)
 
     def _matches_search(self, item: Item, search: str) -> bool:
         if not search:
@@ -884,10 +1166,13 @@ class GameState:
         return False
 
     def get_filtered_delve_items(self) -> List[Item]:
-        merged = list(self.delve_loot) + list(self.inventory)
+        # Mid-delve you only have what you drew from your deck plus the loot
+        # found this delve — not your whole stored inventory.
+        merged = list(self.delve_drawn_items) + list(self.delve_loot)
         merged = [it for it in merged
                   if self._matches_search(it, self.delve_item_search)]
-        return self._apply_kw_filter(merged, self.delve_kw_filter)
+        merged = self._apply_kw_filter(merged, self.delve_kw_filter)
+        return self._apply_sort(merged, self.delve_sort_mode)
 
     # ---------------------------------------------------------------------
     # Shop — dead-adventurer loot
@@ -921,15 +1206,31 @@ class GameState:
         if not self.current_deck:
             self.set_message("Deck not found!")
             return False
-        if self.current_deck.is_completed or self.current_deck.is_empty():
-            self.set_message("This deck has been cleared!")
+        if len(self.item_deck) < self.ITEM_DECK_SIZE:
+            self.set_message(
+                f"Your item deck needs {self.ITEM_DECK_SIZE} items to delve "
+                f"(it has {len(self.item_deck)}). Build it in Management!")
+            self.current_deck = None
             return False
+        if self.current_deck.is_completed or self.current_deck.is_empty():
+            # Cleared dungeons can be replayed — at doubled monster strength.
+            self.current_deck.start_replay()
+            self.set_message(
+                f"REPLAY: every monster at x{2 ** self.current_deck.replay_level} "
+                "strength. Good luck!", 300)
 
         remaining = len(self.current_deck.monsters)
         self.current_deck.prepare_round(remaining)
 
+        # Everyone enters the delve bare-handed: gear comes from your deck.
+        self.unequip_all_roster()
+
         # Reset delve state
         self.delve_loot = []
+        # Draw the delve's starting hand from the item deck.
+        self.delve_drawn_items = []
+        self._draw_from_item_deck(self.DECK_START_DRAW)
+        self.delve_recruit_scroll = 0
         self.rows_completed = 0
         self.row_mult_base = 1
         self.boss_square = None
@@ -940,6 +1241,13 @@ class GameState:
         self.delve_selected_adv_idx = -1
         self.delve_item_search = ""
         self.delve_item_search_active = False
+
+        # Saved team (assigned in the Shop) bypasses the recruit overlay.
+        self.saved_team = [a for a in self.saved_team
+                           if a in self.roster and not a.is_dead]
+        if self.saved_team:
+            self.party = list(self.saved_team[:4])
+
         self.earned_multipliers = {adv: 1 for adv in self.party}
 
         # Build rows and assign monster king/dunce flags
@@ -1127,8 +1435,8 @@ class GameState:
             return False
         if item in self.delve_loot:
             self.delve_loot.remove(item)
-        elif item in self.inventory:
-            self.inventory.remove(item)
+        elif item in self.delve_drawn_items:
+            self.delve_drawn_items.remove(item)
         else:
             return False
         adv.equip(item)
@@ -1226,10 +1534,7 @@ class GameState:
                     result['reward_coins'] = 1
                 else:
                     adv.is_dead = True
-                    lost = adv.equipped_items.copy()
-                    result['lost_items'] = lost
-                    self.dead_adv_loot.extend(lost)
-                    adv.equipped_items.clear()
+                    self._drop_fallen_gear(adv, result)
                     if self.last_king_slayer is adv:
                         self.last_king_slayer = None
                     self.current_deck.return_monster(sq['monster'])
@@ -1237,6 +1542,12 @@ class GameState:
                 self.current_deck.return_monster(sq['monster'])
         self.rows_completed += 1
         self.first_match_done = True
+
+        # Clearing a round earns a fresh draw from the item deck.
+        drawn = self._draw_from_item_deck(1)
+        if drawn:
+            self.set_message(f"Drew {drawn[0].name} from your item deck!")
+
         self.phase = GamePhase.DELVE_RESULTS
 
     def get_front_row_summary(self) -> dict:
@@ -1373,13 +1684,25 @@ class GameState:
         fought = self.boss_square.get('fought', [])
         return [a for a in self.party if not a.is_dead and a not in fought]
 
+    def _drop_fallen_gear(self, adv: Adventurer, result: dict):
+        """A fallen hero drops everything. Each item has only a 25% chance of
+        turning up in the shop's fallen stock — the rest is lost for good.
+        Deck references to lost gear are severed either way."""
+        lost = adv.equipped_items.copy()
+        adv.equipped_items.clear()
+        result['lost_items'] = lost
+        for it in lost:
+            it._from_deck = False
+            if it in self.item_deck:
+                self.item_deck.remove(it)
+            if random.random() < 0.25:
+                it._fallen_age = 0
+                self.dead_adv_loot.append(it)
+
     def _kill_hero_in_boss(self, adv: Adventurer, step: dict):
         """A hero who failed their strike dies and drops their gear."""
         adv.is_dead = True
-        lost = adv.equipped_items.copy()
-        step['lost_items'] = lost
-        self.dead_adv_loot.extend(lost)
-        adv.equipped_items.clear()
+        self._drop_fallen_gear(adv, step)
         if self.last_king_slayer is adv:
             self.last_king_slayer = None
 
@@ -1404,7 +1727,9 @@ class GameState:
 
         item = items[item_index]
         step = combat.resolve_boss_item_attack(
-            adv, item, bs['keywords'], bs['bonus'], self.keyword_registry)
+            adv, item, bs['keywords'], bs['bonus'], self.keyword_registry,
+            adv_is_king=(adv is self.hero_king),
+            adv_is_dunce=(adv is self.hero_dunce))
         step['boss_score_before'] = bs['score']
         bs['fought'].append(adv)
 
@@ -1445,7 +1770,9 @@ class GameState:
             return
 
         step = combat.resolve_boss_challenge(
-            adv, bs['keywords'], bs['score'], bs['bonus'], self.keyword_registry)
+            adv, bs['keywords'], bs['score'], bs['bonus'], self.keyword_registry,
+            adv_is_king=(adv is self.hero_king),
+            adv_is_dunce=(adv is self.hero_dunce))
         step['boss_score_before'] = bs['score']
         bs['fought'].append(adv)
 
@@ -1628,6 +1955,35 @@ class GameState:
         if self.current_deck and not self.current_deck.is_completed:
             self.current_deck.return_unused_round_monsters()
 
+        # --- Item-deck reconciliation: drawn deck items return to the
+        # inventory (their deck references never moved). Lost gear had its
+        # deck reference severed at death time.
+        def _reclaim(container):
+            for it in list(container):
+                if getattr(it, '_from_deck', False):
+                    container.remove(it)
+                    it._from_deck = False
+                    self.inventory.append(it)
+        _reclaim(self.delve_drawn_items)
+        _reclaim(self.delve_loot)
+        for adv in self.party:
+            _reclaim(adv.equipped_items)
+        self.delve_drawn_items = []
+
+        # Everyone leaves the delve bare-handed too — remaining gear
+        # (equipped loot) goes to the inventory.
+        for adv in self.party:
+            while adv.equipped_items:
+                self.inventory.append(adv.equipped_items.pop(0))
+
+        # Fallen shop stock fades after surviving one full run.
+        kept = []
+        for it in self.dead_adv_loot:
+            it._fallen_age = getattr(it, '_fallen_age', 0) + 1
+            if it._fallen_age <= 1:
+                kept.append(it)
+        self.dead_adv_loot = kept
+
         self.inventory.extend(self.delve_loot)
         self.current_monster = None
         self.selected_adventurer = None
@@ -1654,8 +2010,24 @@ class GameState:
         if self.current_deck and self.current_deck.check_completion():
             self._mark_deck_completed(self.current_deck)
 
-        self.generate_shop()
+        # Fallen heroes: 25% get a second chance in the shop for re-hire;
+        # they fade after the next run if nobody buys them.
+        for adv in [a for a in self.roster if a.is_dead]:
+            if random.random() < 0.25:
+                adv.is_dead = False
+                adv._fallen_age = 0
+                self.fallen_heroes.append(adv)
+        surviving_fallen = []
+        for a in self.fallen_heroes:
+            a._fallen_age = getattr(a, '_fallen_age', 0) + 1
+            if a._fallen_age <= 1:
+                surviving_fallen.append(a)
+        self.fallen_heroes = surviving_fallen
+
         self.roster = [a for a in self.roster if not a.is_dead]
+        # Prune every deck's item/team references to what still exists.
+        self._prune_deck_refs()
+        self.generate_shop()
         # Team selection now happens at the start of each delve via the
         # recruit overlay — clear the party so the player picks fresh.
         self.party = []
@@ -1741,6 +2113,11 @@ class GameState:
             if adv:
                 self.shop_adventurers.append(adv)
 
+        # Fallen heroes who got their second chance join the hire list.
+        for adv in self.fallen_heroes:
+            if adv not in self.shop_adventurers:
+                self.shop_adventurers.append(adv)
+
     def get_item_price(self, item: Item) -> int:
         prices = {'scrap': 1, 'common': 3, 'uncommon': 5, 'rare': 8}
         return prices.get(item.rarity, 3)
@@ -1780,6 +2157,8 @@ class GameState:
         self.coins -= price
         self.roster.append(adv)
         self.shop_adventurers.pop(index)
+        if adv in self.fallen_heroes:
+            self.fallen_heroes.remove(adv)
         return True
 
     def end_shop_phase(self):

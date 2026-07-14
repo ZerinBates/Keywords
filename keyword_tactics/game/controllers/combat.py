@@ -316,11 +316,13 @@ def boss_threshold(score: int, fraction: float = BOSS_THRESHOLD_FRACTION) -> int
 
 
 def adventurer_boss_power(adv: Adventurer, boss_keywords: List[str], bonus: dict,
-                          keyword_registry: KeywordRegistry) -> dict:
+                          keyword_registry: KeywordRegistry,
+                          adv_is_king: bool = False,
+                          adv_is_dunce: bool = False) -> dict:
     """A single hero's combat power against the boss's current keywords.
 
-    Mirrors the adventurer side of `calculate_boss_combat` (no square / earned
-    multiplier is applied — boss strength comes from base points).
+    Mirrors the adventurer side of `calculate_boss_combat`. King/dunce roles
+    earned in the delve carry into the boss fight (x2 / halved).
     """
     adv_bonus_keywords: List[str] = []
     if bonus.get('type') == 'keyword_buff':
@@ -348,11 +350,17 @@ def adventurer_boss_power(adv: Adventurer, boss_keywords: List[str], bonus: dict
                 adv_weakness += 1
 
     power = int((adv_raw_base * adv_mult) / (1 + adv_weakness))
+    if adv_is_king:
+        power *= 2
+    elif adv_is_dunce:
+        power //= 2
     return {
         'power': power,
         'base': adv_raw_base,
         'mult': adv_mult,
         'weakness': adv_weakness,
+        'is_king': adv_is_king,
+        'is_dunce': adv_is_dunce,
     }
 
 
@@ -368,13 +376,16 @@ def boss_item_defense(item, boss_keywords: List[str]) -> int:
 
 def resolve_boss_item_attack(adv: Adventurer, item, boss_keywords: List[str],
                              bonus: dict,
-                             keyword_registry: KeywordRegistry) -> dict:
+                             keyword_registry: KeywordRegistry,
+                             adv_is_king: bool = False,
+                             adv_is_dunce: bool = False) -> dict:
     """One hero strikes at one of the boss's equipped items.
 
     Pure: returns a step dict. Caller applies side effects (item removal and
     total recompute on success, hero death on failure).
     """
-    ap = adventurer_boss_power(adv, boss_keywords, bonus, keyword_registry)
+    ap = adventurer_boss_power(adv, boss_keywords, bonus, keyword_registry,
+                               adv_is_king, adv_is_dunce)
     defense = boss_item_defense(item, boss_keywords)
     destroyed = ap['power'] >= defense
     return {
@@ -396,9 +407,12 @@ def resolve_boss_item_attack(adv: Adventurer, item, boss_keywords: List[str],
 
 def resolve_boss_challenge(adv: Adventurer, boss_keywords: List[str],
                            boss_score: int, bonus: dict,
-                           keyword_registry: KeywordRegistry) -> dict:
+                           keyword_registry: KeywordRegistry,
+                           adv_is_king: bool = False,
+                           adv_is_dunce: bool = False) -> dict:
     """One hero challenges the boss itself — win or lose, this ends the fight."""
-    ap = adventurer_boss_power(adv, boss_keywords, bonus, keyword_registry)
+    ap = adventurer_boss_power(adv, boss_keywords, bonus, keyword_registry,
+                               adv_is_king, adv_is_dunce)
     win = ap['power'] >= boss_score
     return {
         'kind': 'boss',

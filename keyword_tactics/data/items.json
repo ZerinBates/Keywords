@@ -1100,6 +1100,13 @@
     "rarity": "uncommon",
     "slot": "float"
   },
+    "boss_ghost_essence": {
+    "name": "Boss Ghost Essence",
+    "keywords": ["undead", "spirit", "illusion", "void"],
+    "points": 180,
+    "rarity": "uncommon",
+    "slot": "float"
+  },
   "lich_crown": {
     "name": "Lich Crown",
     "keywords": ["undead", "necromancy", "king", "time"],
@@ -1128,11 +1135,25 @@
     "rarity": "common",
     "slot": "weapon"
   },
+  "boss_skeletal_bow": {
+    "name": "Ribcage Bow boss",
+    "keywords": ["bow", "necromancy"],
+    "points": 150,
+    "rarity": "boss",
+    "slot": "weapon"
+  },
   "cursed_ring": {
     "name": "Cursed Ring",
     "keywords": ["undead", "occult", "darkness", "enchantment"],
     "points": 105,
     "rarity": "uncommon",
+    "slot": "hand"
+  },
+   "boss_cursed_ring": {
+    "name": "Cursed Ring",
+    "keywords": ["undead", "occult", "darkness", "enchantment"],
+    "points": 205,
+    "rarity": "boss",
     "slot": "hand"
   },
   "zombie_hand": {
@@ -2674,5 +2695,327 @@
     "points": 0,
     "rarity": "scrap",
     "slot": "head"
+  },
+  "boss_iron_plate": {
+    "name": "Iron Plate boss",
+    "keywords": ["shield", "metal"],
+    "points": 100,
+    "rarity": "boss",
+    "slot": "chest"
+  },
+  "boss_iron_sword": {
+    "name": "Iron Sword boss",
+    "keywords": ["sword", "metal"],
+    "points": 110,
+    "rarity": "boss",
+    "slot": "weapon"
+  },
+  "boss_metal_gear": {
+    "name": "Rusty Gear boss",
+    "keywords": ["metal", "time"],
+    "points": 50,
+    "rarity": "boss",
+    "slot": "belt"
+  },
+  "boss_wolf_pelt": {
+    "name": "Wolf Pelt boss",
+    "keywords": ["nature", "ice"],
+    "points": 60,
+    "rarity": "boss",
+    "slot": "cape"
+  },
+  "boss_bear_claw": {
+    "name": "Bear Claw boss",
+    "keywords": ["claw", "earth"],
+    "points": 90,
+    "rarity": "boss",
+    "slot": "hand"
+  },
+  "boss_lit_torch": {
+    "name": "Lit Torch boss",
+    "keywords": ["fire"],
+    "points": 36,
+    "rarity": "boss",
+    "slot": "weapon"
+  },
+  "boss_knight_helm": {
+    "name": "Steel Helm boss",
+    "keywords": ["humanoid", "knight", "metal", "guardian"],
+    "points": 180,
+    "rarity": "boss",
+    "slot": "head"
+  },
+  "boss_assassin_blade": {
+    "name": "Hidden Blade boss",
+    "keywords": ["assassin", "dagger", "darkness"],
+    "points": 180,
+    "rarity": "boss",
+    "slot": "weapon"
+  },
+  "boss_dragon_scale": {
+    "name": "Dragon Scale boss",
+    "keywords": ["shield", "fire"],
+    "points": 110,
+    "rarity": "boss",
+    "slot": "chest"
+  },
+  "boss_sun_ray": {
+    "name": "Sun Mote boss",
+    "keywords": ["fire", "light", "arcane"],
+    "points": 160,
+    "rarity": "boss",
+    "slot": "float"
+  },
+  "boss_divine_text": {
+    "name": "Scripture boss",
+    "keywords": ["book", "divine", "paladin"],
+    "points": 190,
+    "rarity": "boss",
+    "slot": "hand"
+  },
+  "boss_servo_arm": {
+    "name": "Servo Arm boss",
+    "keywords": ["engineer", "metal", "fist"],
+    "points": 170,
+    "rarity": "boss",
+    "slot": "cape"
+  },
+  "boss_demon_blood": {
+    "name": "Demon Blood boss",
+    "keywords": ["demon", "blood", "occult", "alchemy"],
+    "points": 210,
+    "rarity": "boss",
+    "slot": "belt"
+  },
+  "boss_hellfire_torch": {
+    "name": "Hellfire Torch boss",
+    "keywords": ["fire", "light"],
+    "points": 100,
+    "rarity": "boss",
+    "slot": "hand"
+  },
+  "boss_imp_horn": {
+    "name": "Imp Horn boss",
+    "keywords": ["dagger", "fire"],
+    "points": 80,
+    "rarity": "boss",
+    "slot": "head"
+  },
+  "boss_trumpet": {
+    "name": "Golden Trumpet boss",
+    "keywords": ["instrument", "sonic"],
+    "points": 100,
+    "rarity": "boss",
+    "slot": "hand"
+  },
+  "boss_white_feather": {
+    "name": "White Feather boss",
+    "keywords": ["wind", "avian"],
+    "points": 70,
+    "rarity": "boss",
+    "slot": "head"
+  },
+  "boss_flower_wand": {
+    "name": "Flower Wand boss",
+    "keywords": ["wand", "nature"],
+    "points": 100,
+    "rarity": "boss",
+    "slot": "weapon"
+  },
+  "boss_fey_whip": {
+    "name": "Pixie Lash boss",
+    "keywords": ["fey", "whip"],
+    "points": 98,
+    "rarity": "boss",
+    "slot": "weapon"
+  },
+  "boss_pixie_dust": {
+    "name": "Pixie Dust boss",
+    "keywords": ["illusion", "dust"],
+    "points": 90,
+    "rarity": "boss",
+    "slot": "float"
+  },
+  "boss_ooze_armor": {
+    "name": "Ooze Armor boss",
+    "keywords": ["guardian", "poison", "water"],
+    "points": 200,
+    "rarity": "boss",
+    "slot": "chest"
+  },
+  "boss_gelatinous_cube": {
+    "name": "Cube Essence boss",
+    "keywords": ["slime", "construct", "void"],
+    "points": 170,
+    "rarity": "boss",
+    "slot": "float"
+  },
+  "boss_green_goo": {
+    "name": "Green Goo boss",
+    "keywords": ["poison", "water"],
+    "points": 60,
+    "rarity": "boss",
+    "slot": "float"
+  },
+  "boss_spider_silk": {
+    "name": "Spider Silk boss",
+    "keywords": ["whip", "assassin"],
+    "points": 100,
+    "rarity": "boss",
+    "slot": "belt"
+  },
+  "boss_insect_bow": {
+    "name": "Chitin Bow boss",
+    "keywords": ["insect", "bow"],
+    "points": 92,
+    "rarity": "boss",
+    "slot": "weapon"
+  },
+  "boss_venom_sac": {
+    "name": "Venom Sac boss",
+    "keywords": ["poison", "alchemy"],
+    "points": 70,
+    "rarity": "boss",
+    "slot": "belt"
+  },
+  "boss_earth_shield": {
+    "name": "Granite Buckler boss",
+    "keywords": ["earth", "shield"],
+    "points": 116,
+    "rarity": "boss",
+    "slot": "hand"
+  },
+  "boss_thorn_whip": {
+    "name": "Thorn Whip boss",
+    "keywords": ["whip", "nature"],
+    "points": 90,
+    "rarity": "boss",
+    "slot": "weapon"
+  },
+  "boss_trident_steel": {
+    "name": "Steel Trident boss",
+    "keywords": ["spear", "metal", "water"],
+    "points": 190,
+    "rarity": "boss",
+    "slot": "weapon"
+  },
+  "boss_water_blast": {
+    "name": "Water Sphere boss",
+    "keywords": ["water", "arcane"],
+    "points": 110,
+    "rarity": "boss",
+    "slot": "float"
+  },
+  "boss_crab_claw": {
+    "name": "Crab Claw boss",
+    "keywords": ["claw", "shield"],
+    "points": 100,
+    "rarity": "boss",
+    "slot": "hand"
+  },
+  "boss_sky_bow": {
+    "name": "Sky Bow boss",
+    "keywords": ["bow", "wind", "thunder"],
+    "points": 200,
+    "rarity": "boss",
+    "slot": "weapon"
+  },
+  "boss_talon_glove": {
+    "name": "Talon Glove boss",
+    "keywords": ["avian", "claw", "fist", "wind"],
+    "points": 180,
+    "rarity": "boss",
+    "slot": "hand"
+  },
+  "boss_feather_cape": {
+    "name": "Feather Cape boss",
+    "keywords": ["wind", "light"],
+    "points": 80,
+    "rarity": "boss",
+    "slot": "cape"
+  },
+  "boss_camouflage": {
+    "name": "Camo Cloak boss",
+    "keywords": ["ranger", "nature", "illusion"],
+    "points": 160,
+    "rarity": "boss",
+    "slot": "cape"
+  },
+  "boss_serpent_staff": {
+    "name": "Serpent Staff boss",
+    "keywords": ["staff", "poison"],
+    "points": 90,
+    "rarity": "boss",
+    "slot": "weapon"
+  },
+  "boss_lizard_skin": {
+    "name": "Lizard Skin boss",
+    "keywords": ["shield", "nature"],
+    "points": 70,
+    "rarity": "boss",
+    "slot": "chest"
+  },
+  "boss_poltergeist": {
+    "name": "Poltergeist boss",
+    "keywords": ["spirit", "sonic", "wind", "illusion"],
+    "points": 180,
+    "rarity": "boss",
+    "slot": "float"
+  },
+  "boss_ghost_hood": {
+    "name": "Ghost Hood boss",
+    "keywords": ["illusion", "darkness", "wind"],
+    "points": 170,
+    "rarity": "boss",
+    "slot": "head"
+  },
+  "boss_haunted_doll": {
+    "name": "Haunted Doll boss",
+    "keywords": ["construct", "illusion"],
+    "points": 100,
+    "rarity": "boss",
+    "slot": "float"
+  },
+  "boss_tentacle_whip": {
+    "name": "Tentacle Whip boss",
+    "keywords": ["whip", "water", "void"],
+    "points": 180,
+    "rarity": "boss",
+    "slot": "weapon"
+  },
+  "boss_chaos_stone": {
+    "name": "Chaos Stone boss",
+    "keywords": ["gambler", "void", "arcane"],
+    "points": 170,
+    "rarity": "boss",
+    "slot": "hand"
+  },
+  "boss_void_essence": {
+    "name": "Void Essence boss",
+    "keywords": ["void", "darkness"],
+    "points": 110,
+    "rarity": "boss",
+    "slot": "float"
+  },
+  "boss_prism_shard": {
+    "name": "Prism Shard boss",
+    "keywords": ["light", "arcane", "illusion"],
+    "points": 170,
+    "rarity": "boss",
+    "slot": "float"
+  },
+  "boss_water_core": {
+    "name": "Water Core boss",
+    "keywords": ["water", "arcane"],
+    "points": 80,
+    "rarity": "boss",
+    "slot": "float"
+  },
+  "boss_living_ember": {
+    "name": "Living Ember boss",
+    "keywords": ["fire", "nature"],
+    "points": 80,
+    "rarity": "boss",
+    "slot": "float"
   }
 }
